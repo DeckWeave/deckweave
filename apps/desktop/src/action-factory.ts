@@ -1,5 +1,6 @@
 import type { Binding, Plan, Device } from './types';
 export const planTypes = [
+  'page_cycle',
   'page',
   'profile',
   'back',
@@ -23,6 +24,8 @@ export function action(kind = 'counter', label = 'Counter'): Binding {
 }
 export function plan(type: Plan['type'], device: Device): Plan {
   switch (type) {
+    case 'page_cycle':
+      return { type, direction: 'next' };
     case 'dial_bindings':
       return { type, left: null, right: null, press: null, tap: null };
     case 'page':

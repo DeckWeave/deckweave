@@ -2,7 +2,7 @@ use fontdue::{
     Font, FontSettings,
     layout::{CoordinateSystem, HorizontalAlign, Layout, LayoutSettings, TextStyle, VerticalAlign},
 };
-use jpeg_encoder::{ColorType, Encoder, SamplingFactor};
+use jpeg_encoder::{ColorType, Encoder};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct KeyVisual {
@@ -203,13 +203,10 @@ pub(crate) fn encode(rgb: &[u8], width: u16, height: u16, limit: usize) -> Resul
         .flatten()
         .copied()
         .collect();
-    for quality in [95, 90, 85, 75, 65, 45, 30] {
+    // Keep the exact baseline encoder mode already accepted on the N4 firmware.
+    for quality in [85, 65, 45] {
         let mut bytes = vec![];
-        let mut encoder = Encoder::new(&mut bytes, quality);
-        // Small coloured text needs full-resolution chroma, even at fallback quality.
-        encoder.set_sampling_factor(SamplingFactor::F_1_1);
-        encoder.set_optimized_huffman_tables(true);
-        encoder
+        Encoder::new(&mut bytes, quality)
             .encode(&rotated, width, height, ColorType::Rgb)
             .map_err(|e| e.to_string())?;
         if bytes.len() <= limit {
@@ -223,20 +220,20 @@ pub(crate) fn encode(rgb: &[u8], width: u16, height: u16, limit: usize) -> Resul
 mod tests {
     use super::*;
     #[test]
-    fn coloured_one_pixel_strokes_survive_transport_without_chroma_bleed() {
+    fn firmware_jpeg_stays_baseline_420_within_transport_budget() {
         let mut rgb = vec![0; 112 * 112 * 3];
         for y in 0..112 {
             rgb[(y * 112 + 55) * 3] = 255;
         }
         let jpeg = encode(&rgb, 112, 112, 10240).unwrap();
         let decoded = image::load_from_memory(&jpeg).unwrap().to_rgb8();
-        let stroke = decoded.get_pixel(56, 56).0;
-        let neighbour = decoded.get_pixel(55, 56).0;
-        assert!(
-            stroke[0] > 220 && stroke[1] < 25 && stroke[2] < 25,
-            "{stroke:?}"
+        assert_eq!(decoded.dimensions(), (112, 112));
+        let sof = jpeg.windows(2).position(|p| p == [0xff, 0xc0]).unwrap();
+        assert_eq!(
+            jpeg[sof + 11],
+            0x22,
+            "firmware expects baseline 4:2:0 Y sampling"
         );
-        assert!(neighbour[0] < 25, "{neighbour:?}");
         // The encoder must still fit a busy image inside the hardware packet budget.
         let mut seed = 1u32;
         for byte in &mut rgb {

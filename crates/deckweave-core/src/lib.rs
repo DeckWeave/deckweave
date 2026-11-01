@@ -239,6 +239,20 @@ impl Core {
             None
         };
         match command {
+            Command::FolderBehavior {
+                device_id,
+                page_id,
+                close_after_action,
+                ..
+            } => {
+                let page = device_mut(&mut next, &device_id)?
+                    .profile
+                    .pages
+                    .iter_mut()
+                    .find(|p| p.id == page_id && p.parent.is_some())
+                    .ok_or_else(|| Error::new("folder", "Folder not found"))?;
+                page.close_after_action = close_after_action;
+            }
             Command::SetPanelLayout {
                 device_id,
                 page_id,
@@ -283,7 +297,8 @@ impl Core {
                 ..
             } => {
                 let device = device_mut(&mut next, &device_id)?;
-                let control_id = configured_control(device, &page_id, &control_id)?;
+                let independent = matches!(plan, Plan::PageCycle { .. });
+                let control_id = action_control(device, &page_id, &control_id, false, independent)?;
                 let mut binding = Binding::new(ActionKind::Program, &label);
                 binding.plan = Some(plan);
                 if let Some(pinned) = device.pinned.get_mut(&control_id) {
@@ -327,8 +342,12 @@ impl Core {
                 ..
             } => {
                 let device = device_mut(&mut next, &device_id)?;
-                let control_id =
-                    configured_control(device, &device.profile.active_page_id, &control_id)?;
+                let active = device.profile.active_page_id.clone();
+                let control_id = if control_id.starts_with("dial-") {
+                    action_control(device, &active, &control_id, false, true)?
+                } else {
+                    configured_control(device, &active, &control_id)?
+                };
                 let page = device
                     .profile
                     .pages
@@ -403,6 +422,7 @@ impl Core {
                     .bindings
                     .insert(control_id, enter);
                 device.profile.pages.push(Page {
+                    close_after_action: false,
                     panel: Some(PanelLayout::dial_slots(&device.provider_id)),
                     id,
                     name,
@@ -419,7 +439,13 @@ impl Core {
                 ..
             } => {
                 let device = device_mut(&mut next, &device_id)?;
-                let control_id = configured_control(device, &page_id, &control_id)?;
+                let control_id = action_control(
+                    device,
+                    &page_id,
+                    &control_id,
+                    plugin.controller == Some(Controller::Panel),
+                    false,
+                )?;
                 let binding = Binding {
                     id: new_id(),
                     kind: ActionKind::Plugin,
@@ -472,6 +498,7 @@ impl Core {
                     return Err(Error::new("limit", "At most 64 pages in this prototype"));
                 }
                 let page = Page {
+                    close_after_action: false,
                     panel: Some(PanelLayout::dial_slots(&device.provider_id)),
                     parent: None,
                     id: new_id(),
@@ -506,7 +533,7 @@ impl Core {
                 ..
             } => {
                 let device = device_mut(&mut next, &device_id)?;
-                let control_id = configured_control(device, &page_id, &control_id)?;
+                let control_id = action_control(device, &page_id, &control_id, false, false)?;
                 let page = device
                     .profile
                     .pages
@@ -879,6 +906,7 @@ impl Core {
                             },
                             0,
                         );
+                        self.close_folder_after_action(device_id, &binding.id)?;
                     } else {
                         self.run_binding(device_id, control_id, &binding, 1, false, &binding.id)?;
                         self.advance(self.actions.now);
@@ -979,6 +1007,7 @@ impl Core {
                                     0,
                                 );
                             }
+                            self.close_folder_after_action(device_id, &binding.id)?;
                         }
                     } else {
                         if control.kind == ControlKind::Touch
@@ -1019,6 +1048,7 @@ impl Core {
                 if let Some(binding) = binding {
                     if binding.kind == ActionKind::Plugin {
                         self.plugin_input(device_id, control_id, &binding, "dialRotate", ticks);
+                        self.close_folder_after_action(device_id, &binding.id)?;
                     } else {
                         self.run_binding(
                             device_id,
@@ -1284,6 +1314,57 @@ fn binding_control(page: &Page, control: &str) -> String {
         })
         .map_or_else(|| control.to_owned(), PanelRegion::control_id)
 }
+fn action_control(
+    device: &mut Device,
+    page_id: &str,
+    control: &str,
+    panel_widget: bool,
+    force_independent: bool,
+) -> Result<String> {
+    let resolved = configured_control(device, page_id, control)?;
+    if !panel_widget && control.starts_with("dial-") && resolved != control {
+        let page = device
+            .profile
+            .pages
+            .iter_mut()
+            .find(|p| p.id == page_id)
+            .expect("validated page");
+        let detach = page
+            .panel
+            .as_ref()
+            .and_then(|p| {
+                p.regions
+                    .iter()
+                    .find(|r| r.dials.iter().any(|d| d == control))
+            })
+            .is_some_and(|r| {
+                force_independent
+                    || r.dials.len() > 1
+                    || page.bindings.get(&r.control_id()).is_some_and(|b| {
+                        b.plugin
+                            .as_ref()
+                            .is_some_and(|p| p.controller == Some(Controller::Panel))
+                    })
+            });
+        if detach {
+            if force_independent
+                && !page.bindings.contains_key(control)
+                && let Some(old) = page.bindings.get(&resolved)
+            {
+                let mut copy = old.clone();
+                copy.id = new_id();
+                page.bindings.insert(control.into(), copy);
+            }
+            if let Some(panel) = &mut page.panel {
+                for region in &mut panel.regions {
+                    region.dials.retain(|d| d != control);
+                }
+            }
+            return Ok(control.to_owned());
+        }
+    }
+    Ok(resolved)
+}
 
 fn validate(config: &Configuration) -> Result<()> {
     if config.revision > 9_007_199_254_740_991 {
@@ -1425,29 +1506,19 @@ fn validate(config: &Configuration) -> Result<()> {
                         .expect("validated control")
                         .kind;
                     panels::validate_controller(binding, kind, true)?;
-                    if page.panel.as_ref().is_some_and(|p| {
-                        p.regions
-                            .iter()
-                            .any(|r| r.control_id() == *control && r.dials.len() > 1)
-                    }) && controller_for(binding, kind) != Controller::Panel
-                    {
-                        return Err(Error::new(
-                            "controller",
-                            "Only native Panel widgets can be linked to multiple dials",
-                        ));
-                    }
                 }
             }
         }
         for (control, binding) in &d.pinned {
-            if require_control(&d.provider_id, control)?.kind != ControlKind::Key {
+            let kind = require_control(&d.provider_id, control)?.kind;
+            if kind == ControlKind::Touch {
                 return Err(Error::new(
                     "pinned",
-                    "Only physical keys can be pinned across layouts",
+                    "Only physical keys and dials can be pinned across layouts",
                 ));
             }
             actions::validate_binding(binding, 0, &mut id)?;
-            panels::validate_controller(binding, ControlKind::Key, true)?;
+            panels::validate_controller(binding, kind, true)?;
         }
         if let Some(default) = &d.default_profile
             && !std::iter::once(&d.profile)

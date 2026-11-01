@@ -1,0 +1,37 @@
+{
+  "date": "2026-11-02",
+  "release": {
+    "path": "target/release/deckweave-desktop.exe",
+    "bytes": 19216384,
+    "sha256": "9E530810C81690C17862739266A1466ECF9092D6E46382B47FE9B46DD960602C"
+  },
+  "physical": {
+    "method": "Owner observation of connected Mirabox after release restart and image resend",
+    "profile_at_recovery": "Default, page 1",
+    "result": "Images on physical keys and touch strip restored",
+    "owner_reply": "Да, изображения вернулись",
+    "jpeg": "Previous baseline 4:2:0, standard Huffman tables, quality 85/65/45; 180-degree transport rotation retained",
+    "limitation": "4:4:4 and optimized Huffman were rolled back together; unsupported parameter not isolated"
+  },
+  "native_ui": {
+    "method": "Windows UI via @oai/sky, current release",
+    "device": "Virtual Studio 02",
+    "profile": "Editor QA 2026-11-02",
+    "physical_assignments_changed": false,
+    "checks": [
+      "Drag Page Cycle from Dials onto D1 and pin across pages/profiles",
+      "Rotate Right changes page 2 to page 1; Rotate Left returns page 1 to page 2; action retained",
+      "Open folder by double-click on preview",
+      "Drag Counter onto inner key 2 without execution",
+      "Enable Close after starting action",
+      "Test Counter returns to parent page 1",
+      "Select folder and open with explicit Open folder button",
+      "Reopened folder displays Counter value 1 and retains auto-close flag"
+    ]
+  },
+  "validation": {
+    "npm_run_check": "passed: 70 Rust tests, Svelte zero errors/warnings, formatting, production web build, rustfmt, clippy -D warnings, documentation",
+    "native_release_build": "npm run build passed",
+    "installed_elgato_plugin_files": "unchanged"
+  }
+}

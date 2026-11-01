@@ -54,12 +54,6 @@
   }
   function accepts(item: LibraryAction, control: Control): boolean {
     const region = regionFor(control);
-    if (
-      region &&
-      region.dials.length > 1 &&
-      (item.type !== 'plugin' || !item.controllers.includes('Panel'))
-    )
-      return false;
     if (item.type === 'folder') return control.kind === 'key';
     if (item.type === 'plan' && ['dial_stack', 'action_wheel', 'dial_bindings'].includes(item.plan))
       return control.kind !== 'key';
@@ -133,8 +127,11 @@
     if (!control || !accepts(item, control)) return;
     select(control);
     if (item.type === 'builtin') assign(item.kind);
-    else if (item.type === 'plan') assignPlan(createPlan(item.plan, device), t(item.plan));
-    else if (item.type === 'folder')
+    else if (item.type === 'plan') {
+      const next = createPlan(item.plan, device);
+      if (next.type === 'page_cycle' && control.kind === 'dial') next.direction = 'dial';
+      assignPlan(next, t(item.plan));
+    } else if (item.type === 'folder')
       void client.send((revision) => ({
         type: 'add_folder',
         device_id: device.id,
@@ -176,6 +173,32 @@
   const stripVisible = $derived(strip?.page_id === page.id);
   const selected = $derived(geometry.controls.find((c) => c.id === selectedId));
   const binding = $derived(selectedId ? page.bindings[selectedId] : undefined);
+  const folder = $derived(
+    binding?.plan?.type === 'page'
+      ? device.profile.pages.find(
+          (p) =>
+            p.id === (binding!.plan as Extract<Plan, { type: 'page' }>).page_id &&
+            p.parent !== null,
+        )
+      : undefined,
+  );
+  function openFolder(id: string) {
+    void client.send((revision) => ({
+      type: 'select_page',
+      device_id: device.id,
+      page_id: id,
+      expected_revision: revision,
+    }));
+  }
+  function folderBehavior(id: string, enabled: boolean) {
+    void client.send((revision) => ({
+      type: 'folder_behavior',
+      device_id: device.id,
+      page_id: id,
+      close_after_action: enabled,
+      expected_revision: revision,
+    }));
+  }
   const hasInspector = $derived(
     !!(
       binding?.plugin &&
@@ -210,8 +233,18 @@
   );
   const matchingPlans = $derived(
     (filter === 'dials'
-      ? ['dial_bindings', 'dial_stack', 'action_wheel']
-      : ['page', 'profile', 'back', 'launch', 'hotkey', 'sequence', 'switch', 'key_logic']
+      ? ['page_cycle', 'dial_bindings', 'dial_stack', 'action_wheel']
+      : [
+          'page',
+          'page_cycle',
+          'profile',
+          'back',
+          'launch',
+          'hotkey',
+          'sequence',
+          'switch',
+          'key_logic',
+        ]
     ).filter((type) =>
       t(type as Plan['type'])
         .toLocaleLowerCase()
@@ -479,6 +512,14 @@
             aria-label={`${t(control.kind)} ${control.number}: ${assignment?.label || t('unassigned')}`}
             aria-pressed={selectedId === control.id}
             onclick={() => select(control)}
+            ondblclick={() => {
+              const plan = assignment?.plan;
+              if (
+                plan?.type === 'page' &&
+                device.profile.pages.some((p) => p.id === plan.page_id && p.parent !== null)
+              )
+                openFolder(plan.page_id);
+            }}
           >
             {#if control.kind === 'dial'}
               <span class="dial-marker" aria-hidden="true"></span>
@@ -546,6 +587,15 @@
           }))}>＋</button
       >
     </div>
+    {#if page.parent}<div class="folder-toolbar">
+        <span>{t('editingFolder')}: {page.name}</span><label
+          ><input
+            type="checkbox"
+            checked={page.close_after_action}
+            onchange={(e) => folderBehavior(page.id, e.currentTarget.checked)}
+          />{t('closeFolderAfterAction')}</label
+        >
+      </div>{/if}
     <PanelEditor
       value={page.panel}
       controls={geometry.controls}
@@ -590,7 +640,8 @@
         {#if binding}
           <div class="inspector-fields">
             {#if result?.error}<p class="connection-error">{result.error}</p>{/if}
-            {#if selected.kind === 'key'}<label class="pin-field"
+            {#if selected.kind === 'key' || (selected.kind === 'dial' && binding.plugin?.controller !== 'Panel')}<label
+                class="pin-field"
                 ><input
                   type="checkbox"
                   checked={!!device.pinned[selectedId!]}
@@ -686,7 +737,17 @@
                 }}
               /></label
             >
-            {#if binding.plan}<PlanEditor
+            {#if folder}<div class="folder-controls">
+                <button onclick={() => openFolder(folder!.id)}>▱ {t('openFolder')}</button><label
+                  ><input
+                    type="checkbox"
+                    checked={folder.close_after_action}
+                    onchange={(e) => folderBehavior(folder!.id, e.currentTarget.checked)}
+                  />{t('closeFolderAfterAction')}</label
+                >
+                <p>{t('folderEditHint')}</p>
+              </div>{/if}
+            {#if binding.plan && !folder}<PlanEditor
                 feedback={snapshot.feedback}
                 openInspector={(context) => void client.openInspector(context)}
                 value={binding.plan}

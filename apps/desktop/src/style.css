@@ -581,6 +581,31 @@ p {
   flex-shrink: 0;
   flex-wrap: wrap;
 }
+.folder-toolbar,
+.folder-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+}
+.folder-toolbar {
+  padding: 6px 20px;
+  font-size: 12px;
+}
+.folder-toolbar label,
+.folder-controls label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.folder-controls {
+  grid-column: 1 / -1;
+}
+.folder-controls p {
+  font-size: 12px;
+  color: #a4b0c2;
+}
 .page-row button {
   min-width: 27px;
   height: 27px;

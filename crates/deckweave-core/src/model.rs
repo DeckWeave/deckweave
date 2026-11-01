@@ -73,6 +73,10 @@ pub enum Plan {
     Page {
         page_id: String,
     },
+    PageCycle {
+        #[serde(default)]
+        direction: PageDirection,
+    },
     Profile {
         profile_id: String,
     },
@@ -156,8 +160,19 @@ impl Binding {
     }
 }
 
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PageDirection {
+    Previous,
+    Next,
+    #[default]
+    Dial,
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Page {
+    #[serde(default)]
+    pub close_after_action: bool,
     pub id: String,
     pub name: String,
     pub bindings: BTreeMap<String, Binding>,
@@ -259,6 +274,7 @@ impl Device {
                 name: "Default".into(),
                 active_page_id: page_id.clone(),
                 pages: vec![Page {
+                    close_after_action: false,
                     panel: None,
                     parent: None,
                     id: page_id,
@@ -561,6 +577,12 @@ pub enum Command {
         name: String,
         expected_revision: u64,
     },
+    FolderBehavior {
+        device_id: String,
+        page_id: String,
+        close_after_action: bool,
+        expected_revision: u64,
+    },
     CancelActions {
         device_id: String,
     },
@@ -618,6 +640,7 @@ impl Command {
     pub fn device_id(&self) -> Option<&str> {
         match self {
             Self::SetPanelLayout { device_id, .. } => Some(device_id),
+            Self::FolderBehavior { device_id, .. } => Some(device_id),
             Self::ConfigureProgram { device_id, .. }
             | Self::RenameBinding { device_id, .. }
             | Self::SetPinned { device_id, .. }
@@ -639,6 +662,9 @@ impl Command {
     pub fn expected_revision(&self) -> Option<u64> {
         match self {
             Self::SetPanelLayout {
+                expected_revision, ..
+            } => Some(*expected_revision),
+            Self::FolderBehavior {
                 expected_revision, ..
             } => Some(*expected_revision),
             Self::ConfigureProgram {

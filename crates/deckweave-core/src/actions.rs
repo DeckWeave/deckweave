@@ -163,6 +163,7 @@ impl Core {
         f.error = None;
         f.title = Some(binding.label.clone());
         f.display = Some(binding.label.clone());
+        self.close_folder_after_action(device, owner)?;
         Ok(())
     }
     pub fn take_effects(&mut self) -> Vec<Effect> {
@@ -404,6 +405,71 @@ impl Core {
         rotation: bool,
         owner: &str,
     ) -> Result<()> {
+        self.run_binding_inner(device, control, binding, delta, rotation, owner)?;
+        if binding.id == owner
+            && !matches!(
+                (&binding.plan, rotation),
+                (Some(Plan::ActionWheel { .. }), true) | (Some(Plan::DialStack { .. }), false)
+            )
+        {
+            self.close_folder_after_action(device, owner)?;
+        }
+        Ok(())
+    }
+    pub(crate) fn close_folder_after_action(&mut self, device: &str, owner: &str) -> Result<()> {
+        let parent = self
+            .config
+            .devices
+            .iter()
+            .find(|d| d.id == device)
+            .and_then(|d| {
+                let page = d
+                    .profile
+                    .pages
+                    .iter()
+                    .find(|p| p.id == d.profile.active_page_id)?;
+                if !page.close_after_action {
+                    return None;
+                }
+                let root = page
+                    .bindings
+                    .values()
+                    .chain(d.pinned.values())
+                    .find(|b| b.contains(owner))?;
+                if matches!(
+                    root.plan,
+                    Some(
+                        Plan::Page { .. }
+                            | Plan::PageCycle { .. }
+                            | Plan::Profile { .. }
+                            | Plan::Back
+                    )
+                ) {
+                    return None;
+                }
+                page.parent.clone()
+            });
+        if let Some(page_id) = parent {
+            self.dispatch(
+                Command::SelectPage {
+                    device_id: device.into(),
+                    page_id,
+                    expected_revision: self.revision(),
+                },
+                "folder-auto-close",
+            )?;
+        }
+        Ok(())
+    }
+    fn run_binding_inner(
+        &mut self,
+        device: &str,
+        control: &str,
+        binding: &Binding,
+        delta: i64,
+        rotation: bool,
+        owner: &str,
+    ) -> Result<()> {
         if binding.kind == ActionKind::Program {
             let stateful = matches!(
                 binding.plan,
@@ -469,6 +535,62 @@ impl Core {
                     .as_ref()
                     .ok_or_else(|| Error::new("action", "Missing action plan"))?;
                 match plan {
+                    Plan::PageCycle { direction } => {
+                        let d = self
+                            .config
+                            .devices
+                            .iter()
+                            .find(|d| d.id == device)
+                            .ok_or_else(|| Error::new("not_found", "Device not found"))?;
+                        let mut current = d
+                            .profile
+                            .pages
+                            .iter()
+                            .find(|p| p.id == d.profile.active_page_id)
+                            .expect("active page");
+                        while let Some(parent) = &current.parent {
+                            current = d
+                                .profile
+                                .pages
+                                .iter()
+                                .find(|p| &p.id == parent)
+                                .expect("validated parent");
+                        }
+                        let roots: Vec<_> = d
+                            .profile
+                            .pages
+                            .iter()
+                            .filter(|p| p.parent.is_none())
+                            .collect();
+                        let index =
+                            roots.iter().position(|p| p.id == current.id).unwrap_or(0) as i64;
+                        let offset = match direction {
+                            PageDirection::Dial if rotation => delta,
+                            PageDirection::Dial => 0,
+                            PageDirection::Previous => -if rotation { delta.abs() } else { 1 },
+                            PageDirection::Next => {
+                                if rotation {
+                                    delta.abs()
+                                } else {
+                                    1
+                                }
+                            }
+                        };
+                        if offset != 0 {
+                            let page_id = roots
+                                [(index + offset).rem_euclid(roots.len() as i64) as usize]
+                                .id
+                                .clone();
+                            self.dispatch(
+                                Command::SelectPage {
+                                    device_id: device.into(),
+                                    page_id,
+                                    expected_revision: self.revision(),
+                                },
+                                "action",
+                            )?;
+                        }
+                    }
                     Plan::DialBindings {
                         left, right, press, ..
                     } => {

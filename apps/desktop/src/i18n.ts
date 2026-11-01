@@ -1,6 +1,16 @@
 import type { Locale } from './types';
 
 const ru = {
+  page_cycle: 'Перелистывание страниц',
+  pageDirection: 'Направление',
+  dialPageDirection: 'Влево — предыдущая, вправо — следующая',
+  previousPage: 'Предыдущая страница',
+  nextPage: 'Следующая страница',
+  openFolder: 'Открыть папку',
+  editingFolder: 'Редактирование папки',
+  closeFolderAfterAction: 'Закрывать после запуска действия',
+  folderEditHint:
+    'Откройте папку или дважды щёлкните её кнопку на превью. Внутри назначайте действия так же, как на обычной странице.',
   advancedSettings: 'Дополнительно',
   resizeInspector: 'Изменить высоту настроек',
   resizeLibrary: 'Изменить ширину библиотеки действий',
@@ -135,6 +145,16 @@ const ru = {
   currentPage: 'Текущая страница',
 } as const;
 const en: Record<keyof typeof ru, string> = {
+  page_cycle: 'Cycle pages',
+  pageDirection: 'Direction',
+  dialPageDirection: 'Left: previous, right: next',
+  previousPage: 'Previous page',
+  nextPage: 'Next page',
+  openFolder: 'Open folder',
+  editingFolder: 'Editing folder',
+  closeFolderAfterAction: 'Close after starting an action',
+  folderEditHint:
+    'Open the folder or double-click its key in the preview. Assign actions inside just like on a normal page.',
   advancedSettings: 'Advanced',
   resizeInspector: 'Resize action settings',
   resizeLibrary: 'Resize action library',

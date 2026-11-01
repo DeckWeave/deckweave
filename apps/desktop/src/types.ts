@@ -1,6 +1,7 @@
 export type Locale = 'ru' | 'en';
 export type ActionKind = 'counter' | 'toggle' | 'plugin' | 'program';
 export type Plan =
+  | { type: 'page_cycle'; direction: 'previous' | 'next' | 'dial' }
   | {
       type: 'dial_bindings';
       left: Binding | null;
@@ -46,6 +47,7 @@ export interface Binding {
   plan: Plan | null;
 }
 export interface Page {
+  close_after_action: boolean;
   panel: PanelLayout | null;
   id: string;
   name: string;
@@ -136,6 +138,13 @@ export interface PanelLayout {
   swipe_pages: boolean;
 }
 export type Command =
+  | {
+      type: 'folder_behavior';
+      device_id: string;
+      page_id: string;
+      close_after_action: boolean;
+      expected_revision: number;
+    }
   | {
       type: 'set_panel_layout';
       device_id: string;

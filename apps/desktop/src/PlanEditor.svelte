@@ -70,7 +70,21 @@
       </div>
     {/each}
   {/if}
-  {#if value.type === 'page'}<label
+  {#if value.type === 'page_cycle'}<label
+      >{t('pageDirection')}<select
+        value={value.direction}
+        onchange={(e) =>
+          onchange({
+            type: 'page_cycle',
+            direction: e.currentTarget.value as 'previous' | 'next' | 'dial',
+          })}
+      >
+        <option value="dial">{t('dialPageDirection')}</option><option value="previous"
+          >{t('previousPage')}</option
+        ><option value="next">{t('nextPage')}</option>
+      </select></label
+    >
+  {:else if value.type === 'page'}<label
       >{t('page')}<select
         value={value.page_id}
         onchange={(e) => onchange({ type: 'page', page_id: e.currentTarget.value })}
