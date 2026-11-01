@@ -1,0 +1,6 @@
+{
+  "Case": "known browser control outside sandbox",
+  "Exit": 0,
+  "Stdout": "{\n  \"evidenceType\": \"native-process-protocol-spike\",\n  \"feedback\": [\n    {\n      \"binding\": \"probe\",\n      \"event\": \"setTitle\",\n      \"payload\": {\n        \"title\": \"browser-ready\"\n      }\n    },\n    {\n      \"binding\": \"probe\",\n      \"event\": \"setTitle\",\n      \"payload\": {\n        \"title\": \"privileged-denied\"\n      }\n    },\n    {\n      \"binding\": \"probe\",\n      \"event\": \"setTitle\",\n      \"payload\": {\n        \"title\": \"worker-42\"\n      }\n    }\n  ],\n  \"productionIntegrated\": false,\n  \"propertyInspector\": false,\n  \"status\": \"registered\"\n}\n",
+  "Stderr": null
+}

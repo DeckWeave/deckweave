@@ -1,0 +1,7 @@
+{
+  "Package": "com.nicollasr.streamdeckvsc",
+  "Version": "5.1.3",
+  "Exit": 0,
+  "Stdout": "{\n  \"evidenceType\": \"native-process-protocol-spike\",\n  \"feedback\": [\n    {\n      \"binding\": \"probe\",\n      \"event\": \"setSettings\",\n      \"payload\": {\n        \"arguments\": null,\n        \"command\": null\n      }\n    }\n  ],\n  \"productionIntegrated\": false,\n  \"propertyInspector\": false,\n  \"status\": \"registered\"\n}\n",
+  "Stderr": null
+}

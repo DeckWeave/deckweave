@@ -1,0 +1,14 @@
+{
+  "Package": "com.elgato.hello-world",
+  "Version": "0.1.0.0",
+  "Exit": 0,
+  "NodeVersion": "v26.12.1",
+  "Stdout": "{\n  \"evidenceType\": \"native-process-protocol-spike\",\n  \"feedback\": [\n    {\n      \"binding\": \"probe\",\n      \"event\": \"setSettings\",\n      \"payload\": {\n        \"titleKey\": \"clickme\"\n      }\n    },\n    {\n      \"binding\": \"probe\",\n      \"event\": \"setTitle\",\n      \"payload\": {\n        \"title\": \"English\\n\\nClick Me\"\n      }\n    },\n    {\n      \"binding\": \"probe\",\n      \"event\": \"setSettings\",\n      \"payload\": {\n        \"titleKey\": \"selectprop\"\n      }\n    },\n    {\n      \"binding\": \"probe\",\n      \"event\": \"setTitle\",\n      \"payload\": {\n        \"title\": \"English\\n\\nSelect property\"\n      }\n    },\n    {\n      \"binding\": \"probe\",\n      \"event\": \"setSettings\",\n      \"payload\": {\n        \"titleKey\": \"off\"\n      }\n    },\n    {\n      \"binding\": \"probe\",\n      \"event\": \"setTitle\",\n      \"payload\": {\n        \"title\": \"English\\n\\nOff\"\n      }\n    }\n  ],\n  \"productionIntegrated\": false,\n  \"propertyInspector\": false,\n  \"status\": \"registered\"\n}\n",
+  "Stderr": null,
+  "Inputs": [
+    "keyDown",
+    "keyUp",
+    "keyDown",
+    "keyUp"
+  ]
+}

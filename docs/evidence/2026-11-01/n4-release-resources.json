@@ -1,0 +1,10 @@
+{
+  "measuredAtUtc": "2026-11-01T12:24:41.0106644Z",
+  "scenario": "Release, registry and N4 editor open, connected hardware, no external plugins",
+  "processCount": 8,
+  "privateCommitMiB": 240.9,
+  "summedWorkingSetMiB": 474.5,
+  "cpuSeconds": 0.2969,
+  "sampleSeconds": 5.004,
+  "notes": "Short observation, not a resource budget or endurance test. Summed working sets may count shared pages repeatedly."
+}

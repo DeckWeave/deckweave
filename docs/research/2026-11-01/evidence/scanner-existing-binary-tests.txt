@@ -1,0 +1,7 @@
+
+running 3 tests
+test modern_codepath_and_action_inspector_are_indexed_without_execution ... ok
+test pinned_counter_is_c0_indexed_without_starting_code ... ok
+test unsafe_legacy_paths_and_duplicate_actions_are_rejected ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s

@@ -1,0 +1,44 @@
+{
+  "observedOn": "2026-11-01",
+  "repositoryHead": "9a6553bb486a754a6cd82b379cfcdac3bdb7ebb1",
+  "gitStatus": "clean when checked",
+  "hardwareAccessThisSession": false,
+  "files": [
+    {
+      "path": "G:/APPS/io_type_84/AGENTS.md",
+      "sha256": "c206285ec912290a754077ceaf53056cdf65cf7d58cd657d62aa860a6f8b222c"
+    },
+    {
+      "path": "G:/APPS/io_type_84/docs/STATUS.md",
+      "sha256": "1c0b37500e84fb684d4df0360c367f75f7a5b0f8f0f201ad5ac92ffe4a8deb9e"
+    },
+    {
+      "path": "G:/APPS/io_type_84/docs/PROTOCOL.md",
+      "sha256": "2ec0a7b2fa67c97ef821c867ac4d8c1b0008537152260d5aac9dc7beddbfe760"
+    },
+    {
+      "path": "G:/APPS/io_type_84/modules/exclusive-depth.md",
+      "sha256": "eb9559a58e0953370277987ddaa9f6c62a1bf2628fd3ba8243dddeaac677aecf"
+    },
+    {
+      "path": "G:/APPS/io_type_84/docs/evidence/stock-capture-acceptance-v1.17.json",
+      "sha256": "482f0f3ccedbec2cdb4d1053963f348ce842da15403c5261036e55de9a41cae9"
+    },
+    {
+      "path": "G:/APPS/io_type_84/crates/io-core/src/keyboard.rs",
+      "sha256": "8082a497328a91b771aefdafc0e3972cfea75cef42686de8a4e9d08c0ac4c0d3"
+    },
+    {
+      "path": "G:/APPS/io_type_84/crates/io-platform/src/protocol.rs",
+      "sha256": "94025113b39e79efb2a6439ebbef368d1f8c022c2eacb904c2f8057e27d1eca2"
+    },
+    {
+      "path": "G:/APPS/io_type_84/crates/io-platform/src/device.rs",
+      "sha256": "1638dd9cb40b19ab2066c27a5ae1fe70ca545fcbfef7e36afa8ae7ba3c578d1e"
+    },
+    {
+      "path": "G:/APPS/io_type_84/crates/io-platform/src/obs.rs",
+      "sha256": "d87d75bafcbd0d70f896b3fa0ef47c551da694aaca0ccbeb78c95e8253fcaaa7"
+    }
+  ]
+}

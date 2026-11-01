@@ -1,0 +1,164 @@
+[
+  {
+    "Sample": 1,
+    "Id": 20016,
+    "Name": "deckweave-openaction-host.exe",
+    "KernelTime": 625000,
+    "UserTime": 156250,
+    "DotNetCpu": 0.078125,
+    "DotNetTotal": 0.078125
+  },
+  {
+    "Sample": 1,
+    "Id": 15276,
+    "Name": "conhost.exe",
+    "KernelTime": 0,
+    "UserTime": 0,
+    "DotNetCpu": 0.0,
+    "DotNetTotal": 0.0
+  },
+  {
+    "Sample": 1,
+    "Id": 20624,
+    "Name": "deckweave-desktop.exe",
+    "KernelTime": 156250,
+    "UserTime": 468750,
+    "DotNetCpu": 0.0625,
+    "DotNetTotal": 0.0625
+  },
+  {
+    "Sample": 1,
+    "Id": 25388,
+    "Name": "msedgewebview2.exe",
+    "KernelTime": 3750000,
+    "UserTime": 2187500,
+    "DotNetCpu": 0.59375,
+    "DotNetTotal": 0.59375
+  },
+  {
+    "Sample": 1,
+    "Id": 32212,
+    "Name": "msedgewebview2.exe",
+    "KernelTime": 0,
+    "UserTime": 156250,
+    "DotNetCpu": 0.015625,
+    "DotNetTotal": 0.015625
+  },
+  {
+    "Sample": 1,
+    "Id": 14380,
+    "Name": "msedgewebview2.exe",
+    "KernelTime": 1406250,
+    "UserTime": 1406250,
+    "DotNetCpu": 0.28125,
+    "DotNetTotal": 0.28125
+  },
+  {
+    "Sample": 1,
+    "Id": 45996,
+    "Name": "msedgewebview2.exe",
+    "KernelTime": 781250,
+    "UserTime": 625000,
+    "DotNetCpu": 0.140625,
+    "DotNetTotal": 0.140625
+  },
+  {
+    "Sample": 1,
+    "Id": 35348,
+    "Name": "msedgewebview2.exe",
+    "KernelTime": 312500,
+    "UserTime": 0,
+    "DotNetCpu": 0.03125,
+    "DotNetTotal": 0.03125
+  },
+  {
+    "Sample": 1,
+    "Id": 27924,
+    "Name": "msedgewebview2.exe",
+    "KernelTime": 625000,
+    "UserTime": 156250,
+    "DotNetCpu": 0.078125,
+    "DotNetTotal": 0.078125
+  },
+  {
+    "Sample": 2,
+    "Id": 20016,
+    "Name": "deckweave-openaction-host.exe",
+    "KernelTime": 625000,
+    "UserTime": 156250,
+    "DotNetCpu": 0.078125,
+    "DotNetTotal": 0.078125
+  },
+  {
+    "Sample": 2,
+    "Id": 15276,
+    "Name": "conhost.exe",
+    "KernelTime": 0,
+    "UserTime": 0,
+    "DotNetCpu": 0.0,
+    "DotNetTotal": 0.0
+  },
+  {
+    "Sample": 2,
+    "Id": 20624,
+    "Name": "deckweave-desktop.exe",
+    "KernelTime": 156250,
+    "UserTime": 468750,
+    "DotNetCpu": 0.0625,
+    "DotNetTotal": 0.0625
+  },
+  {
+    "Sample": 2,
+    "Id": 25388,
+    "Name": "msedgewebview2.exe",
+    "KernelTime": 4531250,
+    "UserTime": 2656250,
+    "DotNetCpu": 0.71875,
+    "DotNetTotal": 0.71875
+  },
+  {
+    "Sample": 2,
+    "Id": 32212,
+    "Name": "msedgewebview2.exe",
+    "KernelTime": 0,
+    "UserTime": 156250,
+    "DotNetCpu": 0.015625,
+    "DotNetTotal": 0.015625
+  },
+  {
+    "Sample": 2,
+    "Id": 14380,
+    "Name": "msedgewebview2.exe",
+    "KernelTime": 1406250,
+    "UserTime": 1406250,
+    "DotNetCpu": 0.28125,
+    "DotNetTotal": 0.28125
+  },
+  {
+    "Sample": 2,
+    "Id": 45996,
+    "Name": "msedgewebview2.exe",
+    "KernelTime": 781250,
+    "UserTime": 625000,
+    "DotNetCpu": 0.140625,
+    "DotNetTotal": 0.140625
+  },
+  {
+    "Sample": 2,
+    "Id": 35348,
+    "Name": "msedgewebview2.exe",
+    "KernelTime": 312500,
+    "UserTime": 0,
+    "DotNetCpu": 0.03125,
+    "DotNetTotal": 0.03125
+  },
+  {
+    "Sample": 2,
+    "Id": 27924,
+    "Name": "msedgewebview2.exe",
+    "KernelTime": 625000,
+    "UserTime": 156250,
+    "DotNetCpu": 0.078125,
+    "DotNetTotal": 0.078125
+  }
+]

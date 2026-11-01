@@ -1,0 +1,95 @@
+{
+  "date": "2026-11-01",
+  "native": true,
+  "observations": [
+    {
+      "scenario": "Open virtual device from registry",
+      "result": "Separate device window opened"
+    },
+    {
+      "scenario": "Select Counter key",
+      "result": "Inspector displayed Not executed yet; selecting did not execute action"
+    },
+    {
+      "scenario": "Click Test",
+      "result": "Counter result 1"
+    },
+    {
+      "scenario": "Close last device editor",
+      "result": "Registry displays Device settings are closed"
+    },
+    {
+      "scenario": "Native app restart after editing title",
+      "result": "Key 1 label restored as Проверка сохранения; runtime counter reset to 0 as designed"
+    },
+    {
+      "scenario": "Native registry add device",
+      "result": "Virtual Studio 02 appeared alongside independent first instance"
+    },
+    {
+      "scenario": "Window layout",
+      "result": "Device geometry, inspector and footer fit the default window after resize fix"
+    },
+    {
+      "scenario": "Assign Toggle to empty key 3 and Test",
+      "result": "Button itself changed from outlined circle to filled circle and active background; inspector shows Вкл"
+    },
+    {
+      "scenario": "Virtual down before up",
+      "result": "Pressed key background and Проверка… were observed during the test"
+    },
+    {
+      "scenario": "Add page in native editor",
+      "result": "Page 2 became active, all its controls empty; selected key 3 inspector changed to Unassigned"
+    },
+    {
+      "scenario": "Native page navigation",
+      "result": "Returning to page 1 restored Toggle assignment and On feedback"
+    },
+    {
+      "scenario": "Switch interface to EN",
+      "result": "Actions, Test, Title, Result and pause status translated; user title remained Russian"
+    },
+    {
+      "scenario": "Final optimized release build",
+      "result": "Registry restored two instances, editor restored both pages and assignments; Test on saved Toggle changed result to Вкл"
+    }
+  ],
+  "releaseExecutable": "target/release/deckweave-desktop.exe",
+  "tests": {
+    "rust": 12,
+    "svelteErrors": 0,
+    "svelteWarnings": 0,
+    "clippy": "passed -D warnings",
+    "webBuild": "passed",
+    "nativeDebugBuild": "passed",
+    "nativeReleaseBuild": "passed"
+  },
+  "artifacts": [
+    {
+      "path": "target/release/deckweave-desktop.exe",
+      "bytes": 11214848,
+      "sha256": "3793b0d634db50064d1385aeebbb8b5b443b85e9e0e17547135f1e836b5fb7be"
+    },
+    {
+      "path": "Cargo.lock",
+      "bytes": 117227,
+      "sha256": "e60180fd1ebf717b97c02337dca142448bf671c2a5b90a9fc06b3bbfec962329"
+    },
+    {
+      "path": "package-lock.json",
+      "bytes": 49010,
+      "sha256": "fbcae80c0a8a3ff72496ce731ac627d4c652e4c582ebf1a9f5e93ec67721b333"
+    },
+    {
+      "path": "crates/deckweave-core/src/lib.rs",
+      "bytes": 12997,
+      "sha256": "0d0fa582603c6e6d477d8bf648c3f0efd0e70f95ae8ae8b4f6383d26f616211d"
+    },
+    {
+      "path": "apps/desktop/src-tauri/src/main.rs",
+      "bytes": 5902,
+      "sha256": "63b6713c99ad0fdd0b9c0ed42a5622e796c36144f32eaf745302c4286fdfb412"
+    }
+  ]
+}

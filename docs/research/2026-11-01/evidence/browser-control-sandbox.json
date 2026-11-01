@@ -1,0 +1,6 @@
+{
+  "Case": "known browser control",
+  "Exit": 1,
+  "Stdout": null,
+  "Stderr": "Error: \"registration_timeout\"\r\n"
+}

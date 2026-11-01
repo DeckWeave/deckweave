@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "local-editors",
+  "description": "Local registry and device windows; no remote content or shell access.",
+  "windows": ["main", "device-*"],
+  "permissions": ["core:default"]
+}

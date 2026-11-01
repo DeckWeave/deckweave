@@ -1,0 +1,249 @@
+{
+  "Case": "two-clocks-shared-udf",
+  "SharedUdfOverride": true,
+  "Snapshots": [
+    {
+      "Seconds": 2.2960079,
+      "WorkingSetMiB": 492.44921875,
+      "PrivateCommitMiB": 221.01171875,
+      "BrowserRootCount": 1,
+      "ProcessCount": 13,
+      "Processes": [
+        {
+          "Id": 35044,
+          "Parent": 44004,
+          "Name": "deckweave-openaction-host.exe",
+          "BrowserRoot": false,
+          "KernelTime": 781250,
+          "UserTime": 312500
+        },
+        {
+          "Id": 37912,
+          "Parent": 35044,
+          "Name": "conhost.exe",
+          "BrowserRoot": false,
+          "KernelTime": 156250,
+          "UserTime": 0
+        },
+        {
+          "Id": 33692,
+          "Parent": 44004,
+          "Name": "deckweave-openaction-host.exe",
+          "BrowserRoot": false,
+          "KernelTime": 625000,
+          "UserTime": 156250
+        },
+        {
+          "Id": 44816,
+          "Parent": 33692,
+          "Name": "conhost.exe",
+          "BrowserRoot": false,
+          "KernelTime": 156250,
+          "UserTime": 156250
+        },
+        {
+          "Id": 38492,
+          "Parent": 35044,
+          "Name": "deckweave-desktop.exe",
+          "BrowserRoot": false,
+          "KernelTime": 312500,
+          "UserTime": 312500
+        },
+        {
+          "Id": 33152,
+          "Parent": 33692,
+          "Name": "deckweave-desktop.exe",
+          "BrowserRoot": false,
+          "KernelTime": 468750,
+          "UserTime": 312500
+        },
+        {
+          "Id": 9716,
+          "Parent": 33152,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": true,
+          "KernelTime": 5625000,
+          "UserTime": 5625000
+        },
+        {
+          "Id": 39620,
+          "Parent": 9716,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": false,
+          "KernelTime": 0,
+          "UserTime": 156250
+        },
+        {
+          "Id": 43024,
+          "Parent": 9716,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": false,
+          "KernelTime": 1562500,
+          "UserTime": 1718750
+        },
+        {
+          "Id": 41328,
+          "Parent": 9716,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": false,
+          "KernelTime": 1093750,
+          "UserTime": 468750
+        },
+        {
+          "Id": 3336,
+          "Parent": 9716,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": false,
+          "KernelTime": 312500,
+          "UserTime": 156250
+        },
+        {
+          "Id": 19528,
+          "Parent": 9716,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": false,
+          "KernelTime": 625000,
+          "UserTime": 781250
+        },
+        {
+          "Id": 43516,
+          "Parent": 9716,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": false,
+          "KernelTime": 1093750,
+          "UserTime": 781250
+        }
+      ]
+    },
+    {
+      "Seconds": 4.6093468,
+      "WorkingSetMiB": 508.20703125,
+      "PrivateCommitMiB": 230.734375,
+      "BrowserRootCount": 1,
+      "ProcessCount": 13,
+      "Processes": [
+        {
+          "Id": 35044,
+          "Parent": 44004,
+          "Name": "deckweave-openaction-host.exe",
+          "BrowserRoot": false,
+          "KernelTime": 781250,
+          "UserTime": 312500
+        },
+        {
+          "Id": 37912,
+          "Parent": 35044,
+          "Name": "conhost.exe",
+          "BrowserRoot": false,
+          "KernelTime": 156250,
+          "UserTime": 0
+        },
+        {
+          "Id": 33692,
+          "Parent": 44004,
+          "Name": "deckweave-openaction-host.exe",
+          "BrowserRoot": false,
+          "KernelTime": 781250,
+          "UserTime": 312500
+        },
+        {
+          "Id": 44816,
+          "Parent": 33692,
+          "Name": "conhost.exe",
+          "BrowserRoot": false,
+          "KernelTime": 156250,
+          "UserTime": 156250
+        },
+        {
+          "Id": 38492,
+          "Parent": 35044,
+          "Name": "deckweave-desktop.exe",
+          "BrowserRoot": false,
+          "KernelTime": 312500,
+          "UserTime": 312500
+        },
+        {
+          "Id": 33152,
+          "Parent": 33692,
+          "Name": "deckweave-desktop.exe",
+          "BrowserRoot": false,
+          "KernelTime": 468750,
+          "UserTime": 312500
+        },
+        {
+          "Id": 9716,
+          "Parent": 33152,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": true,
+          "KernelTime": 6093750,
+          "UserTime": 6093750
+        },
+        {
+          "Id": 39620,
+          "Parent": 9716,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": false,
+          "KernelTime": 0,
+          "UserTime": 156250
+        },
+        {
+          "Id": 43024,
+          "Parent": 9716,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": false,
+          "KernelTime": 1562500,
+          "UserTime": 1875000
+        },
+        {
+          "Id": 41328,
+          "Parent": 9716,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": false,
+          "KernelTime": 1093750,
+          "UserTime": 468750
+        },
+        {
+          "Id": 3336,
+          "Parent": 9716,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": false,
+          "KernelTime": 312500,
+          "UserTime": 156250
+        },
+        {
+          "Id": 19528,
+          "Parent": 9716,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": false,
+          "KernelTime": 625000,
+          "UserTime": 781250
+        },
+        {
+          "Id": 43516,
+          "Parent": 9716,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": false,
+          "KernelTime": 1093750,
+          "UserTime": 1718750
+        }
+      ]
+    }
+  ],
+  "Results": [
+    {
+      "Exit": 1,
+      "Events": [],
+      "Stderr": "Error: Io(Os { code: 10054, kind: ConnectionReset, message: \"An existing connection was forcibly closed by the remote host.\" })\n"
+    },
+    {
+      "Exit": 0,
+      "Events": [
+        {
+          "Name": "setImage",
+          "Count": 20
+        }
+      ],
+      "Stderr": ""
+    }
+  ]
+}

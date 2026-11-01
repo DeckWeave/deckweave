@@ -1,0 +1,22 @@
+{
+  "sha256": "52897BC65EA0900812A0C2976A08CAB0E63AF5BBA618F75625FBF31E24BA3BD9",
+  "surface": [
+    32.0,
+    264.0,
+    556.0,
+    88.96
+  ],
+  "surfaceAspect": 6.25,
+  "hardwareAspect": 6.25,
+  "modelWidth": 608.0,
+  "modelHeight": 464.0,
+  "checks": "npm run check passed: 32 Rust tests; Svelte 0 errors/0 warnings; format, clippy, web build, docs; native release build and screenshot review",
+  "connection": {
+    "error": null,
+    "generation": 1,
+    "input_events": 0,
+    "last_input": null,
+    "output_frames": 11,
+    "state": "connected"
+  }
+}

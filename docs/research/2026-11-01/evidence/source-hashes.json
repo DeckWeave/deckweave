@@ -1,0 +1,74 @@
+[
+  {
+    "Path": "G:\\APPS\\DeckWeave\\plugins\\device-n4pro\\src\\report.rs",
+    "SHA256": "FD242DA62D233E5E124E0552AD16D72BBDC907F012A5F81A47DBD5FFA97DA1E3"
+  },
+  {
+    "Path": "G:\\APPS\\DeckWeave\\plugins\\device-n4pro\\src\\input.rs",
+    "SHA256": "69FEBF0BEF33F8D7A276F9D0270BBD8EF0B9CD0473810A3540F862E4C5FDF8E8"
+  },
+  {
+    "Path": "G:\\APPS\\DeckWeave\\plugins\\device-n4pro\\src\\display.rs",
+    "SHA256": "0E331DABA573739F356517226C14422C32DADCB62E98D3AF970EC89F50653F91"
+  },
+  {
+    "Path": "G:\\APPS\\DeckWeave\\plugins\\device-n4pro\\src\\runtime\\device.rs",
+    "SHA256": "478CFE256E85B66475EA39D3495100F7D165D332E12BB610DB730DA20DCC7DCE"
+  },
+  {
+    "Path": "G:\\APPS\\DeckWeave\\runtimes\\openaction-host\\src\\scanner.rs",
+    "SHA256": "E9422DD7EB93364D87946DC26279AABE8E9FC8EAE48E7228AB63FA626E9D3E63"
+  },
+  {
+    "Path": "G:\\APPS\\DeckWeave\\runtimes\\openaction-host\\src\\session\\launch.rs",
+    "SHA256": "B4A1404215F62ECE180985FE81B536B0E8F22478294816B046FAB2574478FC21"
+  },
+  {
+    "Path": "G:\\APPS\\DeckWeave\\apps\\desktop\\src-tauri\\src\\legacy_web.rs",
+    "SHA256": "D56702349A09F9D455A9157BB65526C20C9DEC950C093B84F1C49FA3AF4B737C"
+  },
+  {
+    "Path": "G:\\APPS\\DeckWeave\\ui\\desktop\\src\\editor\\session.svelte.ts",
+    "SHA256": "FCD32CEC97C0B5BA5EE25AC367E7B6B2441C5FADFC65B53CC84E246A52B9A941"
+  },
+  {
+    "Path": "G:\\APPS\\DeckWeave\\ui\\desktop\\src\\editor\\navigation-follow.ts",
+    "SHA256": "A644AA67A15A1509B16B49F17EAE91567FFD7CFB03160F9190062D2176FC4588"
+  },
+  {
+    "Path": "G:\\APPS\\DeckWeave\\plugins\\platform-windows\\src\\input\\bridge.rs",
+    "SHA256": "DF02CE6C3BB7EDB1079098F9028F7B4890FEBBF9B069FF96FA5F4B68E1276B32"
+  },
+  {
+    "Path": "G:\\CODEX\\companion-surface-mirabox-stream-dock\\src\\models\\N4-Pro.ts",
+    "SHA256": "5A6D8C0D9048E0F551510E85ECB22D79D8C85A9196F6512BDB8C91D419E8B305"
+  },
+  {
+    "Path": "G:\\CODEX\\companion-surface-mirabox-stream-dock\\src\\protocol.ts",
+    "SHA256": "FFED59B8BE34D41583D925524ABEE42AF8A2EB052EF244DFE084BBDAFB9A7BA2"
+  },
+  {
+    "Path": "G:\\APPS\\DeckWeave\\.local\\compat-opendeck\\src-tauri\\src\\events\\outbound\\keypad.rs",
+    "SHA256": "8EBCBA183F023340FB50E2028371F5CE6BC8E95BCB21D5D202E72DB2702FAD46"
+  },
+  {
+    "Path": "G:\\APPS\\DeckWeave\\.local\\compat-opendeck\\src-tauri\\src\\plugins\\mod.rs",
+    "SHA256": "5ECCF90822FA4654DBBFBA9DCE49D2AC33D362B1646C9A9312E1EF4DE75E876B"
+  },
+  {
+    "Path": "G:\\APPS\\DeckWeave\\.local\\compat-bundles\\com.elgato.obsstudio.sdPlugin\\manifest.json",
+    "SHA256": "CF609E0C6DAF757BABD0AA506547EA005F0CED06A881C4FD58FFDD6990315BAD"
+  },
+  {
+    "Path": "G:\\APPS\\DeckWeave\\.local\\compat-bundles\\com.elgato.obsstudio.sdPlugin\\source\\obs.js",
+    "SHA256": "64C00266826F7F8143FD8A290FFC6BC1C53A965AE8ADDFF5CA18074D0B0F9D81"
+  },
+  {
+    "Path": "G:\\APPS\\DeckWeave\\crates\\deckweave-platform-host\\src\\windows_process_guard.rs",
+    "SHA256": "B51D762290A02C4FE41253DB6E4AB4204B9D077AD0D3BA9CB02A3676042B7031"
+  },
+  {
+    "Path": "G:\\APPS\\DeckWeave\\runtimes\\openaction-host\\src\\session.rs",
+    "SHA256": "91BEF8F3F3E797033FF8D694DE49EE9BEABBB735007415D58F794E71F2F7F0E4"
+  }
+]

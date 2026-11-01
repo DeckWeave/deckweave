@@ -1,0 +1,34 @@
+{
+  "HtmlRegistration": {
+    "inputs": [],
+    "observeMs": 3000,
+    "settings": {},
+    "visible": false,
+    "browserPath": "G:\\APPS\\DeckWeave\\target\\release\\deckweave-desktop.exe"
+  },
+  "HtmlPerformance": {
+    "inputs": [],
+    "observeMs": 5000,
+    "settings": {},
+    "visible": false,
+    "browserPath": "G:\\APPS\\DeckWeave\\target\\release\\deckweave-desktop.exe"
+  },
+  "HelloWorld": {
+    "inputs": [
+      {
+        "event": "keyDown"
+      },
+      {
+        "event": "keyUp"
+      },
+      {
+        "event": "keyDown"
+      },
+      {
+        "event": "keyUp"
+      }
+    ],
+    "settings": {},
+    "observeMs": 200
+  }
+}

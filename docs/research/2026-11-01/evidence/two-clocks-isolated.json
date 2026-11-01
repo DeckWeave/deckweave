@@ -1,0 +1,334 @@
+{
+  "Case": "two-clocks-isolated",
+  "SharedUdfOverride": false,
+  "Snapshots": [
+    {
+      "Seconds": 2.4064041,
+      "WorkingSetMiB": 747.37109375,
+      "PrivateCommitMiB": 350.796875,
+      "BrowserRootCount": 2,
+      "ProcessCount": 18,
+      "Processes": [
+        {
+          "Id": 45164,
+          "Parent": 44004,
+          "Name": "deckweave-openaction-host.exe",
+          "BrowserRoot": false,
+          "KernelTime": 781250,
+          "UserTime": 312500
+        },
+        {
+          "Id": 40372,
+          "Parent": 45164,
+          "Name": "conhost.exe",
+          "BrowserRoot": false,
+          "KernelTime": 0,
+          "UserTime": 156250
+        },
+        {
+          "Id": 31124,
+          "Parent": 44004,
+          "Name": "deckweave-openaction-host.exe",
+          "BrowserRoot": false,
+          "KernelTime": 781250,
+          "UserTime": 0
+        },
+        {
+          "Id": 44768,
+          "Parent": 31124,
+          "Name": "conhost.exe",
+          "BrowserRoot": false,
+          "KernelTime": 312500,
+          "UserTime": 0
+        },
+        {
+          "Id": 20736,
+          "Parent": 45164,
+          "Name": "deckweave-desktop.exe",
+          "BrowserRoot": false,
+          "KernelTime": 625000,
+          "UserTime": 312500
+        },
+        {
+          "Id": 38112,
+          "Parent": 31124,
+          "Name": "deckweave-desktop.exe",
+          "BrowserRoot": false,
+          "KernelTime": 781250,
+          "UserTime": 312500
+        },
+        {
+          "Id": 27372,
+          "Parent": 38112,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": true,
+          "KernelTime": 3125000,
+          "UserTime": 2656250
+        },
+        {
+          "Id": 39820,
+          "Parent": 20736,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": true,
+          "KernelTime": 3437500,
+          "UserTime": 2656250
+        },
+        {
+          "Id": 33656,
+          "Parent": 27372,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": false,
+          "KernelTime": 0,
+          "UserTime": 312500
+        },
+        {
+          "Id": 41092,
+          "Parent": 39820,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": false,
+          "KernelTime": 156250,
+          "UserTime": 625000
+        },
+        {
+          "Id": 24700,
+          "Parent": 27372,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": false,
+          "KernelTime": 2187500,
+          "UserTime": 2343750
+        },
+        {
+          "Id": 39352,
+          "Parent": 27372,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": false,
+          "KernelTime": 781250,
+          "UserTime": 1250000
+        },
+        {
+          "Id": 32584,
+          "Parent": 39820,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": false,
+          "KernelTime": 3750000,
+          "UserTime": 2187500
+        },
+        {
+          "Id": 41004,
+          "Parent": 39820,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": false,
+          "KernelTime": 1562500,
+          "UserTime": 1250000
+        },
+        {
+          "Id": 45208,
+          "Parent": 27372,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": false,
+          "KernelTime": 156250,
+          "UserTime": 312500
+        },
+        {
+          "Id": 43116,
+          "Parent": 39820,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": false,
+          "KernelTime": 312500,
+          "UserTime": 312500
+        },
+        {
+          "Id": 35392,
+          "Parent": 39820,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": false,
+          "KernelTime": 312500,
+          "UserTime": 1093750
+        },
+        {
+          "Id": 41608,
+          "Parent": 27372,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": false,
+          "KernelTime": 1093750,
+          "UserTime": 781250
+        }
+      ]
+    },
+    {
+      "Seconds": 4.7353171,
+      "WorkingSetMiB": 772.67578125,
+      "PrivateCommitMiB": 364.1640625,
+      "BrowserRootCount": 2,
+      "ProcessCount": 18,
+      "Processes": [
+        {
+          "Id": 45164,
+          "Parent": 44004,
+          "Name": "deckweave-openaction-host.exe",
+          "BrowserRoot": false,
+          "KernelTime": 937500,
+          "UserTime": 312500
+        },
+        {
+          "Id": 40372,
+          "Parent": 45164,
+          "Name": "conhost.exe",
+          "BrowserRoot": false,
+          "KernelTime": 0,
+          "UserTime": 156250
+        },
+        {
+          "Id": 31124,
+          "Parent": 44004,
+          "Name": "deckweave-openaction-host.exe",
+          "BrowserRoot": false,
+          "KernelTime": 781250,
+          "UserTime": 0
+        },
+        {
+          "Id": 44768,
+          "Parent": 31124,
+          "Name": "conhost.exe",
+          "BrowserRoot": false,
+          "KernelTime": 312500,
+          "UserTime": 0
+        },
+        {
+          "Id": 20736,
+          "Parent": 45164,
+          "Name": "deckweave-desktop.exe",
+          "BrowserRoot": false,
+          "KernelTime": 625000,
+          "UserTime": 312500
+        },
+        {
+          "Id": 38112,
+          "Parent": 31124,
+          "Name": "deckweave-desktop.exe",
+          "BrowserRoot": false,
+          "KernelTime": 781250,
+          "UserTime": 312500
+        },
+        {
+          "Id": 27372,
+          "Parent": 38112,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": true,
+          "KernelTime": 3593750,
+          "UserTime": 2968750
+        },
+        {
+          "Id": 39820,
+          "Parent": 20736,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": true,
+          "KernelTime": 4062500,
+          "UserTime": 3437500
+        },
+        {
+          "Id": 33656,
+          "Parent": 27372,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": false,
+          "KernelTime": 0,
+          "UserTime": 312500
+        },
+        {
+          "Id": 41092,
+          "Parent": 39820,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": false,
+          "KernelTime": 156250,
+          "UserTime": 625000
+        },
+        {
+          "Id": 24700,
+          "Parent": 27372,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": false,
+          "KernelTime": 2187500,
+          "UserTime": 2343750
+        },
+        {
+          "Id": 39352,
+          "Parent": 27372,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": false,
+          "KernelTime": 781250,
+          "UserTime": 1250000
+        },
+        {
+          "Id": 32584,
+          "Parent": 39820,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": false,
+          "KernelTime": 4531250,
+          "UserTime": 2968750
+        },
+        {
+          "Id": 41004,
+          "Parent": 39820,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": false,
+          "KernelTime": 1562500,
+          "UserTime": 1250000
+        },
+        {
+          "Id": 45208,
+          "Parent": 27372,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": false,
+          "KernelTime": 156250,
+          "UserTime": 312500
+        },
+        {
+          "Id": 43116,
+          "Parent": 39820,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": false,
+          "KernelTime": 312500,
+          "UserTime": 312500
+        },
+        {
+          "Id": 35392,
+          "Parent": 39820,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": false,
+          "KernelTime": 625000,
+          "UserTime": 1406250
+        },
+        {
+          "Id": 41608,
+          "Parent": 27372,
+          "Name": "msedgewebview2.exe",
+          "BrowserRoot": false,
+          "KernelTime": 1406250,
+          "UserTime": 781250
+        }
+      ]
+    }
+  ],
+  "Results": [
+    {
+      "Exit": 0,
+      "Events": [
+        {
+          "Name": "setImage",
+          "Count": 20
+        }
+      ],
+      "Stderr": ""
+    },
+    {
+      "Exit": 0,
+      "Events": [
+        {
+          "Name": "setImage",
+          "Count": 21
+        }
+      ],
+      "Stderr": ""
+    }
+  ]
+}

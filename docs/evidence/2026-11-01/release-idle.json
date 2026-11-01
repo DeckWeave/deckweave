@@ -1,0 +1,10 @@
+{
+  "measuredAtUtc": "2026-11-01T11:34:53.3449471Z",
+  "scenario": "Release, registry and one virtual device editor open, idle",
+  "processCount": 8,
+  "privateCommitMiB": 236.3,
+  "summedWorkingSetMiB": 469.0,
+  "cpuSeconds": 0.0938,
+  "sampleSeconds": 2.003,
+  "notes": "Short observation, not a resource budget or endurance test. Summed working sets may count shared pages repeatedly."
+}

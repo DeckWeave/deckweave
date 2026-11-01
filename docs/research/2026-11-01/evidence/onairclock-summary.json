@@ -1,0 +1,11 @@
+{
+  "Package": "fail.marc.onairclock",
+  "Version": "1.3.0",
+  "Exit": 0,
+  "Stderr": null,
+  "Status": "registered",
+  "Events": 12,
+  "Types": [
+    "setImage"
+  ]
+}

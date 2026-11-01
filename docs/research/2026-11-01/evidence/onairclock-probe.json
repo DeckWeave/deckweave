@@ -1,0 +1,116 @@
+{
+  "evidenceType": "native-process-protocol-spike",
+  "feedback": [
+    {
+      "binding": "probe",
+      "event": "setImage",
+      "payload": {
+        "target": 0,
+        "imageDataUriLength": 11802,
+        "imageSHA256": "E9049EBD41317E706030F30C5E4D1A8C46E41C54E9A81F0970F96D5E19320322"
+      }
+    },
+    {
+      "binding": "probe",
+      "event": "setImage",
+      "payload": {
+        "target": 0,
+        "imageDataUriLength": 11802,
+        "imageSHA256": "E9049EBD41317E706030F30C5E4D1A8C46E41C54E9A81F0970F96D5E19320322"
+      }
+    },
+    {
+      "binding": "probe",
+      "event": "setImage",
+      "payload": {
+        "target": 0,
+        "imageDataUriLength": 11630,
+        "imageSHA256": "AE12B1316E5F437B9A22EF20FE3128AF4742AC22FA28639BB99D9FF88B657303"
+      }
+    },
+    {
+      "binding": "probe",
+      "event": "setImage",
+      "payload": {
+        "target": 0,
+        "imageDataUriLength": 11630,
+        "imageSHA256": "AE12B1316E5F437B9A22EF20FE3128AF4742AC22FA28639BB99D9FF88B657303"
+      }
+    },
+    {
+      "binding": "probe",
+      "event": "setImage",
+      "payload": {
+        "target": 0,
+        "imageDataUriLength": 11630,
+        "imageSHA256": "AE12B1316E5F437B9A22EF20FE3128AF4742AC22FA28639BB99D9FF88B657303"
+      }
+    },
+    {
+      "binding": "probe",
+      "event": "setImage",
+      "payload": {
+        "target": 0,
+        "imageDataUriLength": 11630,
+        "imageSHA256": "AE12B1316E5F437B9A22EF20FE3128AF4742AC22FA28639BB99D9FF88B657303"
+      }
+    },
+    {
+      "binding": "probe",
+      "event": "setImage",
+      "payload": {
+        "target": 0,
+        "imageDataUriLength": 11526,
+        "imageSHA256": "45E23F8E9B939A2337A5E0E030237429FCC8CAEF4F84A80607123C739AF1AD28"
+      }
+    },
+    {
+      "binding": "probe",
+      "event": "setImage",
+      "payload": {
+        "target": 0,
+        "imageDataUriLength": 11526,
+        "imageSHA256": "45E23F8E9B939A2337A5E0E030237429FCC8CAEF4F84A80607123C739AF1AD28"
+      }
+    },
+    {
+      "binding": "probe",
+      "event": "setImage",
+      "payload": {
+        "target": 0,
+        "imageDataUriLength": 11526,
+        "imageSHA256": "45E23F8E9B939A2337A5E0E030237429FCC8CAEF4F84A80607123C739AF1AD28"
+      }
+    },
+    {
+      "binding": "probe",
+      "event": "setImage",
+      "payload": {
+        "target": 0,
+        "imageDataUriLength": 11526,
+        "imageSHA256": "45E23F8E9B939A2337A5E0E030237429FCC8CAEF4F84A80607123C739AF1AD28"
+      }
+    },
+    {
+      "binding": "probe",
+      "event": "setImage",
+      "payload": {
+        "target": 0,
+        "imageDataUriLength": 11826,
+        "imageSHA256": "4F17C6C0133A2CAF9D8B0EE928AB72ADF987E7FC2407A1097A3BA5E9CD598391"
+      }
+    },
+    {
+      "binding": "probe",
+      "event": "setImage",
+      "payload": {
+        "target": 0,
+        "imageDataUriLength": 11826,
+        "imageSHA256": "4F17C6C0133A2CAF9D8B0EE928AB72ADF987E7FC2407A1097A3BA5E9CD598391"
+      }
+    }
+  ],
+  "productionIntegrated": false,
+  "propertyInspector": false,
+  "status": "registered"
+}

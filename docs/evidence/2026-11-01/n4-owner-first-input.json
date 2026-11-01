@@ -1,0 +1,3747 @@
+{
+  "note": "Output frames count successful HID transfers, not display acknowledgements.",
+  "recent_inputs": [
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 63,
+        "y": 114
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 00 3f 00 72 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538801834
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 63,
+        "y": 114
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 00 3f 00 72 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538801870
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 63,
+        "y": 114
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 00 3f 00 72 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538801904
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 63,
+        "y": 114
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 00 3f 00 72 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538801939
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 40 00 00 3f 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538801970
+    },
+    {
+      "decoded": {
+        "code": 0,
+        "state": 1,
+        "type": "unknown"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 00 01 00 65 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538802240
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 101,
+        "y": 59
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 00 65 00 3b 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538802274
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 101,
+        "y": 59
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 00 65 00 3b 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538802309
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 101,
+        "y": 59
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 00 65 00 3b 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538802344
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 40 00 00 65 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538802360
+    },
+    {
+      "decoded": {
+        "key": 6,
+        "pressed": true,
+        "type": "key"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 06 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538802639
+    },
+    {
+      "decoded": {
+        "key": 6,
+        "pressed": false,
+        "type": "key"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 06 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538802790
+    },
+    {
+      "decoded": {
+        "code": 0,
+        "state": 1,
+        "type": "unknown"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 00 01 00 33 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538802790
+    },
+    {
+      "decoded": {
+        "code": 0,
+        "state": 0,
+        "type": "unknown"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 00 00 00 33 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538802820
+    },
+    {
+      "decoded": {
+        "pressed": true,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 01 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538803909
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538804079
+    },
+    {
+      "decoded": {
+        "pressed": true,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 01 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538804479
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538804599
+    },
+    {
+      "decoded": {
+        "pressed": true,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 01 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538804939
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538805099
+    },
+    {
+      "decoded": {
+        "pressed": true,
+        "type": "touch_button",
+        "zone": 2
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 02 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538805259
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 2
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538805469
+    },
+    {
+      "decoded": {
+        "pressed": true,
+        "type": "touch_button",
+        "zone": 3
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 03 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538805659
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 3
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538805859
+    },
+    {
+      "decoded": {
+        "pressed": true,
+        "type": "touch_button",
+        "zone": 4
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 04 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538806199
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 4
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 04 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538806419
+    },
+    {
+      "decoded": {
+        "code": 0,
+        "state": 1,
+        "type": "unknown"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 00 01 01 2e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538806720
+    },
+    {
+      "decoded": {
+        "code": 0,
+        "state": 0,
+        "type": "unknown"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 00 00 01 2e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538806780
+    },
+    {
+      "decoded": {
+        "key": 7,
+        "pressed": true,
+        "type": "key"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 07 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538806879
+    },
+    {
+      "decoded": {
+        "key": 7,
+        "pressed": false,
+        "type": "key"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 07 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538806999
+    },
+    {
+      "decoded": {
+        "key": 8,
+        "pressed": true,
+        "type": "key"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 08 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538807339
+    },
+    {
+      "decoded": {
+        "key": 8,
+        "pressed": false,
+        "type": "key"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 08 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538807439
+    },
+    {
+      "decoded": {
+        "key": 9,
+        "pressed": true,
+        "type": "key"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 09 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538807689
+    },
+    {
+      "decoded": {
+        "key": 9,
+        "pressed": false,
+        "type": "key"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 09 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538807789
+    },
+    {
+      "decoded": {
+        "key": 10,
+        "pressed": true,
+        "type": "key"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 0a 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538808039
+    },
+    {
+      "decoded": {
+        "key": 10,
+        "pressed": false,
+        "type": "key"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 0a 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538808159
+    },
+    {
+      "decoded": {
+        "code": 0,
+        "state": 1,
+        "type": "unknown"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 00 01 00 57 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538809570
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 87,
+        "y": 84
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 00 57 00 54 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538809604
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 87,
+        "y": 84
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 00 57 00 54 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538809639
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 87,
+        "y": 84
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 00 57 00 54 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538809674
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 87,
+        "y": 84
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 00 57 00 54 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538809709
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 87,
+        "y": 84
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 00 57 00 54 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538809744
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 87,
+        "y": 84
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 00 57 00 54 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538809779
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 40 00 00 57 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538809780
+    },
+    {
+      "decoded": {
+        "code": 0,
+        "state": 1,
+        "type": "unknown"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 00 01 00 7e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538810049
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 126,
+        "y": 68
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 00 7e 00 44 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538810084
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 126,
+        "y": 68
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 00 7e 00 44 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538810119
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 126,
+        "y": 68
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 00 7e 00 44 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538810154
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 40 00 00 7e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538810169
+    },
+    {
+      "decoded": {
+        "code": 0,
+        "state": 1,
+        "type": "unknown"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 00 01 00 6b 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538810439
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 107,
+        "y": 57
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 00 6b 00 39 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538810474
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 107,
+        "y": 57
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 00 6b 00 39 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538810509
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 40 00 00 6b 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538810529
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538811196
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538811222
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538811253
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538811279
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538811297
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538811312
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538811325
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538811357
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538812075
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538812104
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538812119
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538812138
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538812153
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538812166
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538812179
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538812192
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538812206
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538812249
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538812353
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538812375
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538812398
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538812421
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538812433
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538812441
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538812449
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538812472
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538812486
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538812499
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538812513
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538812529
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538812544
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538812564
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538812632
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538812700
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538812754
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538812873
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538813347
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538813369
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538813384
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538813400
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538813421
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538813450
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538813763
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538813791
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538813812
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538813839
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538813890
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538813962
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538814000
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538814015
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538814036
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538814055
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538814071
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538814087
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538814118
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "type": "dial_click"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 37 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538814406
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538814593
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "type": "dial_click"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 37 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538814837
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "type": "dial_click"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 37 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538815191
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "type": "dial_click"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 37 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538815568
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "type": "dial_click"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 37 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538815860
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "type": "dial_click"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 37 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538816139
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "type": "dial_click"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 37 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538816399
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "type": "dial_click"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 37 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538816652
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538817331
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538817447
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538817483
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538817509
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538817539
+    },
+    {
+      "decoded": {
+        "pressed": true,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 01 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538818429
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538818639
+    },
+    {
+      "decoded": {
+        "pressed": true,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 01 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538818829
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538818999
+    },
+    {
+      "decoded": {
+        "pressed": true,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 01 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538819279
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538819489
+    },
+    {
+      "decoded": {
+        "pressed": true,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 01 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538820009
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538820179
+    },
+    {
+      "decoded": {
+        "pressed": true,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 01 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538820369
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538820499
+    },
+    {
+      "decoded": {
+        "pressed": true,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 01 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538821229
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538821339
+    },
+    {
+      "decoded": {
+        "pressed": true,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 01 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538821499
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538821569
+    },
+    {
+      "decoded": {
+        "code": 0,
+        "state": 1,
+        "type": "unknown"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 00 01 00 5f 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538827329
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 95,
+        "y": 71
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 00 5f 00 47 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538827364
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 95,
+        "y": 71
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 00 5f 00 47 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538827399
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 95,
+        "y": 71
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 00 5f 00 47 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538827434
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 95,
+        "y": 71
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 00 5f 00 47 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538827469
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 95,
+        "y": 71
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 00 5f 00 47 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538827504
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 95,
+        "y": 71
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 00 5f 00 47 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538827539
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 95,
+        "y": 71
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 00 5f 00 47 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538827574
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 40 00 00 5f 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538827599
+    },
+    {
+      "decoded": {
+        "code": 0,
+        "state": 1,
+        "type": "unknown"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 00 01 00 74 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538827779
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 116,
+        "y": 41
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 00 74 00 29 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538827814
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 116,
+        "y": 41
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 00 74 00 29 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538827849
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 40 00 00 74 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538827869
+    },
+    {
+      "decoded": {
+        "code": 0,
+        "state": 1,
+        "type": "unknown"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 00 01 00 a6 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538828019
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 166,
+        "y": 20
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 00 a6 00 14 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538828054
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 166,
+        "y": 20
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 00 a6 00 14 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538828089
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 166,
+        "y": 20
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 00 a6 00 14 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538828124
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 40 00 00 a6 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538828139
+    },
+    {
+      "decoded": {
+        "code": 0,
+        "state": 1,
+        "type": "unknown"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 00 01 00 98 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538828259
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 152,
+        "y": 46
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 00 98 00 2e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538828294
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 152,
+        "y": 46
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 00 98 00 2e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538828329
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 152,
+        "y": 46
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 00 98 00 2e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538828364
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 152,
+        "y": 46
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 00 98 00 2e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538828399
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 40 00 00 98 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793538828409
+    },
+    {
+      "decoded": {
+        "pressed": true,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 01 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539857340
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539857410
+    },
+    {
+      "decoded": {
+        "pressed": true,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 01 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539857930
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539858020
+    },
+    {
+      "decoded": {
+        "pressed": true,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 01 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539858420
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539858540
+    },
+    {
+      "decoded": {
+        "key": 6,
+        "pressed": true,
+        "type": "key"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 06 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539880240
+    },
+    {
+      "decoded": {
+        "key": 6,
+        "pressed": false,
+        "type": "key"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 06 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539880380
+    },
+    {
+      "decoded": {
+        "key": 6,
+        "pressed": true,
+        "type": "key"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 06 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539880750
+    },
+    {
+      "decoded": {
+        "key": 6,
+        "pressed": false,
+        "type": "key"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 06 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539880860
+    },
+    {
+      "decoded": {
+        "key": 6,
+        "pressed": true,
+        "type": "key"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 06 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539881050
+    },
+    {
+      "decoded": {
+        "key": 6,
+        "pressed": false,
+        "type": "key"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 06 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539881170
+    },
+    {
+      "decoded": {
+        "key": 7,
+        "pressed": true,
+        "type": "key"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 07 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539881480
+    },
+    {
+      "decoded": {
+        "key": 7,
+        "pressed": false,
+        "type": "key"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 07 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539881610
+    },
+    {
+      "decoded": {
+        "key": 7,
+        "pressed": true,
+        "type": "key"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 07 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539881740
+    },
+    {
+      "decoded": {
+        "key": 7,
+        "pressed": false,
+        "type": "key"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 07 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539881850
+    },
+    {
+      "decoded": {
+        "key": 8,
+        "pressed": true,
+        "type": "key"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 08 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539882130
+    },
+    {
+      "decoded": {
+        "key": 8,
+        "pressed": false,
+        "type": "key"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 08 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539882250
+    },
+    {
+      "decoded": {
+        "key": 8,
+        "pressed": true,
+        "type": "key"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 08 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539882440
+    },
+    {
+      "decoded": {
+        "key": 8,
+        "pressed": false,
+        "type": "key"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 08 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539882510
+    },
+    {
+      "decoded": {
+        "key": 9,
+        "pressed": true,
+        "type": "key"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 09 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539882940
+    },
+    {
+      "decoded": {
+        "key": 9,
+        "pressed": false,
+        "type": "key"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 09 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539882970
+    },
+    {
+      "decoded": {
+        "pressed": true,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 01 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539916939
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539917189
+    },
+    {
+      "decoded": {
+        "pressed": true,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 01 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539917379
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539917619
+    },
+    {
+      "decoded": {
+        "pressed": true,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 01 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539917839
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 1
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539918039
+    },
+    {
+      "decoded": {
+        "pressed": true,
+        "type": "touch_button",
+        "zone": 2
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 02 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539925669
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 2
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539925849
+    },
+    {
+      "decoded": {
+        "pressed": true,
+        "type": "touch_button",
+        "zone": 3
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 03 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539926309
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 3
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539926549
+    },
+    {
+      "decoded": {
+        "pressed": true,
+        "type": "touch_button",
+        "zone": 3
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 03 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539927189
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 3
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539927329
+    },
+    {
+      "decoded": {
+        "pressed": true,
+        "type": "touch_button",
+        "zone": 4
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 04 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539927789
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 4
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 04 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539927929
+    },
+    {
+      "decoded": {
+        "pressed": true,
+        "type": "touch_button",
+        "zone": 5
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 05 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539929679
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 5
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 05 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539929759
+    },
+    {
+      "decoded": {
+        "pressed": true,
+        "type": "touch_button",
+        "zone": 5
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 05 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539930759
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 5
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 05 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539930919
+    },
+    {
+      "decoded": {
+        "code": 0,
+        "state": 1,
+        "type": "unknown"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 00 01 02 d3 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539947809
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 723,
+        "y": 71
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 02 d3 00 47 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539947843
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 723,
+        "y": 71
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 02 d3 00 47 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539947878
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 723,
+        "y": 71
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 02 d3 00 47 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539947913
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 4
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 43 00 02 d3 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539947929
+    },
+    {
+      "decoded": {
+        "code": 0,
+        "state": 1,
+        "type": "unknown"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 00 01 02 bd 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539948229
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 701,
+        "y": 51
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 02 bd 00 33 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539948263
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 701,
+        "y": 51
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 02 bd 00 33 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539948298
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 4
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 43 00 02 bd 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539948319
+    },
+    {
+      "decoded": {
+        "code": 0,
+        "state": 1,
+        "type": "unknown"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 00 01 02 ac 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539948559
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 684,
+        "y": 38
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 02 ac 00 26 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539948593
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 684,
+        "y": 38
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 02 ac 00 26 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539948628
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 684,
+        "y": 38
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 02 ac 00 26 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539948663
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 4
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 43 00 02 ac 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539948679
+    },
+    {
+      "decoded": {
+        "code": 0,
+        "state": 1,
+        "type": "unknown"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 00 01 02 52 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539948889
+    },
+    {
+      "decoded": {
+        "type": "pointer",
+        "x": 594,
+        "y": 28
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 41 52 58 00 00 00 02 52 00 1c 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539948923
+    },
+    {
+      "decoded": {
+        "code": 0,
+        "state": 0,
+        "type": "unknown"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 00 00 02 52 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539948949
+    },
+    {
+      "decoded": {
+        "code": 0,
+        "state": 1,
+        "type": "unknown"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 00 01 02 1a 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539949129
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 3
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 42 00 02 1a 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539949159
+    },
+    {
+      "decoded": {
+        "code": 0,
+        "state": 1,
+        "type": "unknown"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 00 01 02 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539949309
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 3
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 42 00 02 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539949339
+    },
+    {
+      "decoded": {
+        "code": 0,
+        "state": 1,
+        "type": "unknown"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 00 01 02 09 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539949459
+    },
+    {
+      "decoded": {
+        "pressed": false,
+        "type": "touch_button",
+        "zone": 3
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 42 00 02 09 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539949489
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539954257
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539954334
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539954449
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539954786
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539954846
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539954954
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539955012
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539955076
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539955139
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539955187
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539955208
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539955235
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539955256
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539955274
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539955307
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539955536
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539955599
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": -1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539955691
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539955917
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539955927
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539955937
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539955947
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539956002
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539956043
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539956091
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539956119
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539956139
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539956159
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539956187
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "ticks": 1,
+        "type": "rotate"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 a1 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539956318
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "type": "dial_click"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 37 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539973964
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "type": "dial_click"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 37 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539974570
+    },
+    {
+      "decoded": {
+        "dial": 1,
+        "type": "dial_click"
+      },
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "generation": 1,
+      "raw": "41 43 4b 00 00 4f 4b 00 00 37 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "unix_ms": 1793539974859
+    }
+  ],
+  "snapshot": {
+    "configuration": {
+      "devices": [
+        {
+          "hardware_key": null,
+          "id": "17cf14920fb14108b8e0bbb0811a2037",
+          "name": "Virtual Studio 01",
+          "profile": {
+            "active_page_id": "4c4dbe43204743d68bca893dab713631",
+            "id": "a5568dca4ab64010acca9fb96109ddd9",
+            "name": "Default",
+            "pages": [
+              {
+                "bindings": {
+                  "key-1": {
+                    "id": "a1d9253ed38844db901627d0559df528",
+                    "kind": "counter",
+                    "label": "Проверка сохранения"
+                  },
+                  "key-2": {
+                    "id": "1f47e0190ed449f4920b5390aaee2169",
+                    "kind": "toggle",
+                    "label": "Toggle"
+                  },
+                  "key-3": {
+                    "id": "6d337a59c6224feeab3d8ace8db6f3d9",
+                    "kind": "toggle",
+                    "label": "Переключатель"
+                  }
+                },
+                "id": "4c4dbe43204743d68bca893dab713631",
+                "name": "1"
+              },
+              {
+                "bindings": {},
+                "id": "34c4cc1d222b4cd2a7d26cee87f24be4",
+                "name": "2"
+              }
+            ]
+          },
+          "provider_id": "deckweave.virtual"
+        },
+        {
+          "hardware_key": null,
+          "id": "3ac0dfd0a18d47e9afdad843b283a14a",
+          "name": "Virtual Studio 02",
+          "profile": {
+            "active_page_id": "1cdf8dc58390475fb63d6d241d63223a",
+            "id": "1b18cc5abb504d9da1fc97243fe3a04a",
+            "name": "Default",
+            "pages": [
+              {
+                "bindings": {
+                  "key-1": {
+                    "id": "2f9359ca4e6340f18b861e23f44eacc7",
+                    "kind": "counter",
+                    "label": "Counter"
+                  },
+                  "key-2": {
+                    "id": "5fc86957ed6444719ebbc9b3be9ae148",
+                    "kind": "toggle",
+                    "label": "Toggle"
+                  }
+                },
+                "id": "1cdf8dc58390475fb63d6d241d63223a",
+                "name": "1"
+              }
+            ]
+          },
+          "provider_id": "deckweave.virtual"
+        },
+        {
+          "hardware_key": "n4pro-42d55dfc946b88969ae4d4d16a922201ae09eccca16f6b55464cc1a4b98fb47a",
+          "id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+          "name": "Mirabox N4 Pro · 42d55dfc",
+          "profile": {
+            "active_page_id": "1673c8c0505340a4be99f7b9c7e34b91",
+            "id": "ef2154e056e241bebb465227bf400e36",
+            "name": "Default",
+            "pages": [
+              {
+                "bindings": {
+                  "dial-1": {
+                    "id": "3c6c274a2b734a6481947185c9d3471e",
+                    "kind": "counter",
+                    "label": "D1"
+                  },
+                  "dial-2": {
+                    "id": "21845e801fb54e5fb9d4177aca502ff9",
+                    "kind": "counter",
+                    "label": "D2"
+                  },
+                  "dial-3": {
+                    "id": "5817c91d1fcd4cf689082d1d0710c27f",
+                    "kind": "counter",
+                    "label": "D3"
+                  },
+                  "dial-4": {
+                    "id": "2e191b896e644a2fa3b07cfa6fe2c53e",
+                    "kind": "counter",
+                    "label": "D4"
+                  },
+                  "key-1": {
+                    "id": "edd0452ba69c4a3ea26ba76e4da65c09",
+                    "kind": "counter",
+                    "label": "K1"
+                  },
+                  "key-10": {
+                    "id": "9e5739bc5cca4c0bb7831306e6872da3",
+                    "kind": "counter",
+                    "label": "K10"
+                  },
+                  "key-2": {
+                    "id": "cb60debb599d4c1380140a3b404ddd92",
+                    "kind": "toggle",
+                    "label": "K2"
+                  },
+                  "key-3": {
+                    "id": "b329613fd2c94961b5bfeda122479fe2",
+                    "kind": "counter",
+                    "label": "K3"
+                  },
+                  "key-4": {
+                    "id": "ab570759bacd439ab6ae86ba24106fe1",
+                    "kind": "counter",
+                    "label": "K4"
+                  },
+                  "key-5": {
+                    "id": "2ed00eb6a0ef4a4abdc28e631a94b67a",
+                    "kind": "counter",
+                    "label": "K5"
+                  },
+                  "key-6": {
+                    "id": "e4d4de08a3a747d8ba189887db908a9f",
+                    "kind": "counter",
+                    "label": "K6"
+                  },
+                  "key-7": {
+                    "id": "d0c3a0d436c54b54b7b5801eb94cc902",
+                    "kind": "counter",
+                    "label": "K7"
+                  },
+                  "key-8": {
+                    "id": "7a7444c009e74afdbb3adc372108cfba",
+                    "kind": "counter",
+                    "label": "K8"
+                  },
+                  "key-9": {
+                    "id": "2aa8431735a34052807077d8de75b886",
+                    "kind": "counter",
+                    "label": "K9"
+                  },
+                  "touch-1": {
+                    "id": "f3910b79e0bc4406abef7d06a5fd6d5e",
+                    "kind": "toggle",
+                    "label": "T1"
+                  },
+                  "touch-2": {
+                    "id": "b5fb1dabcf234a548127fe76edef78bb",
+                    "kind": "toggle",
+                    "label": "T2"
+                  },
+                  "touch-3": {
+                    "id": "fae6ff679f444cb980d0dc1b0f6804e0",
+                    "kind": "toggle",
+                    "label": "T3"
+                  },
+                  "touch-4": {
+                    "id": "bd43698ea7694718b59d5f5ae7985c2e",
+                    "kind": "toggle",
+                    "label": "T4"
+                  },
+                  "touch-5": {
+                    "id": "5cd50bf1c2f3485189f389594c4fe0b3",
+                    "kind": "toggle",
+                    "label": "T5"
+                  }
+                },
+                "id": "1673c8c0505340a4be99f7b9c7e34b91",
+                "name": "1"
+              },
+              {
+                "bindings": {},
+                "id": "ccd6d477157248e5b9e30708336cabe0",
+                "name": "2"
+              }
+            ]
+          },
+          "provider_id": "deckweave.n4"
+        }
+      ],
+      "locale": "ru",
+      "revision": 10
+    },
+    "connections": {
+      "17cf14920fb14108b8e0bbb0811a2037": {
+        "error": null,
+        "generation": 0,
+        "input_events": 0,
+        "last_input": null,
+        "output_frames": 0,
+        "state": "virtual"
+      },
+      "3ac0dfd0a18d47e9afdad843b283a14a": {
+        "error": null,
+        "generation": 0,
+        "input_events": 0,
+        "last_input": null,
+        "output_frames": 0,
+        "state": "virtual"
+      },
+      "3fa0e6c57a4b472da2b329e8df1f1a17": {
+        "error": null,
+        "generation": 1,
+        "input_events": 377,
+        "last_input": "{\"type\":\"dial_click\",\"dial\":1}",
+        "output_frames": 36,
+        "state": "connected"
+      }
+    },
+    "editing_windows": 1,
+    "event_sequence": 415,
+    "feedback": [
+      {
+        "active": false,
+        "binding_id": "2aa8431735a34052807077d8de75b886",
+        "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+        "value": 2
+      },
+      {
+        "active": false,
+        "binding_id": "3c6c274a2b734a6481947185c9d3471e",
+        "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+        "value": 32
+      },
+      {
+        "active": false,
+        "binding_id": "5cd50bf1c2f3485189f389594c4fe0b3",
+        "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+        "value": 0
+      },
+      {
+        "active": false,
+        "binding_id": "7a7444c009e74afdbb3adc372108cfba",
+        "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+        "value": 3
+      },
+      {
+        "active": false,
+        "binding_id": "9e5739bc5cca4c0bb7831306e6872da3",
+        "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+        "value": 1
+      },
+      {
+        "active": true,
+        "binding_id": "b5fb1dabcf234a548127fe76edef78bb",
+        "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+        "value": 0
+      },
+      {
+        "active": false,
+        "binding_id": "bd43698ea7694718b59d5f5ae7985c2e",
+        "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+        "value": 0
+      },
+      {
+        "active": false,
+        "binding_id": "d0c3a0d436c54b54b7b5801eb94cc902",
+        "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+        "value": 3
+      },
+      {
+        "active": false,
+        "binding_id": "e4d4de08a3a747d8ba189887db908a9f",
+        "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+        "value": 4
+      },
+      {
+        "active": true,
+        "binding_id": "f3910b79e0bc4406abef7d06a5fd6d5e",
+        "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+        "value": 0
+      },
+      {
+        "active": true,
+        "binding_id": "fae6ff679f444cb980d0dc1b0f6804e0",
+        "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+        "value": 0
+      }
+    ],
+    "geometries": {
+      "17cf14920fb14108b8e0bbb0811a2037": {
+        "controls": [
+          {
+            "id": "key-1",
+            "kind": "key",
+            "number": 1,
+            "rect": [
+              32.0,
+              28.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-2",
+            "kind": "key",
+            "number": 2,
+            "rect": [
+              144.0,
+              28.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-3",
+            "kind": "key",
+            "number": 3,
+            "rect": [
+              256.0,
+              28.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-4",
+            "kind": "key",
+            "number": 4,
+            "rect": [
+              368.0,
+              28.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-5",
+            "kind": "key",
+            "number": 5,
+            "rect": [
+              480.0,
+              28.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-6",
+            "kind": "key",
+            "number": 6,
+            "rect": [
+              32.0,
+              140.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-7",
+            "kind": "key",
+            "number": 7,
+            "rect": [
+              144.0,
+              140.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-8",
+            "kind": "key",
+            "number": 8,
+            "rect": [
+              256.0,
+              140.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-9",
+            "kind": "key",
+            "number": 9,
+            "rect": [
+              368.0,
+              140.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-10",
+            "kind": "key",
+            "number": 10,
+            "rect": [
+              480.0,
+              140.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "touch-1",
+            "kind": "touch",
+            "number": 1,
+            "rect": [
+              32.0,
+              264.0,
+              136.0,
+              64.0
+            ]
+          },
+          {
+            "id": "dial-1",
+            "kind": "dial",
+            "number": 1,
+            "rect": [
+              64.0,
+              350.0,
+              72.0,
+              72.0
+            ]
+          },
+          {
+            "id": "touch-2",
+            "kind": "touch",
+            "number": 2,
+            "rect": [
+              172.0,
+              264.0,
+              136.0,
+              64.0
+            ]
+          },
+          {
+            "id": "dial-2",
+            "kind": "dial",
+            "number": 2,
+            "rect": [
+              204.0,
+              350.0,
+              72.0,
+              72.0
+            ]
+          },
+          {
+            "id": "touch-3",
+            "kind": "touch",
+            "number": 3,
+            "rect": [
+              312.0,
+              264.0,
+              136.0,
+              64.0
+            ]
+          },
+          {
+            "id": "dial-3",
+            "kind": "dial",
+            "number": 3,
+            "rect": [
+              344.0,
+              350.0,
+              72.0,
+              72.0
+            ]
+          },
+          {
+            "id": "touch-4",
+            "kind": "touch",
+            "number": 4,
+            "rect": [
+              452.0,
+              264.0,
+              136.0,
+              64.0
+            ]
+          },
+          {
+            "id": "dial-4",
+            "kind": "dial",
+            "number": 4,
+            "rect": [
+              484.0,
+              350.0,
+              72.0,
+              72.0
+            ]
+          }
+        ],
+        "height": 448.0,
+        "surface": [
+          32.0,
+          264.0,
+          556.0,
+          64.0
+        ],
+        "width": 608.0
+      },
+      "3ac0dfd0a18d47e9afdad843b283a14a": {
+        "controls": [
+          {
+            "id": "key-1",
+            "kind": "key",
+            "number": 1,
+            "rect": [
+              32.0,
+              28.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-2",
+            "kind": "key",
+            "number": 2,
+            "rect": [
+              144.0,
+              28.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-3",
+            "kind": "key",
+            "number": 3,
+            "rect": [
+              256.0,
+              28.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-4",
+            "kind": "key",
+            "number": 4,
+            "rect": [
+              368.0,
+              28.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-5",
+            "kind": "key",
+            "number": 5,
+            "rect": [
+              480.0,
+              28.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-6",
+            "kind": "key",
+            "number": 6,
+            "rect": [
+              32.0,
+              140.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-7",
+            "kind": "key",
+            "number": 7,
+            "rect": [
+              144.0,
+              140.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-8",
+            "kind": "key",
+            "number": 8,
+            "rect": [
+              256.0,
+              140.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-9",
+            "kind": "key",
+            "number": 9,
+            "rect": [
+              368.0,
+              140.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-10",
+            "kind": "key",
+            "number": 10,
+            "rect": [
+              480.0,
+              140.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "touch-1",
+            "kind": "touch",
+            "number": 1,
+            "rect": [
+              32.0,
+              264.0,
+              136.0,
+              64.0
+            ]
+          },
+          {
+            "id": "dial-1",
+            "kind": "dial",
+            "number": 1,
+            "rect": [
+              64.0,
+              350.0,
+              72.0,
+              72.0
+            ]
+          },
+          {
+            "id": "touch-2",
+            "kind": "touch",
+            "number": 2,
+            "rect": [
+              172.0,
+              264.0,
+              136.0,
+              64.0
+            ]
+          },
+          {
+            "id": "dial-2",
+            "kind": "dial",
+            "number": 2,
+            "rect": [
+              204.0,
+              350.0,
+              72.0,
+              72.0
+            ]
+          },
+          {
+            "id": "touch-3",
+            "kind": "touch",
+            "number": 3,
+            "rect": [
+              312.0,
+              264.0,
+              136.0,
+              64.0
+            ]
+          },
+          {
+            "id": "dial-3",
+            "kind": "dial",
+            "number": 3,
+            "rect": [
+              344.0,
+              350.0,
+              72.0,
+              72.0
+            ]
+          },
+          {
+            "id": "touch-4",
+            "kind": "touch",
+            "number": 4,
+            "rect": [
+              452.0,
+              264.0,
+              136.0,
+              64.0
+            ]
+          },
+          {
+            "id": "dial-4",
+            "kind": "dial",
+            "number": 4,
+            "rect": [
+              484.0,
+              350.0,
+              72.0,
+              72.0
+            ]
+          }
+        ],
+        "height": 448.0,
+        "surface": [
+          32.0,
+          264.0,
+          556.0,
+          64.0
+        ],
+        "width": 608.0
+      },
+      "3fa0e6c57a4b472da2b329e8df1f1a17": {
+        "controls": [
+          {
+            "id": "key-1",
+            "kind": "key",
+            "number": 1,
+            "rect": [
+              32.0,
+              28.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-2",
+            "kind": "key",
+            "number": 2,
+            "rect": [
+              144.0,
+              28.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-3",
+            "kind": "key",
+            "number": 3,
+            "rect": [
+              256.0,
+              28.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-4",
+            "kind": "key",
+            "number": 4,
+            "rect": [
+              368.0,
+              28.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-5",
+            "kind": "key",
+            "number": 5,
+            "rect": [
+              480.0,
+              28.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-6",
+            "kind": "key",
+            "number": 6,
+            "rect": [
+              32.0,
+              140.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-7",
+            "kind": "key",
+            "number": 7,
+            "rect": [
+              144.0,
+              140.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-8",
+            "kind": "key",
+            "number": 8,
+            "rect": [
+              256.0,
+              140.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-9",
+            "kind": "key",
+            "number": 9,
+            "rect": [
+              368.0,
+              140.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-10",
+            "kind": "key",
+            "number": 10,
+            "rect": [
+              480.0,
+              140.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "dial-1",
+            "kind": "dial",
+            "number": 1,
+            "rect": [
+              64.0,
+              350.0,
+              72.0,
+              72.0
+            ]
+          },
+          {
+            "id": "dial-2",
+            "kind": "dial",
+            "number": 2,
+            "rect": [
+              204.0,
+              350.0,
+              72.0,
+              72.0
+            ]
+          },
+          {
+            "id": "dial-3",
+            "kind": "dial",
+            "number": 3,
+            "rect": [
+              344.0,
+              350.0,
+              72.0,
+              72.0
+            ]
+          },
+          {
+            "id": "dial-4",
+            "kind": "dial",
+            "number": 4,
+            "rect": [
+              484.0,
+              350.0,
+              72.0,
+              72.0
+            ]
+          },
+          {
+            "id": "touch-1",
+            "kind": "touch",
+            "number": 1,
+            "rect": [
+              32.0,
+              264.0,
+              108.0,
+              64.0
+            ]
+          },
+          {
+            "id": "touch-2",
+            "kind": "touch",
+            "number": 2,
+            "rect": [
+              144.0,
+              264.0,
+              108.0,
+              64.0
+            ]
+          },
+          {
+            "id": "touch-3",
+            "kind": "touch",
+            "number": 3,
+            "rect": [
+              256.0,
+              264.0,
+              108.0,
+              64.0
+            ]
+          },
+          {
+            "id": "touch-4",
+            "kind": "touch",
+            "number": 4,
+            "rect": [
+              368.0,
+              264.0,
+              108.0,
+              64.0
+            ]
+          },
+          {
+            "id": "touch-5",
+            "kind": "touch",
+            "number": 5,
+            "rect": [
+              480.0,
+              264.0,
+              108.0,
+              64.0
+            ]
+          }
+        ],
+        "height": 448.0,
+        "surface": [
+          32.0,
+          264.0,
+          556.0,
+          64.0
+        ],
+        "width": 608.0
+      }
+    },
+    "pressed": [],
+    "provider_error": null,
+    "smart_profiles_paused": true
+  }
+}

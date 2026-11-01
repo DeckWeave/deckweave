@@ -1,0 +1,30 @@
+{
+  "sha256": "30468854A7C62E450B17BCCADD3D49589A379E60766E57DEDC8A364067357F36",
+  "checks": "npm run check: 32 Rust tests, Svelte 0 errors/0 warnings, Prettier, web build, fmt/clippy, docs; native release build",
+  "deviceId": "3fa0e6c57a4b472da2b329e8df1f1a17",
+  "pageCount": 3,
+  "activePage": "1673c8c0505340a4be99f7b9c7e34b91",
+  "connection": {
+    "error": null,
+    "generation": 1,
+    "input_events": 0,
+    "last_input": null,
+    "output_frames": 28,
+    "state": "connected"
+  },
+  "feedback": [
+    {
+      "active": false,
+      "binding_id": "3c6c274a2b734a6481947185c9d3471e",
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "value": 0
+    },
+    {
+      "active": false,
+      "binding_id": "f3910b79e0bc4406abef7d06a5fd6d5e",
+      "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+      "value": 0
+    }
+  ],
+  "uiProbe": "T1 OFF -> ON -> OFF, two strip image transitions per check; D1 0 -> 1 -> 0, strip indicator updated; physical key fix and strip visual/contact position await owner retest"
+}

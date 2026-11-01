@@ -1,0 +1,129 @@
+{
+  "Case": "cpu-clock",
+  "Exit": 0,
+  "IntervalSeconds": 2.2183517999999998,
+  "CpuSeconds": 0.078125,
+  "PercentOneLogicalCore": 3.5217588121054564,
+  "LogicalProcessors": 24,
+  "Stderr": "",
+  "Snapshots": [
+    {
+      "Seconds": 2.2117185,
+      "Processes": [
+        {
+          "ProcessId": 29992,
+          "Name": "deckweave-openaction-host.exe",
+          "KernelModeTime": 625000,
+          "UserModeTime": 156250
+        },
+        {
+          "ProcessId": 39568,
+          "Name": "conhost.exe",
+          "KernelModeTime": 156250,
+          "UserModeTime": 0
+        },
+        {
+          "ProcessId": 40276,
+          "Name": "deckweave-desktop.exe",
+          "KernelModeTime": 312500,
+          "UserModeTime": 468750
+        },
+        {
+          "ProcessId": 41132,
+          "Name": "msedgewebview2.exe",
+          "KernelModeTime": 2968750,
+          "UserModeTime": 3125000
+        },
+        {
+          "ProcessId": 28388,
+          "Name": "msedgewebview2.exe",
+          "KernelModeTime": 0,
+          "UserModeTime": 156250
+        },
+        {
+          "ProcessId": 43672,
+          "Name": "msedgewebview2.exe",
+          "KernelModeTime": 1718750,
+          "UserModeTime": 2031250
+        },
+        {
+          "ProcessId": 31824,
+          "Name": "msedgewebview2.exe",
+          "KernelModeTime": 312500,
+          "UserModeTime": 468750
+        },
+        {
+          "ProcessId": 32436,
+          "Name": "msedgewebview2.exe",
+          "KernelModeTime": 156250,
+          "UserModeTime": 312500
+        },
+        {
+          "ProcessId": 43852,
+          "Name": "msedgewebview2.exe",
+          "KernelModeTime": 625000,
+          "UserModeTime": 312500
+        }
+      ]
+    },
+    {
+      "Seconds": 4.4300703,
+      "Processes": [
+        {
+          "ProcessId": 29992,
+          "Name": "deckweave-openaction-host.exe",
+          "KernelModeTime": 781250,
+          "UserModeTime": 156250
+        },
+        {
+          "ProcessId": 39568,
+          "Name": "conhost.exe",
+          "KernelModeTime": 156250,
+          "UserModeTime": 0
+        },
+        {
+          "ProcessId": 40276,
+          "Name": "deckweave-desktop.exe",
+          "KernelModeTime": 312500,
+          "UserModeTime": 468750
+        },
+        {
+          "ProcessId": 41132,
+          "Name": "msedgewebview2.exe",
+          "KernelModeTime": 3281250,
+          "UserModeTime": 3437500
+        },
+        {
+          "ProcessId": 28388,
+          "Name": "msedgewebview2.exe",
+          "KernelModeTime": 0,
+          "UserModeTime": 156250
+        },
+        {
+          "ProcessId": 43672,
+          "Name": "msedgewebview2.exe",
+          "KernelModeTime": 1718750,
+          "UserModeTime": 2031250
+        },
+        {
+          "ProcessId": 31824,
+          "Name": "msedgewebview2.exe",
+          "KernelModeTime": 312500,
+          "UserModeTime": 468750
+        },
+        {
+          "ProcessId": 32436,
+          "Name": "msedgewebview2.exe",
+          "KernelModeTime": 156250,
+          "UserModeTime": 312500
+        },
+        {
+          "ProcessId": 43852,
+          "Name": "msedgewebview2.exe",
+          "KernelModeTime": 625000,
+          "UserModeTime": 312500
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+npm notice run deckweave@0.1.0 check
+npm notice run npm run check:ui && npm run check:format && npm run build:web && npm run check:rust && npm run check:docs
+npm notice run deckweave@0.1.0 check:ui
+npm notice run svelte-check --tsconfig apps/desktop/tsconfig.json
+Loading svelte-check in workspace: g:\APPS\DW\deckweave
+Getting Svelte diagnostics...
+
+svelte-check found 0 errors and 0 warnings
+npm notice run deckweave@0.1.0 check:format
+npm notice run prettier --check "apps/desktop/src/**/*.{svelte,ts,css}" apps/desktop/vite.config.ts apps/desktop/svelte.config.js apps/desktop/tsconfig.json package.json scripts/*.mjs
+Checking formatting...
+All matched files use Prettier code style!
+npm notice run deckweave@0.1.0 build:web
+npm notice run vite build --config apps/desktop/vite.config.ts
+vite v8.3.4 building client environment for production...
+transforming...
+✓ 120 modules transformed.
+rendering chunks...
+computing gzip size...
+apps/desktop/dist/index.html                  0.36 kB │ gzip:  0.26 kB
+apps/desktop/dist/assets/index-CJFKmZ43.css   9.76 kB │ gzip:  3.00 kB
+apps/desktop/dist/assets/index-CgMr67PZ.js   74.69 kB │ gzip: 26.27 kB
+
+✓ built in 134ms
+npm notice run deckweave@0.1.0 check:rust
+npm notice run cargo fmt --all --check && cargo clippy --workspace --all-targets --locked -- -D warnings && cargo test --workspace --locked
+    Checking deckweave-core v0.1.0 (G:\APPS\DW\deckweave\crates\deckweave-core)
+    Checking deckweave-desktop v0.1.0 (G:\APPS\DW\deckweave\apps\desktop\src-tauri)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.97s
+   Compiling deckweave-core v0.1.0 (G:\APPS\DW\deckweave\crates\deckweave-core)
+   Compiling deckweave-desktop v0.1.0 (G:\APPS\DW\deckweave\apps\desktop\src-tauri)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.31s
+     Running unittests src\lib.rs (target\debug\deps\deckweave_core-57b7a1559453f543.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\workflows.rs (target\debug\deps\workflows-b4e2a7e9f9ed7a95.exe)
+
+running 10 tests
+test down_is_visible_and_repeated_down_or_orphan_up_does_not_duplicate_action ... ok
+test closing_editor_cancels_its_press_without_running_action_and_pause_is_global ... ok
+test dial_rotation_uses_signed_ticks_and_rejects_invalid_target_without_side_effects ... ok
+test stale_or_invalid_edit_cannot_overwrite_saved_configuration ... ok
+test removal_during_press_cancels_old_action ... ok
+test two_instances_have_independent_feedback_and_navigation ... ok
+test release_after_navigation_targets_original_binding ... ok
+test failed_sql_commit_does_not_publish_candidate_state ... ok
+test configuration_and_navigation_survive_restart_but_pressed_does_not ... ok
+test future_schema_and_corrupt_payload_are_not_reset ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running unittests src\main.rs (target\debug\deps\deckweave_desktop-8e7522877561d160.exe)
+
+running 2 tests
+test tests::only_registry_can_add_instances ... ok
+test tests::window_scope_prevents_cross_device_execution_and_registry_execution ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests deckweave_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+npm notice run deckweave@0.1.0 check:docs
+npm notice run node scripts/check-docs.mjs
+Documentation OK: 31 Markdown files, 180 local links, all modules covered by PLAN.

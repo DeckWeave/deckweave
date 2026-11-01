@@ -1,0 +1,8 @@
+{
+  "Package": "com.elgato.obsstudio",
+  "Version": "2.2.4",
+  "Exit": 0,
+  "Stdout": "{\n  \"evidenceType\": \"native-process-protocol-spike\",\n  \"feedback\": [\n    {\n      \"binding\": \"probe\",\n      \"event\": \"setSettings\",\n      \"payload\": {\n        \"isInMultiAction\": false\n      }\n    },\n    {\n      \"binding\": \"probe\",\n      \"event\": \"setState\",\n      \"payload\": {\n        \"state\": 1\n      }\n    }\n  ],\n  \"productionIntegrated\": false,\n  \"propertyInspector\": false,\n  \"status\": \"registered\"\n}\n",
+  "Stderr": null,
+  "InputsSent": 0
+}

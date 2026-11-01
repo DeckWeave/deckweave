@@ -1,0 +1,12 @@
+{
+  "Os": {
+    "Caption": "Майкрософт Windows 11 Pro",
+    "Version": "10.0.26200",
+    "BuildNumber": "26200"
+  },
+  "Cpu": {
+    "Name": "12th Gen Intel(R) Core(TM) i9-12900K",
+    "NumberOfLogicalProcessors": 24
+  },
+  "MemoryBytes": 68491919360
+}

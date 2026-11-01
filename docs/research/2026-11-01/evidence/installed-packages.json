@@ -1,0 +1,144 @@
+[
+  {
+    "Package": "com.elgato.keycreator.sdPlugin",
+    "ManifestSHA256": "9AAA34C4EFDAB7095BE78CF3847DB4D360E8E206B858824057964F30A0B1549C",
+    "ProtectedContainer": false,
+    "Version": "2.2.0.175",
+    "EntryPoint": null,
+    "PropertyInspector": null,
+    "Actions": []
+  },
+  {
+    "Package": "com.elgato.openai-codex.sdPlugin",
+    "ManifestSHA256": "4E6BCA96955EFF9AD67018C3867D483E6283D0E93836FD6C14462EBD0B3611EB",
+    "ProtectedContainer": true
+  },
+  {
+    "Package": "com.elgato.tutorial.sdPlugin",
+    "ManifestSHA256": "EEFB150FB628AD46E5E44512618C22FF6545189F14414F41FFFDC1D8985834B7",
+    "ProtectedContainer": false,
+    "Version": "1.0.4.3",
+    "EntryPoint": "app.html",
+    "PropertyInspector": "inspector.html",
+    "Actions": [
+      {
+        "UUID": "com.elgato.tutorial.plugins",
+        "PropertyInspectorPath": null,
+        "Controllers": null
+      },
+      {
+        "UUID": "com.elgato.tutorial.accounts",
+        "PropertyInspectorPath": null,
+        "Controllers": null
+      },
+      {
+        "UUID": "com.elgato.tutorial.actions",
+        "PropertyInspectorPath": null,
+        "Controllers": null
+      },
+      {
+        "UUID": "com.elgato.tutorial.multi-actions",
+        "PropertyInspectorPath": null,
+        "Controllers": null
+      },
+      {
+        "UUID": "com.elgato.tutorial.folders",
+        "PropertyInspectorPath": null,
+        "Controllers": null
+      },
+      {
+        "UUID": "com.elgato.tutorial.pages",
+        "PropertyInspectorPath": null,
+        "Controllers": null
+      },
+      {
+        "UUID": "com.elgato.tutorial.profiles",
+        "PropertyInspectorPath": null,
+        "Controllers": null
+      },
+      {
+        "UUID": "com.elgato.tutorial.dial-stacks",
+        "PropertyInspectorPath": null,
+        "Controllers": null
+      },
+      {
+        "UUID": "com.elgato.tutorial.smart-profile",
+        "PropertyInspectorPath": null,
+        "Controllers": null
+      },
+      {
+        "UUID": "com.elgato.tutorial.volume-controller",
+        "PropertyInspectorPath": null,
+        "Controllers": null
+      },
+      {
+        "UUID": "com.elgato.tutorial.wave-link",
+        "PropertyInspectorPath": null,
+        "Controllers": null
+      }
+    ]
+  },
+  {
+    "Package": "com.elgato.weather.sdPlugin",
+    "ManifestSHA256": "FB0F4FEFEC54FEAFEF73F92BA316DBBCFC3A9DED2F21BE55030AC0B6068F99C4",
+    "ProtectedContainer": true
+  },
+  {
+    "Package": "com.nicollasr.streamdeckvsc.sdPlugin",
+    "ManifestSHA256": "27FF55C2A529130677A12770C2F2A1516C19029025D9E80F75D194481D5AF2A6",
+    "ProtectedContainer": false,
+    "Version": "5.1.3",
+    "EntryPoint": "com.nicollasr.streamdeckvsc",
+    "PropertyInspector": null,
+    "Actions": [
+      {
+        "UUID": "com.nicollasr.streamdeckvsc.executecommand",
+        "PropertyInspectorPath": "PropertyInspector/ExecuteCommand.html",
+        "Controllers": null
+      },
+      {
+        "UUID": "com.nicollasr.streamdeckvsc.executeterminalcommand",
+        "PropertyInspectorPath": "PropertyInspector/ExecuteTerminalCommand.html",
+        "Controllers": null
+      },
+      {
+        "UUID": "com.nicollasr.streamdeckvsc.insertsnippet",
+        "PropertyInspectorPath": "PropertyInspector/InsertSnippet.html",
+        "Controllers": null
+      },
+      {
+        "UUID": "com.nicollasr.streamdeckvsc.changelanguage",
+        "PropertyInspectorPath": "PropertyInspector/ChangeLanguage.html",
+        "Controllers": null
+      },
+      {
+        "UUID": "com.nicollasr.streamdeckvsc.createterminal",
+        "PropertyInspectorPath": "PropertyInspector/CreateTerminal.html",
+        "Controllers": null
+      },
+      {
+        "UUID": "com.nicollasr.streamdeckvsc.openfolder",
+        "PropertyInspectorPath": "PropertyInspector/OpenFolder.html",
+        "Controllers": null
+      }
+    ]
+  },
+  {
+    "Package": "fail.marc.onairclock.sdPlugin",
+    "ManifestSHA256": "2AFCF37AEF2135609DB533FA3810E4E3088F0A627DCD180FECC26AE0FA7B3441",
+    "ProtectedContainer": false,
+    "Version": "1.3.0",
+    "EntryPoint": "index.html",
+    "PropertyInspector": "propertyinspector/index.html",
+    "Actions": [
+      {
+        "UUID": "fail.marc.onairclock.action",
+        "PropertyInspectorPath": null,
+        "Controllers": [
+          "Keypad",
+          "Encoder"
+        ]
+      }
+    ]
+  }
+]

@@ -1,0 +1,74 @@
+{
+  "observedOn": "2026-11-01",
+  "scope": "Source reading only; external projects not built or executed",
+  "repositories": [
+    {
+      "repository": "Aiacos/ajazz-control-center",
+      "branch": "develop",
+      "sha": "03a29f7a90dd32057ca7cd0d6e6fa8f13d5400f3",
+      "tree": "649a365585b3f685bc411ba5078a8e4732ced64f",
+      "url": "https://github.com/Aiacos/ajazz-control-center/commit/03a29f7a90dd32057ca7cd0d6e6fa8f13d5400f3"
+    },
+    {
+      "repository": "MiraboxSpace/StreamDock-Device-SDK",
+      "branch": "main",
+      "sha": "324d498de6981ee5d9d437bf05818599b3c20781",
+      "tree": "99d7ec22d556a2b26ba2494dfeb2892d10d1f47e",
+      "url": "https://github.com/MiraboxSpace/StreamDock-Device-SDK/commit/324d498de6981ee5d9d437bf05818599b3c20781"
+    },
+    {
+      "repository": "MiraboxSpace/StreamDock-Plugin-SDK",
+      "branch": "main",
+      "sha": "a3fb38490a36f507a09af8b78bdddac49c10668f",
+      "tree": "9e296caf9880b025286ad3ee2bf4fa8a578d8a9f",
+      "url": "https://github.com/MiraboxSpace/StreamDock-Plugin-SDK/commit/a3fb38490a36f507a09af8b78bdddac49c10668f"
+    }
+  ],
+  "elgatoRuntime": {
+    "compoundActionExecutionTested": false,
+    "dialTouchHardwareTested": false
+  },
+  "userDecision": {
+    "dialStack": "required in first full release",
+    "actionWheel": "required in first full release",
+    "supersedes": "Dial Stack deferred"
+  },
+  "videos": [
+    {
+      "id": "2gWNww3rUx8",
+      "author": "Gael LEVEL",
+      "published": "2026-04-19",
+      "url": "https://www.youtube.com/watch?v=2gWNww3rUx8",
+      "playbackObserved": false,
+      "transcriptAvailable": false,
+      "blocker": "YouTube asks to sign in to confirm visitor is not a bot",
+      "descriptionAndChaptersRead": true
+    },
+    {
+      "id": "ZvxIgoOOTHA",
+      "author": "nutty",
+      "published": null,
+      "url": "https://www.youtube.com/watch?v=ZvxIgoOOTHA",
+      "playbackObserved": false,
+      "transcriptAvailable": false,
+      "blocker": "YouTube asks to sign in to confirm visitor is not a bot",
+      "descriptionAndChaptersRead": true
+    },
+    {
+      "id": "Q2Zs50E8Ld4",
+      "author": "CoalitionGaming",
+      "published": "2023-06-20",
+      "url": "https://www.youtube.com/watch?v=Q2Zs50E8Ld4",
+      "playbackObserved": false,
+      "transcriptAvailable": false,
+      "blocker": "YouTube asks to sign in to confirm visitor is not a bot",
+      "descriptionAndChaptersRead": true
+    }
+  ],
+  "relatedDocuments": [
+    "ADVANCED-INTERACTIONS.md",
+    "REFERENCE-IMPLEMENTATIONS.md",
+    "VIDEO-REVIEW.md",
+    "RESEARCH-GAPS.md"
+  ]
+}

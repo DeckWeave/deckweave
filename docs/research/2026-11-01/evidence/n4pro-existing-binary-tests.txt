@@ -1,0 +1,41 @@
+
+running 37 tests
+test display::tests::volatile_region_packet_has_bounded_coordinates_and_no_flash_opcode ... ok
+test display::tests::volatile_region_rejects_out_of_canvas_or_oversized_data ... ok
+test flash::tests::persistent_transfer_is_one_bounded_log_transaction ... ok
+test flash::tests::persistent_transfer_rejects_empty_and_oversized_images ... ok
+test haptic::tests::parser_rejects_actuator_semantics ... ok
+test haptic::tests::reports_change_only_the_documented_vibration_slot ... ok
+test light::tests::arbitrary_oversized_commands_and_brightness_are_rejected ... ok
+test light::tests::diagnostic_plan_is_bounded_and_always_finishes_in_a_dim_neutral_state ... ok
+test light::tests::reports_match_the_documented_n4_commands_and_are_zero_padded ... ok
+test probe_flash::tests::fixed_brand_image_has_exact_canvas_geometry ... ok
+test probe_pointer::tests::pointer_mapping_stretches_the_observed_x_range_and_bounds_y ... ok
+test report::tests::every_truncated_touch_packet_is_rejected_without_fabricating_a_button ... ok
+test report::tests::preserves_state_and_rejects_wrong_header_report_id_and_oversized_input ... ok
+test runtime::control::tests::disconnect_after_accepted_fails_only_the_correlated_frame ... ok
+test runtime::device::haptic::tests::updates_are_latest_wins_and_default_to_enabled ... ok
+test runtime::device::light::tests::updates_are_latest_wins_and_leave_other_rings_unchanged ... ok
+test runtime::device::observe::output_order::tests::continuous_frames_cannot_starve_a_waiting_legacy_card ... ok
+test runtime::device::observe::signal::tests::raw_pointer_sample_has_an_explicit_unscaled_frame_and_quality ... ok
+test runtime::device::tests::cleanup_waits_for_the_serial_writer_then_drops_full_frame_state ... ok
+test runtime::device::tests::disconnected_and_failed_transfers_restore_latest_frames_then_accept_live_edits ... ok
+test runtime::device::tests::fairness::input_continues_while_frame_and_legacy_card_compete_for_usb ... ok
+test runtime::device::tests::haptic::policy_reapplies_latest_value_after_reconnect ... ok
+test runtime::device::tests::hot_legacy_key_cannot_starve_another_pending_card ... ok
+test runtime::device::tests::key_and_strip_full_frames_transfer_before_their_exact_receipts ... ok
+test runtime::device::tests::text_layer_survives_style_edits_and_can_be_removed_without_reconnecting ... ok
+test runtime::frame::tests::addressed_release_fences_late_frames_and_allows_a_new_lease ... ok
+test runtime::frame::tests::full_canvas_excludes_independent_key_and_strip_frame_owners ... ok
+test runtime::frame::tests::full_canvas_is_latest_wins_without_a_catch_up_queue ... ok
+test runtime::frame::tests::hot_early_key_cannot_starve_a_pending_strip_frame ... ok
+test runtime::frame::tests::owner_geometry_session_and_lease_are_fenced_before_usb ... ok
+test runtime::frame::tests::receipts_preserve_exact_frame_correlation_and_failure_category ... ok
+test runtime::frame::tests::released_lease_tombstones_are_bounded ... ok
+test runtime::gate::tests::buffered_held_key_cannot_replay_and_duplicate_steps_are_preserved ... ok
+test runtime::metadata::tests::display_admission_rejects_wrong_owner_epoch_route_and_payload ... ok
+test runtime::metadata::tests::haptic_policy_admission_is_global_boolean_and_owner_scoped ... ok
+test runtime::metadata::tests::ring_light_admission_is_exact_and_bounded ... ok
+test session::tests::connection_report_has_the_required_id_size_and_zero_padding ... ok
+
+test result: ok. 37 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.28s

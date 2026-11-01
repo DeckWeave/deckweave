@@ -1,0 +1,21 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "DeckWeave",
+  "version": "0.1.0",
+  "identifier": "app.deckweave.studio",
+  "build": {
+    "beforeDevCommand": "npm --prefix ../.. run dev:web",
+    "beforeBuildCommand": "npm --prefix ../.. run build:web",
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      { "label": "main", "title": "DeckWeave", "width": 920, "height": 640, "minWidth": 720, "minHeight": 500 }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; connect-src ipc: http://ipc.localhost"
+    }
+  },
+  "bundle": { "active": false, "icon": ["icons/icon.ico", "icons/icon.png"] }
+}

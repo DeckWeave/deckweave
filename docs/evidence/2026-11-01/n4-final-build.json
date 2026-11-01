@@ -1,0 +1,20 @@
+{
+  "executable": "G:\\APPS\\DW\\deckweave\\target\\release\\deckweave-desktop.exe",
+  "bytes": 12412416,
+  "sha256": "F4D08A67BB96581DE3F96B220C91B9B64DDDB1F143F7A65A78ACF705F8F7A16E",
+  "checks": "npm run check: Svelte 0 errors/0 warnings, Prettier, web build, cargo fmt/clippy -D warnings, 25 Rust tests, documentation links; npm run build native release",
+  "n4Id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+  "pageCount": 2,
+  "activePage": "1673c8c0505340a4be99f7b9c7e34b91",
+  "connection": {
+    "error": null,
+    "generation": 1,
+    "input_events": 0,
+    "last_input": null,
+    "output_frames": 10,
+    "state": "connected"
+  },
+  "editingWindows": 1,
+  "smartProfilesPaused": true,
+  "physicalAcceptance": "Pending owner input and visual confirmation"
+}

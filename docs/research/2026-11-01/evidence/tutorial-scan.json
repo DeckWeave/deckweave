@@ -1,0 +1,6 @@
+{
+  "Case": "tutorial manifest scan",
+  "Exit": 1,
+  "Stdout": null,
+  "Stderr": "Error: EmptyField(\"Name\")\r\n"
+}

@@ -1,0 +1,30 @@
+[
+  {
+    "Package": "fail.marc.onairclock.sdPlugin",
+    "Version": "1.3.0",
+    "ManifestSHA256": "2AFCF37AEF2135609DB533FA3810E4E3088F0A627DCD180FECC26AE0FA7B3441",
+    "EntryPoint": "index.html",
+    "EntryPointSHA256": "1620DCEC5139D1FA0419F632F211B1B993F917F84E35F2C93A033B4B3C9010D5"
+  },
+  {
+    "Package": "com.nicollasr.streamdeckvsc.sdPlugin",
+    "Version": "5.1.3",
+    "ManifestSHA256": "27FF55C2A529130677A12770C2F2A1516C19029025D9E80F75D194481D5AF2A6",
+    "EntryPoint": "com.nicollasr.streamdeckvsc",
+    "EntryPointSHA256": "FFBCB697CC6FF6181131EBFADBE0311DA0B7F8DF5B1F609852336AB25ABDE462"
+  },
+  {
+    "Package": "com.elgato.obsstudio.sdPlugin",
+    "Version": "2.2.4",
+    "ManifestSHA256": "CF609E0C6DAF757BABD0AA506547EA005F0CED06A881C4FD58FFDD6990315BAD",
+    "EntryPoint": "source/main.html",
+    "EntryPointSHA256": "DDDDA5C4BBA3055038CE651AA01018EB76DC907E0BEF65704BEDA9BAD73D383C"
+  },
+  {
+    "Package": "com.elgato.hello-world.sdPlugin",
+    "Version": "0.1.0.0",
+    "ManifestSHA256": "17535CB9CA21D357F4940805FD01AB01FCD15B396D2C63B907E1B871DDC373C2",
+    "EntryPoint": "bin/plugin.js",
+    "EntryPointSHA256": "5C95FF2BD92353F4A520D5349441087E1D4BFBDB4BE2D9BF66B5CDE45CDFE3D2"
+  }
+]

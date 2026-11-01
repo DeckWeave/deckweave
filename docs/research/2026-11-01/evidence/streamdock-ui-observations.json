@@ -1,0 +1,35 @@
+{
+  "observedOn": "2026-11-01",
+  "device": "N4 Pro",
+  "startingView": {
+    "scenario": 1,
+    "page": 1,
+    "mode": "control panel",
+    "filter": "keys",
+    "selected": "Mail"
+  },
+  "observations": [
+    "Separate Keys/Dials filter",
+    "Dials library: Hotkey, Super hotkeys, Mouse events, Multimedia, System volume; Control trigger, Action wheel, Dial action group",
+    "Knob mode displays encoder-associated strip tiles and strip page markers",
+    "Knob mode exposes two swipe targets: page or scenario",
+    "Selecting Master strip tile exposes volume operation and rotate/press trigger hints",
+    "Right click strip tile exposes copy/paste/delete/background operations, no test command observed",
+    "Selecting ring opens RGB/device appearance fields rather than volume inspector"
+  ],
+  "mutations": [
+    {
+      "change": "Control panel → Knob mode",
+      "restored": true
+    }
+  ],
+  "finalView": {
+    "scenario": 1,
+    "page": 1,
+    "mode": "control panel",
+    "filter": "keys",
+    "selected": "Mail"
+  },
+  "physicalInputTested": false,
+  "assignedActionsChanged": false
+}

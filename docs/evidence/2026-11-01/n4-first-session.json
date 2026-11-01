@@ -1,0 +1,881 @@
+{
+  "note": "Output frames count successful HID transfers, not display acknowledgements.",
+  "recent_inputs": [],
+  "snapshot": {
+    "configuration": {
+      "devices": [
+        {
+          "hardware_key": null,
+          "id": "17cf14920fb14108b8e0bbb0811a2037",
+          "name": "Virtual Studio 01",
+          "profile": {
+            "active_page_id": "4c4dbe43204743d68bca893dab713631",
+            "id": "a5568dca4ab64010acca9fb96109ddd9",
+            "name": "Default",
+            "pages": [
+              {
+                "bindings": {
+                  "key-1": {
+                    "id": "a1d9253ed38844db901627d0559df528",
+                    "kind": "counter",
+                    "label": "Проверка сохранения"
+                  },
+                  "key-2": {
+                    "id": "1f47e0190ed449f4920b5390aaee2169",
+                    "kind": "toggle",
+                    "label": "Toggle"
+                  },
+                  "key-3": {
+                    "id": "6d337a59c6224feeab3d8ace8db6f3d9",
+                    "kind": "toggle",
+                    "label": "Переключатель"
+                  }
+                },
+                "id": "4c4dbe43204743d68bca893dab713631",
+                "name": "1"
+              },
+              {
+                "bindings": {},
+                "id": "34c4cc1d222b4cd2a7d26cee87f24be4",
+                "name": "2"
+              }
+            ]
+          },
+          "provider_id": "deckweave.virtual"
+        },
+        {
+          "hardware_key": null,
+          "id": "3ac0dfd0a18d47e9afdad843b283a14a",
+          "name": "Virtual Studio 02",
+          "profile": {
+            "active_page_id": "1cdf8dc58390475fb63d6d241d63223a",
+            "id": "1b18cc5abb504d9da1fc97243fe3a04a",
+            "name": "Default",
+            "pages": [
+              {
+                "bindings": {
+                  "key-1": {
+                    "id": "2f9359ca4e6340f18b861e23f44eacc7",
+                    "kind": "counter",
+                    "label": "Counter"
+                  },
+                  "key-2": {
+                    "id": "5fc86957ed6444719ebbc9b3be9ae148",
+                    "kind": "toggle",
+                    "label": "Toggle"
+                  }
+                },
+                "id": "1cdf8dc58390475fb63d6d241d63223a",
+                "name": "1"
+              }
+            ]
+          },
+          "provider_id": "deckweave.virtual"
+        },
+        {
+          "hardware_key": "n4pro-42d55dfc946b88969ae4d4d16a922201ae09eccca16f6b55464cc1a4b98fb47a",
+          "id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+          "name": "Mirabox N4 Pro · 42d55dfc",
+          "profile": {
+            "active_page_id": "1673c8c0505340a4be99f7b9c7e34b91",
+            "id": "ef2154e056e241bebb465227bf400e36",
+            "name": "Default",
+            "pages": [
+              {
+                "bindings": {
+                  "dial-1": {
+                    "id": "3c6c274a2b734a6481947185c9d3471e",
+                    "kind": "counter",
+                    "label": "D1"
+                  },
+                  "dial-2": {
+                    "id": "21845e801fb54e5fb9d4177aca502ff9",
+                    "kind": "counter",
+                    "label": "D2"
+                  },
+                  "dial-3": {
+                    "id": "5817c91d1fcd4cf689082d1d0710c27f",
+                    "kind": "counter",
+                    "label": "D3"
+                  },
+                  "dial-4": {
+                    "id": "2e191b896e644a2fa3b07cfa6fe2c53e",
+                    "kind": "counter",
+                    "label": "D4"
+                  },
+                  "key-1": {
+                    "id": "edd0452ba69c4a3ea26ba76e4da65c09",
+                    "kind": "counter",
+                    "label": "K1"
+                  },
+                  "key-10": {
+                    "id": "9e5739bc5cca4c0bb7831306e6872da3",
+                    "kind": "counter",
+                    "label": "K10"
+                  },
+                  "key-2": {
+                    "id": "cb60debb599d4c1380140a3b404ddd92",
+                    "kind": "toggle",
+                    "label": "K2"
+                  },
+                  "key-3": {
+                    "id": "b329613fd2c94961b5bfeda122479fe2",
+                    "kind": "counter",
+                    "label": "K3"
+                  },
+                  "key-4": {
+                    "id": "ab570759bacd439ab6ae86ba24106fe1",
+                    "kind": "counter",
+                    "label": "K4"
+                  },
+                  "key-5": {
+                    "id": "2ed00eb6a0ef4a4abdc28e631a94b67a",
+                    "kind": "counter",
+                    "label": "K5"
+                  },
+                  "key-6": {
+                    "id": "e4d4de08a3a747d8ba189887db908a9f",
+                    "kind": "counter",
+                    "label": "K6"
+                  },
+                  "key-7": {
+                    "id": "d0c3a0d436c54b54b7b5801eb94cc902",
+                    "kind": "counter",
+                    "label": "K7"
+                  },
+                  "key-8": {
+                    "id": "7a7444c009e74afdbb3adc372108cfba",
+                    "kind": "counter",
+                    "label": "K8"
+                  },
+                  "key-9": {
+                    "id": "2aa8431735a34052807077d8de75b886",
+                    "kind": "counter",
+                    "label": "K9"
+                  },
+                  "touch-1": {
+                    "id": "f3910b79e0bc4406abef7d06a5fd6d5e",
+                    "kind": "toggle",
+                    "label": "T1"
+                  },
+                  "touch-2": {
+                    "id": "b5fb1dabcf234a548127fe76edef78bb",
+                    "kind": "toggle",
+                    "label": "T2"
+                  },
+                  "touch-3": {
+                    "id": "fae6ff679f444cb980d0dc1b0f6804e0",
+                    "kind": "toggle",
+                    "label": "T3"
+                  },
+                  "touch-4": {
+                    "id": "bd43698ea7694718b59d5f5ae7985c2e",
+                    "kind": "toggle",
+                    "label": "T4"
+                  },
+                  "touch-5": {
+                    "id": "5cd50bf1c2f3485189f389594c4fe0b3",
+                    "kind": "toggle",
+                    "label": "T5"
+                  }
+                },
+                "id": "1673c8c0505340a4be99f7b9c7e34b91",
+                "name": "1"
+              },
+              {
+                "bindings": {},
+                "id": "ccd6d477157248e5b9e30708336cabe0",
+                "name": "2"
+              }
+            ]
+          },
+          "provider_id": "deckweave.n4"
+        }
+      ],
+      "locale": "ru",
+      "revision": 10
+    },
+    "connections": {
+      "17cf14920fb14108b8e0bbb0811a2037": {
+        "error": null,
+        "generation": 0,
+        "input_events": 0,
+        "last_input": null,
+        "output_frames": 0,
+        "state": "virtual"
+      },
+      "3ac0dfd0a18d47e9afdad843b283a14a": {
+        "error": null,
+        "generation": 0,
+        "input_events": 0,
+        "last_input": null,
+        "output_frames": 0,
+        "state": "virtual"
+      },
+      "3fa0e6c57a4b472da2b329e8df1f1a17": {
+        "error": null,
+        "generation": 1,
+        "input_events": 0,
+        "last_input": null,
+        "output_frames": 32,
+        "state": "connected"
+      }
+    },
+    "editing_windows": 1,
+    "event_sequence": 39,
+    "feedback": [
+      {
+        "active": false,
+        "binding_id": "edd0452ba69c4a3ea26ba76e4da65c09",
+        "device_id": "3fa0e6c57a4b472da2b329e8df1f1a17",
+        "value": 1
+      }
+    ],
+    "geometries": {
+      "17cf14920fb14108b8e0bbb0811a2037": {
+        "controls": [
+          {
+            "id": "key-1",
+            "kind": "key",
+            "number": 1,
+            "rect": [
+              32.0,
+              28.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-2",
+            "kind": "key",
+            "number": 2,
+            "rect": [
+              144.0,
+              28.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-3",
+            "kind": "key",
+            "number": 3,
+            "rect": [
+              256.0,
+              28.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-4",
+            "kind": "key",
+            "number": 4,
+            "rect": [
+              368.0,
+              28.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-5",
+            "kind": "key",
+            "number": 5,
+            "rect": [
+              480.0,
+              28.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-6",
+            "kind": "key",
+            "number": 6,
+            "rect": [
+              32.0,
+              140.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-7",
+            "kind": "key",
+            "number": 7,
+            "rect": [
+              144.0,
+              140.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-8",
+            "kind": "key",
+            "number": 8,
+            "rect": [
+              256.0,
+              140.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-9",
+            "kind": "key",
+            "number": 9,
+            "rect": [
+              368.0,
+              140.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-10",
+            "kind": "key",
+            "number": 10,
+            "rect": [
+              480.0,
+              140.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "touch-1",
+            "kind": "touch",
+            "number": 1,
+            "rect": [
+              32.0,
+              264.0,
+              136.0,
+              64.0
+            ]
+          },
+          {
+            "id": "dial-1",
+            "kind": "dial",
+            "number": 1,
+            "rect": [
+              64.0,
+              350.0,
+              72.0,
+              72.0
+            ]
+          },
+          {
+            "id": "touch-2",
+            "kind": "touch",
+            "number": 2,
+            "rect": [
+              172.0,
+              264.0,
+              136.0,
+              64.0
+            ]
+          },
+          {
+            "id": "dial-2",
+            "kind": "dial",
+            "number": 2,
+            "rect": [
+              204.0,
+              350.0,
+              72.0,
+              72.0
+            ]
+          },
+          {
+            "id": "touch-3",
+            "kind": "touch",
+            "number": 3,
+            "rect": [
+              312.0,
+              264.0,
+              136.0,
+              64.0
+            ]
+          },
+          {
+            "id": "dial-3",
+            "kind": "dial",
+            "number": 3,
+            "rect": [
+              344.0,
+              350.0,
+              72.0,
+              72.0
+            ]
+          },
+          {
+            "id": "touch-4",
+            "kind": "touch",
+            "number": 4,
+            "rect": [
+              452.0,
+              264.0,
+              136.0,
+              64.0
+            ]
+          },
+          {
+            "id": "dial-4",
+            "kind": "dial",
+            "number": 4,
+            "rect": [
+              484.0,
+              350.0,
+              72.0,
+              72.0
+            ]
+          }
+        ],
+        "height": 448.0,
+        "surface": [
+          32.0,
+          264.0,
+          556.0,
+          64.0
+        ],
+        "width": 608.0
+      },
+      "3ac0dfd0a18d47e9afdad843b283a14a": {
+        "controls": [
+          {
+            "id": "key-1",
+            "kind": "key",
+            "number": 1,
+            "rect": [
+              32.0,
+              28.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-2",
+            "kind": "key",
+            "number": 2,
+            "rect": [
+              144.0,
+              28.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-3",
+            "kind": "key",
+            "number": 3,
+            "rect": [
+              256.0,
+              28.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-4",
+            "kind": "key",
+            "number": 4,
+            "rect": [
+              368.0,
+              28.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-5",
+            "kind": "key",
+            "number": 5,
+            "rect": [
+              480.0,
+              28.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-6",
+            "kind": "key",
+            "number": 6,
+            "rect": [
+              32.0,
+              140.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-7",
+            "kind": "key",
+            "number": 7,
+            "rect": [
+              144.0,
+              140.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-8",
+            "kind": "key",
+            "number": 8,
+            "rect": [
+              256.0,
+              140.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-9",
+            "kind": "key",
+            "number": 9,
+            "rect": [
+              368.0,
+              140.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-10",
+            "kind": "key",
+            "number": 10,
+            "rect": [
+              480.0,
+              140.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "touch-1",
+            "kind": "touch",
+            "number": 1,
+            "rect": [
+              32.0,
+              264.0,
+              136.0,
+              64.0
+            ]
+          },
+          {
+            "id": "dial-1",
+            "kind": "dial",
+            "number": 1,
+            "rect": [
+              64.0,
+              350.0,
+              72.0,
+              72.0
+            ]
+          },
+          {
+            "id": "touch-2",
+            "kind": "touch",
+            "number": 2,
+            "rect": [
+              172.0,
+              264.0,
+              136.0,
+              64.0
+            ]
+          },
+          {
+            "id": "dial-2",
+            "kind": "dial",
+            "number": 2,
+            "rect": [
+              204.0,
+              350.0,
+              72.0,
+              72.0
+            ]
+          },
+          {
+            "id": "touch-3",
+            "kind": "touch",
+            "number": 3,
+            "rect": [
+              312.0,
+              264.0,
+              136.0,
+              64.0
+            ]
+          },
+          {
+            "id": "dial-3",
+            "kind": "dial",
+            "number": 3,
+            "rect": [
+              344.0,
+              350.0,
+              72.0,
+              72.0
+            ]
+          },
+          {
+            "id": "touch-4",
+            "kind": "touch",
+            "number": 4,
+            "rect": [
+              452.0,
+              264.0,
+              136.0,
+              64.0
+            ]
+          },
+          {
+            "id": "dial-4",
+            "kind": "dial",
+            "number": 4,
+            "rect": [
+              484.0,
+              350.0,
+              72.0,
+              72.0
+            ]
+          }
+        ],
+        "height": 448.0,
+        "surface": [
+          32.0,
+          264.0,
+          556.0,
+          64.0
+        ],
+        "width": 608.0
+      },
+      "3fa0e6c57a4b472da2b329e8df1f1a17": {
+        "controls": [
+          {
+            "id": "key-1",
+            "kind": "key",
+            "number": 1,
+            "rect": [
+              32.0,
+              28.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-2",
+            "kind": "key",
+            "number": 2,
+            "rect": [
+              144.0,
+              28.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-3",
+            "kind": "key",
+            "number": 3,
+            "rect": [
+              256.0,
+              28.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-4",
+            "kind": "key",
+            "number": 4,
+            "rect": [
+              368.0,
+              28.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-5",
+            "kind": "key",
+            "number": 5,
+            "rect": [
+              480.0,
+              28.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-6",
+            "kind": "key",
+            "number": 6,
+            "rect": [
+              32.0,
+              140.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-7",
+            "kind": "key",
+            "number": 7,
+            "rect": [
+              144.0,
+              140.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-8",
+            "kind": "key",
+            "number": 8,
+            "rect": [
+              256.0,
+              140.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-9",
+            "kind": "key",
+            "number": 9,
+            "rect": [
+              368.0,
+              140.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "key-10",
+            "kind": "key",
+            "number": 10,
+            "rect": [
+              480.0,
+              140.0,
+              96.0,
+              96.0
+            ]
+          },
+          {
+            "id": "dial-1",
+            "kind": "dial",
+            "number": 1,
+            "rect": [
+              64.0,
+              350.0,
+              72.0,
+              72.0
+            ]
+          },
+          {
+            "id": "dial-2",
+            "kind": "dial",
+            "number": 2,
+            "rect": [
+              204.0,
+              350.0,
+              72.0,
+              72.0
+            ]
+          },
+          {
+            "id": "dial-3",
+            "kind": "dial",
+            "number": 3,
+            "rect": [
+              344.0,
+              350.0,
+              72.0,
+              72.0
+            ]
+          },
+          {
+            "id": "dial-4",
+            "kind": "dial",
+            "number": 4,
+            "rect": [
+              484.0,
+              350.0,
+              72.0,
+              72.0
+            ]
+          },
+          {
+            "id": "touch-1",
+            "kind": "touch",
+            "number": 1,
+            "rect": [
+              32.0,
+              264.0,
+              108.0,
+              64.0
+            ]
+          },
+          {
+            "id": "touch-2",
+            "kind": "touch",
+            "number": 2,
+            "rect": [
+              144.0,
+              264.0,
+              108.0,
+              64.0
+            ]
+          },
+          {
+            "id": "touch-3",
+            "kind": "touch",
+            "number": 3,
+            "rect": [
+              256.0,
+              264.0,
+              108.0,
+              64.0
+            ]
+          },
+          {
+            "id": "touch-4",
+            "kind": "touch",
+            "number": 4,
+            "rect": [
+              368.0,
+              264.0,
+              108.0,
+              64.0
+            ]
+          },
+          {
+            "id": "touch-5",
+            "kind": "touch",
+            "number": 5,
+            "rect": [
+              480.0,
+              264.0,
+              108.0,
+              64.0
+            ]
+          }
+        ],
+        "height": 448.0,
+        "surface": [
+          32.0,
+          264.0,
+          556.0,
+          64.0
+        ],
+        "width": 608.0
+      }
+    },
+    "pressed": [],
+    "provider_error": null,
+    "smart_profiles_paused": true
+  }
+}

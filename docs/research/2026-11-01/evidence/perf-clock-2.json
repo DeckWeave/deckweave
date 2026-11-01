@@ -1,0 +1,82 @@
+{
+  "Case": "perf-clock-2",
+  "Exit": 0,
+  "WallSeconds": 5.637,
+  "SampledCpuSeconds": 0.0,
+  "PeakWorkingSetMiB": 381.87,
+  "PeakPrivateCommitMiB": 182.0,
+  "SteadyMeanWorkingSetMiB": 380.18,
+  "SteadyMeanPrivateCommitMiB": 180.2,
+  "MaxProcesses": 9.0,
+  "Feedback": [
+    {
+      "Event": "setImage",
+      "Count": 21
+    }
+  ],
+  "Stderr": "",
+  "Samples": [
+    {
+      "Seconds": 0.233,
+      "ProcessCount": 4,
+      "WorkingSetMiB": 98.89,
+      "PrivateCommitMiB": 24.8
+    },
+    {
+      "Seconds": 0.796,
+      "ProcessCount": 9,
+      "WorkingSetMiB": 368.31,
+      "PrivateCommitMiB": 174.84
+    },
+    {
+      "Seconds": 1.358,
+      "ProcessCount": 9,
+      "WorkingSetMiB": 366.46,
+      "PrivateCommitMiB": 172.63
+    },
+    {
+      "Seconds": 1.918,
+      "ProcessCount": 9,
+      "WorkingSetMiB": 368.62,
+      "PrivateCommitMiB": 173.84
+    },
+    {
+      "Seconds": 2.486,
+      "ProcessCount": 9,
+      "WorkingSetMiB": 377.02,
+      "PrivateCommitMiB": 178.32
+    },
+    {
+      "Seconds": 3.046,
+      "ProcessCount": 9,
+      "WorkingSetMiB": 378.93,
+      "PrivateCommitMiB": 179.23
+    },
+    {
+      "Seconds": 3.613,
+      "ProcessCount": 9,
+      "WorkingSetMiB": 380.64,
+      "PrivateCommitMiB": 179.78
+    },
+    {
+      "Seconds": 4.2,
+      "ProcessCount": 9,
+      "WorkingSetMiB": 381.11,
+      "PrivateCommitMiB": 180.61
+    },
+    {
+      "Seconds": 4.771,
+      "ProcessCount": 9,
+      "WorkingSetMiB": 381.49,
+      "PrivateCommitMiB": 181.26
+    },
+    {
+      "Seconds": 5.328,
+      "ProcessCount": 9,
+      "WorkingSetMiB": 381.87,
+      "PrivateCommitMiB": 182.0
+    }
+  ],
+  "CpuMeasurementValid": false,
+  "CpuMeasurementNote": "Counter accumulation returned invalid zero; use cpu-control.json and cpu-clock.json instead"
+}
