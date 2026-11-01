@@ -1,7 +1,7 @@
 # Desktop host
 
-Ответственность: Tauri lifecycle, IPC и окна instances. Расположение: `apps/desktop/src-tauri`.
+Ответственность: Tauri lifecycle, IPC, device windows, tray и adapters. Код apps/desktop/src-tauri. get_snapshot/dispatch/open_device/list_plugins/open_inspector/restart_plugin/quit_application проверяют scope окна. Одно окно на instance; уничтожение editor/PI снимает его editing session и только его удержания.
 
-Интерфейс: `get_snapshot`, `dispatch`, `open_device`. Core в managed state; команда проверяет адресата окна. Окно устройства не должно изменять чужой instance. Одно окно на instance, reopening поднимает существующее. Событие `deckweave:changed` инвалидирует snapshots. Реальное уничтожение окна очищает editing session и удержания этого источника.
+Закрытие всех окон оставляет runtime в tray, повторный запуск открывает существующий реестр, явный Quit завершает workers/backends. HTML PI имеет отдельный browser data directory и не получает editor IPC. Headless HTML backend не зависит от PI/window lifecycle. Engine и hardware/plugin workers уведомляют UI событием deckweave:changed; snapshots не запрашиваются интервалом UI.
 
-Первый срез не содержит tray и внешние HTML PI; до их реализации закрытие всех окон завершает процесс. Они обязательны в дальнейшей фазе. [Архитектура](../docs/ARCHITECTURE.md), [план](../docs/PLAN.md).
+В Windows boundary изолированы foreground, SendInput и Process Job. Платформы macOS/Linux пока не проверены. [Проверки](../docs/RUNTIME-PROGRESS.md), [совместимость](../docs/PLUGIN-COMPATIBILITY.md), [план](../docs/PLAN.md).

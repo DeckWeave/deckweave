@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" /><title>Plugin counter</title>
+  <style>
+    body {
+      background: #25262a;
+      color: #eee;
+      font: 15px system-ui;
+      padding: 24px;
+    }
+    label {
+      display: block;
+      margin: 20px 0;
+    }
+    input,
+    button {
+      font: inherit;
+      padding: 8px;
+      background: #383b41;
+      color: white;
+      border: 1px solid #737780;
+      border-radius: 6px;
+    }
+    p {
+      color: #b2b9c7;
+    }
+  </style>
+  <h2>Plugin counter</h2>
+  <label>Button title <input id="prefix" maxlength="40" /></label
+  ><button id="reset">Reset counter</button>
+  <p id="status">Connecting…</p>
+  <script>
+    let socket,
+      context,
+      settings = {};
+    function connectElgatoStreamDeckSocket(port, uuid, event, info, actionInfo) {
+      context = uuid;
+      settings = JSON.parse(actionInfo).payload.settings || {};
+      document.getElementById('prefix').value = settings.prefix || '';
+      socket = new WebSocket('ws://127.0.0.1:' + port);
+      socket.onopen = () => {
+        socket.send(JSON.stringify({ event, uuid }));
+        document.getElementById('status').textContent = 'Connected · changes save automatically';
+      };
+      socket.onmessage = ({ data }) => {
+        const message = JSON.parse(data);
+        if (message.event === 'didReceiveSettings') {
+          settings = message.payload.settings;
+          document.getElementById('prefix').value = settings.prefix || '';
+        }
+      };
+      socket.onclose = () => (document.getElementById('status').textContent = 'Disconnected');
+    }
+    document.getElementById('prefix').onchange = ({ target }) => {
+      settings = { ...settings, prefix: target.value };
+      socket.send(JSON.stringify({ event: 'setSettings', context, payload: settings }));
+    };
+    document.getElementById('reset').onclick = () =>
+      socket.send(JSON.stringify({ event: 'sendToPlugin', context, payload: { reset: true } }));
+  </script>
+</html>

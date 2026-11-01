@@ -1,0 +1,46 @@
+<!doctype html>
+<html>
+  <meta charset="utf-8" /><title>Canvas clock backend</title>
+  <script>
+    let socket;
+    const contexts = new Map();
+    const send = (event, context, payload) =>
+      socket.send(JSON.stringify({ event, context, payload }));
+    function draw(context) {
+      send('setTitle', context, { title: 'Canvas: init' });
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 144;
+      const ctx = canvas.getContext('2d');
+      send('setTitle', context, { title: 'Canvas: context' });
+      ctx.fillStyle = '#142033';
+      ctx.fillRect(0, 0, 144, 144);
+      send('setTitle', context, { title: 'Canvas: filled' });
+      ctx.fillStyle = '#e5f0ff';
+      ctx.font = '22px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(new Date().toLocaleTimeString(), 72, 78);
+      send('setTitle', context, { title: 'Canvas: text' });
+      const image = canvas.toDataURL('image/png');
+      send('setImage', context, { image });
+      send('setTitle', context, { title: '' });
+    }
+    function connectElgatoStreamDeckSocket(port, uuid, event) {
+      socket = new WebSocket('ws://127.0.0.1:' + port);
+      socket.onopen = () => socket.send(JSON.stringify({ event, uuid }));
+      socket.onmessage = ({ data }) => {
+        const m = JSON.parse(data);
+        if (m.event === 'willAppear') {
+          contexts.set(
+            m.context,
+            setInterval(() => draw(m.context), 1000),
+          );
+          draw(m.context);
+        }
+        if (m.event === 'willDisappear') {
+          clearInterval(contexts.get(m.context));
+          contexts.delete(m.context);
+        }
+      };
+    }
+  </script>
+</html>

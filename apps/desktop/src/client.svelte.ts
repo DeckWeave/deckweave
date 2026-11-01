@@ -1,12 +1,13 @@
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import type { Command, InputEvent, Snapshot } from './types';
+import type { Command, InputEvent, Snapshot, PluginPackage } from './types';
 
 export class Client {
   snapshot = $state<Snapshot | null>(null);
   busy = $state(false);
   error = $state('');
+  plugins = $state<PluginPackage[]>([]);
   available = isTauri();
   deviceId = this.available ? getCurrentWindow().label.replace(/^device-/, '') : 'main';
   private queue: Promise<unknown> = Promise.resolve();
@@ -26,6 +27,7 @@ export class Client {
         return;
       }
       await this.refresh();
+      this.plugins = await invoke<PluginPackage[]>('list_plugins');
     } catch (e) {
       this.fail(e);
     }
@@ -93,6 +95,27 @@ export class Client {
   async openDevice(deviceId: string) {
     try {
       await invoke('open_device', { deviceId });
+    } catch (e) {
+      this.fail(e);
+    }
+  }
+  async quit() {
+    try {
+      await invoke('quit_application');
+    } catch (e) {
+      this.fail(e);
+    }
+  }
+  async openInspector(context: string) {
+    try {
+      await invoke('open_inspector', { context });
+    } catch (e) {
+      this.fail(e);
+    }
+  }
+  async restartPlugin(packageId: string) {
+    try {
+      await invoke('restart_plugin', { package: packageId });
     } catch (e) {
       this.fail(e);
     }

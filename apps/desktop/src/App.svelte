@@ -47,6 +47,9 @@
       >
         <option value="ru">RU</option><option value="en">EN</option>
       </select>
+      {#if client.deviceId === 'main'}<button class="quiet" onclick={() => void client.quit()}
+          >{t('quit')}</button
+        >{/if}
     </div>
   </header>
 

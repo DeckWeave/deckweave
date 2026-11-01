@@ -43,7 +43,7 @@ struct Shared {
     core: Arc<Mutex<Core>>,
     app: tauri::AppHandle,
     stop: AtomicBool,
-    epoch: AtomicU64,
+    epoch: Arc<AtomicU64>,
     images: Mutex<Images>,
     trace: Mutex<VecDeque<Trace>>,
 }
@@ -59,12 +59,21 @@ impl Hardware {
             core,
             app,
             stop: AtomicBool::new(false),
-            epoch: AtomicU64::new(1),
+            epoch: Arc::new(AtomicU64::new(1)),
             images: Mutex::new(BTreeMap::new()),
             trace: Mutex::new(VecDeque::new()),
         });
         let worker = Arc::clone(&shared);
-        let supervisor = thread::spawn(move || supervise(worker, directory));
+        let supervisor = thread::spawn(move || {
+            #[cfg(debug_assertions)]
+            let virtual_only = std::env::var_os("DECKWEAVE_VIRTUAL_ONLY").is_some()
+                || crate::smoke::configuration().is_some();
+            #[cfg(not(debug_assertions))]
+            let virtual_only = false;
+            if !virtual_only {
+                supervise(worker, directory);
+            }
+        });
         Self {
             shared,
             supervisor: Mutex::new(Some(supervisor)),
@@ -72,6 +81,9 @@ impl Hardware {
     }
     pub fn changed(&self) {
         self.shared.epoch.fetch_add(1, Ordering::Relaxed);
+    }
+    pub fn invalidation(&self) -> Arc<AtomicU64> {
+        Arc::clone(&self.shared.epoch)
     }
     pub fn snapshot(&self, snapshot: Snapshot) -> LiveSnapshot {
         let key_images = self
@@ -177,16 +189,20 @@ fn supervise(shared: Arc<Shared>, directory: PathBuf) {
         }
         // Bounded diagnostic data, no image blobs, no serial numbers or USB paths.
         if !known.is_empty()
-            && let Ok(snapshot) = shared.core.lock().map(|c| c.snapshot())
+            && let Ok(mut snapshot) = shared.core.lock().map(|c| c.snapshot())
             && last_diagnostic != Some(snapshot.event_sequence)
         {
             last_diagnostic = Some(snapshot.event_sequence);
+            for feedback in &mut snapshot.feedback {
+                feedback.image = None;
+            }
             let trace = shared.trace.lock().ok();
-            let diagnostic = serde_json::json!({
+            let mut diagnostic = serde_json::json!({
                 "snapshot": snapshot,
                 "recent_inputs": trace.as_deref(),
                 "note": "Output frames count successful HID transfers, not display acknowledgements."
             });
+            redact_settings(&mut diagnostic);
             drop(trace);
             if let Ok(json) = serde_json::to_vec_pretty(&diagnostic) {
                 let temporary = directory.join("n4-diagnostics.tmp");
@@ -199,6 +215,27 @@ fn supervise(shared: Arc<Shared>, directory: PathBuf) {
     }
     for worker in workers {
         let _ = worker.join();
+    }
+}
+
+#[cfg(any(windows, test))]
+fn redact_settings(value: &mut serde_json::Value) {
+    match value {
+        serde_json::Value::Object(object) => {
+            for (key, value) in object {
+                if key == "settings" {
+                    *value = serde_json::json!({"redacted":true});
+                } else {
+                    redact_settings(value);
+                }
+            }
+        }
+        serde_json::Value::Array(values) => {
+            for value in values {
+                redact_settings(value);
+            }
+        }
+        _ => {}
     }
 }
 
@@ -216,14 +253,19 @@ fn device_worker(shared: Arc<Shared>, id: String, identity: String) {
     };
     let mut generation = 0;
     while !shared.stop.load(Ordering::Relaxed) {
-        generation += 1;
         match deckweave_n4::Connection::open(&identity) {
             Ok(connection) => {
+                generation += 1;
                 shared.connection(&id, generation, ConnectionState::Connected, None);
                 let result = session(&shared, &id, generation, &connection, &renderer);
                 shared.connection(&id, generation, ConnectionState::Offline, result.err());
             }
-            Err(e) => shared.connection(&id, generation, ConnectionState::Error, Some(e)),
+            Err(deckweave_n4::OpenError::Offline) => {
+                shared.connection(&id, generation, ConnectionState::Offline, None)
+            }
+            Err(deckweave_n4::OpenError::Failed(e)) => {
+                shared.connection(&id, generation, ConnectionState::Error, Some(e))
+            }
         }
         shared.wait(Duration::from_secs(1));
     }
@@ -236,6 +278,7 @@ struct Desired {
     binding_id: Option<String>,
     visual: KeyVisual,
     regions: Vec<RegionVisual>,
+    image: Option<String>,
 }
 
 fn desired(snapshot: &Snapshot, id: &str) -> Vec<Desired> {
@@ -261,12 +304,18 @@ fn desired(snapshot: &Snapshot, id: &str) -> Vec<Desired> {
                     .find(|f| f.device_id == id && f.binding_id == b.id)
             });
             Desired {
+                image: feedback
+                    .filter(|f| f.error.is_none())
+                    .and_then(|f| f.image.clone()),
                 regions: vec![],
                 key,
                 page_id: page.id.clone(),
                 binding_id: binding.map(|b| b.id.clone()),
                 visual: KeyVisual {
-                    title: binding.map(|b| b.label.clone()).unwrap_or_default(),
+                    title: feedback
+                        .and_then(|f| f.title.clone())
+                        .or_else(|| binding.map(|b| b.label.clone()))
+                        .unwrap_or_default(),
                     value: binding
                         .map(|b| match b.kind {
                             ActionKind::Counter => {
@@ -278,6 +327,9 @@ fn desired(snapshot: &Snapshot, id: &str) -> Vec<Desired> {
                                 "OFF"
                             }
                             .into(),
+                            ActionKind::Plugin | ActionKind::Program => {
+                                feedback.and_then(|f| f.display.clone()).unwrap_or_default()
+                            }
                         })
                         .unwrap_or_default(),
                     active: feedback.is_some_and(|f| f.active),
@@ -299,9 +351,18 @@ fn desired(snapshot: &Snapshot, id: &str) -> Vec<Desired> {
             let dial = format!("dial-{}", c.number);
             let (dial_visual, has_dial) = control_visual(snapshot, id, page, &dial);
             RegionVisual {
+                image: page
+                    .bindings
+                    .get(&c.id)
+                    .and_then(|b| {
+                        snapshot.feedback.iter().find(|f| {
+                            f.device_id == id && f.binding_id == b.id && f.error.is_none()
+                        })
+                    })
+                    .and_then(|f| f.image.clone()),
                 rect: crate::touch::rect(geometry, c),
                 visual,
-                detail: if has_dial {
+                detail: if page.panel.is_none() && has_dial {
                     format!("{}: {}", dial_visual.title, dial_visual.value)
                 } else {
                     String::new()
@@ -310,6 +371,7 @@ fn desired(snapshot: &Snapshot, id: &str) -> Vec<Desired> {
         })
         .collect();
     frames.push(Desired {
+        image: None,
         key: 11,
         page_id: page.id.clone(),
         binding_id: None,
@@ -339,7 +401,10 @@ fn control_visual(
     });
     (
         KeyVisual {
-            title: binding.map(|b| b.label.clone()).unwrap_or_default(),
+            title: feedback
+                .and_then(|f| f.title.clone())
+                .or_else(|| binding.map(|b| b.label.clone()))
+                .unwrap_or_default(),
             value: binding
                 .map(|b| match b.kind {
                     ActionKind::Counter => feedback.map(|f| f.value).unwrap_or(0).to_string(),
@@ -349,6 +414,9 @@ fn control_visual(
                         "OFF"
                     }
                     .into(),
+                    ActionKind::Plugin | ActionKind::Program => {
+                        feedback.and_then(|f| f.display.clone()).unwrap_or_default()
+                    }
                 })
                 .unwrap_or_default(),
             active: feedback.is_some_and(|f| f.active),
@@ -458,7 +526,13 @@ fn session(
         }
         // Complete one indivisible BAT/chunks/STP transaction between input reads.
         if let Some(frame) = next_frame(&target, &sent, last_key) {
-            let jpeg = if frame.key == 11 {
+            let jpeg = if let Some(image) = &frame.image {
+                renderer
+                    .image_data_jpeg(image)
+                    .ok()
+                    .map(Ok)
+                    .unwrap_or_else(|| renderer.jpeg(&frame.visual))?
+            } else if frame.key == 11 {
                 renderer.strip(&frame.regions)?
             } else {
                 renderer.jpeg(&frame.visual)?
@@ -523,6 +597,17 @@ fn translate(input: &Input) -> (Option<String>, Option<InputEvent>) {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn diagnostics_redact_nested_plugin_settings() {
+        let mut value = serde_json::json!({"configuration":{"devices":[{"settings":{"password":"private"},"children":[{"settings":{"token":"private"}}]}]},"events":3});
+        super::redact_settings(&mut value);
+        assert!(!value.to_string().contains("private"));
+        assert_eq!(value["events"], 3);
+        assert_eq!(
+            value["configuration"]["devices"][0]["settings"],
+            serde_json::json!({"redacted":true})
+        );
+    }
     use super::*;
     #[test]
     fn captured_touch_edges_complete_one_action_using_the_display_layout() {

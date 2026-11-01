@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" /><title>OBS settings</title>
+  <style>
+    body {
+      font: 14px system-ui;
+      background: #25262a;
+      color: #eee;
+      padding: 24px;
+    }
+    label {
+      display: grid;
+      gap: 6px;
+      margin: 16px 0;
+    }
+    input,
+    select,
+    button {
+      font: inherit;
+      background: #35383f;
+      color: #eee;
+      border: 1px solid #777;
+      padding: 8px;
+      border-radius: 6px;
+    }
+    p {
+      color: #b6bfce;
+    }
+  </style>
+  <h2>OBS Studio</h2>
+  <label>Host<input id="host" value="127.0.0.1" /></label
+  ><label>Port<input id="port" type="number" value="4455" /></label
+  ><label>Password<input id="password" type="password" autocomplete="off" /></label
+  ><label>Scene<input id="scene" list="scenes" /></label
+  ><datalist id="scenes"></datalist
+  ><button id="getscenes">Load scenes</button
+  ><label>Input<input id="input" list="inputs" /></label
+  ><datalist id="inputs"></datalist
+  ><button id="getinputs">Load inputs</button>
+  <p id="status">Connecting…</p>
+  <p>
+    Changes save automatically. “OBS connection” checks connectivity without changing recording or
+    streaming.
+  </p>
+  <script>
+    let socket,
+      context,
+      settings = {};
+    const fields = ['host', 'port', 'password', 'scene', 'input'];
+    function show() {
+      for (const id of fields)
+        document.getElementById(id).value =
+          settings[id] ?? (id === 'host' ? '127.0.0.1' : id === 'port' ? 4455 : '');
+    }
+    function connectElgatoStreamDeckSocket(port, uuid, event, info, actionInfo) {
+      context = uuid;
+      settings = JSON.parse(actionInfo).payload.settings || {};
+      show();
+      socket = new WebSocket('ws://127.0.0.1:' + port);
+      socket.onopen = () => {
+        socket.send(JSON.stringify({ event, uuid }));
+        document.getElementById('status').textContent = 'Connected to DeckWeave';
+      };
+      socket.onmessage = ({ data }) => {
+        const m = JSON.parse(data);
+        if (m.event === 'didReceiveSettings') {
+          settings = m.payload.settings;
+          show();
+        }
+        if (m.event === 'sendToPropertyInspector') {
+          for (const [key, field, name] of [
+            ['scenes', 'scenes', 'sceneName'],
+            ['inputs', 'inputs', 'inputName'],
+          ]) {
+            if (m.payload[key])
+              document.getElementById(field).replaceChildren(
+                ...m.payload[key].map((item) => {
+                  const option = document.createElement('option');
+                  option.value = item[name];
+                  return option;
+                }),
+              );
+          }
+        }
+      };
+    }
+    for (const id of fields)
+      document.getElementById(id).onchange = ({ target }) => {
+        settings = { ...settings, [id]: id === 'port' ? Number(target.value) : target.value };
+        socket.send(JSON.stringify({ event: 'setSettings', context, payload: settings }));
+      };
+    document.getElementById('getscenes').onclick = () =>
+      socket.send(JSON.stringify({ event: 'sendToPlugin', context, payload: { list: 'scenes' } }));
+    document.getElementById('getinputs').onclick = () =>
+      socket.send(JSON.stringify({ event: 'sendToPlugin', context, payload: { list: 'inputs' } }));
+  </script>
+</html>

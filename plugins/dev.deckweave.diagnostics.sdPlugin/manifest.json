@@ -1,0 +1,14 @@
+{
+  "Name": "DeckWeave Diagnostics",
+  "Version": "0.1.0",
+  "SDKVersion": 2,
+  "CodePath": "backend.mjs",
+  "PropertyInspectorPath": "settings.html",
+  "Actions": [
+    {
+      "UUID": "dev.deckweave.diagnostics.counter",
+      "Name": "Plugin counter",
+      "Controllers": ["Keypad", "Encoder"]
+    }
+  ]
+}

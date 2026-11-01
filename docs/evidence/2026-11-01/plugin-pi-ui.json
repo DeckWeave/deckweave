@@ -1,0 +1,7 @@
+{
+  "environment":"Windows 11, debug, isolated .local/ui-resume database, virtual provider only",
+  "plugin":"dev.deckweave.diagnostics",
+  "steps":["Assign Plugin counter to key 3","Open original HTML property inspector","Set Button title to UI verified","Close PI","Observe UI verified 0 on key 3","Click the separate Test command","Observe UI verified 1 on the same key and in action feedback"],
+  "apply_or_reload_required":false,
+  "screenshot":"plugin-pi-ui.png"
+}

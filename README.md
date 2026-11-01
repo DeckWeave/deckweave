@@ -4,11 +4,11 @@
 
 Рабочий репозиторий: `G:\APPS\DW\deckweave`. Первая целевая ОС — Windows 11; в перспективе — macOS и Linux.
 
-**Статус: desktop-срез с Mirabox N4 Pro.** Реестр устройств, отдельные окна, страницы, назначения Counter/Toggle, «Проверить», pressed/feedback, сохранение и en/ru. Владелец подтвердил кнопки после исправления входящей карты, изображения, крайние touch области и первую крутилку с индикатором на полосе. Сторонние плагины, полноценные panels и сложные действия ещё предстоит подключить; это не готовый выпуск.
+**Статус: следующий рабочий срез с Mirabox N4 Pro.** Реестр/отдельные окна, tray/фон, Elgato native/Node/HTML backend и оригинальные PI, навигация и составные действия, Smart Profiles, native panel widgets/regions, Dial Stack/Action Wheel, en/ru. Установленный OnAirClock прошёл сквозную проверку. Полный v1 ещё не завершён: [возможности и ограничения](docs/STATUS.md), [доказательства](docs/RUNTIME-PROGRESS.md).
 
 ## Запуск
 
-Нужны Node.js 22.12+ и Rust 1.98.1, а на Windows — MSVC Build Tools и WebView2. Из корня репозитория:
+Нужны Node.js 22.12+ и Rust 1.98.1, а на Windows — MSVC Build Tools и WebView2. Windows HTML plugins используют установленный Edge; Node plugins — установленный Node. Runtime distribution в installer ещё не завершена. Из корня репозитория:
 
 ```powershell
 npm ci
@@ -17,7 +17,7 @@ npm run dev
 
 Первая проверка: открыть Virtual Studio → выбрать кнопку → назначить действие справа → «Проверить». Выбор не выполняет действие. Изменение названия сохраняется без Apply. Counter/Toggle не выполняют системных команд; их runtime значения сбрасываются при restart, конфигурация сохраняется.
 
-Для Mirabox закройте StreamDock и старый DeckWeave, затем откройте карточку N4 в реестре. Первый запуск создаёт безопасные K1–K10, D1–D4 и T1–T5. Полоса показывает тестовые области и значения крутилок; произвольные panel plugins ещё не реализованы. [Границы драйвера и происхождение](crates/deckweave-n4/README.md), [аппаратная проверка](docs/N4-ACCEPTANCE.md).
+Для Mirabox закройте StreamDock и старый DeckWeave, затем откройте карточку N4. Исходный диагностический профиль содержит K1–K10, D1–D4 и T1–T5; новые страницы получают связанные dial regions. Через «Сенсорная панель» доступны fullscreen и произвольные области. Собственный пример — DeckWeave Panel Lab. [Границы драйвера](crates/deckweave-n4/README.md), [следующая аппаратная проверка](docs/ACCEPTANCE-NEXT.md).
 
 ```powershell
 npm run check
@@ -26,7 +26,7 @@ npm run build
 
 `npm run build` собирает native release без установщика. Проверенный executable: `target/release/deckweave-desktop.exe` (также собран debug). Запуск только `npm run dev:web` показывает сообщение о необходимости desktop runtime, без подмены Rust локальным браузерным fake store.
 
-Новые данные хранятся в app data каталоге идентификатора `app.deckweave.studio`, файл `deckweave.sqlite3`. Старый DeckWeave не изменяется. Для изолированного запуска можно задать `DECKWEAVE_DATA_DIR`. Закрытие всех окон пока завершает процесс; tray/фоновая работа входят в следующий этап.
+Данные хранятся в app data идентификатора `app.deckweave.studio`, файл `deckweave.sqlite3`. Старый DeckWeave не изменяется. Для изоляции разработки предусмотрен `DECKWEAVE_DATA_DIR`. Закрытие всех окон оставляет runtime в tray; «Выйти» завершает workers/backends. Реестр открывается из tray или повторным запуском executable.
 
 ## Документация
 

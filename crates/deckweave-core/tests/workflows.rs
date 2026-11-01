@@ -48,15 +48,22 @@ fn configuration_and_navigation_survive_restart_but_pressed_does_not() {
         },
     );
     let page = s.configuration.devices[0].profile.active_page_id.clone();
+    let touch = s.geometries[&device.id]
+        .controls
+        .iter()
+        .find(|c| c.kind == ControlKind::Touch)
+        .unwrap()
+        .id
+        .clone();
     configure(
         &mut core,
         &device.id,
         &page,
-        "touch-1",
+        &touch,
         ActionKind::Toggle,
         "Microphone",
     );
-    input(&mut core, &device.id, "touch-1", InputEvent::Down);
+    input(&mut core, &device.id, &touch, InputEvent::Down);
     drop(core);
     let reopened = Core::open(&path).unwrap().snapshot();
     assert_eq!(
@@ -64,7 +71,7 @@ fn configuration_and_navigation_survive_restart_but_pressed_does_not() {
         page
     );
     assert_eq!(
-        reopened.configuration.devices[0].profile.pages[1].bindings["touch-1"].label,
+        reopened.configuration.devices[0].profile.pages[1].bindings[&touch].label,
         "Microphone"
     );
     assert!(reopened.pressed.is_empty());

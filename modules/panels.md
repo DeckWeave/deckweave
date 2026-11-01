@@ -1,9 +1,9 @@
-# Сенсорные панели
+# Панели
 
-Ответственность: surface geometry, native panel layouts, области, hit testing, feedback и dial associations. Первый срез описывает независимую сенсорную поверхность и фиксированные тестовые touch-контролы виртуального устройства. Полный panel plugin/compositor реализуется фазой 6.
+Ответственность: независимые widgets, dial associations, preview/render/hit geometry. Core model.rs/panels.rs владеют нормализованными областями и input semantics; desktop touch.rs адаптирует N4; deckweave-n4 renderer/artwork композируют JPEG и Encoder feedback.
 
-В аппаратном срезе N4 добавлены 800×128 strip renderer/BGPIC output и single-contact adapter. Пять тестовых областей T1–T5 берут назначения из Core; первые четыре также показывают значения D1–D4 как проверочный индикатор. Это временная раскладка приёмки, не постоянное правило связывания действий/крутилок. Preview показывает тот же JPEG, а hit testing использует те же преобразованные pixel rectangles. Сейчас адресат Down определяется по X в областях полной высоты; ARX X/Y позволяет отменять движение. Незавершённый контакт отменяется через 3 секунды. Полноценные произвольные 2D widgets, hold, gesture arbitration и публичный plugin API ещё не реализованы.
+У страницы бывают произвольные непересекающиеся regions, fullscreen widget или области по числу dials. Один dial связан с одной областью; native Panel может владеть несколькими dials. Keypad, Encoder и native Panel не смешиваются в один протокол. Native pointer widget владеет drag/swipe; обычный tap отменяется при движении, неизвестный Y не превращается в выбранную вертикальную область.
 
-Целевой контракт: panel layout, regions с action bindings, локальные координаты и feedback. Собственная панель поддерживает произвольное число виджетов, включая раскладку целиком от плагина. Подготовленные области могут содержать совместимые Keypad/Encoder actions; dial association не является обязательным условием существования области.
+Новые страницы/профили получают dial regions. Исходная тестовая раскладка остаётся доступной; явные Touch assignments имеют приоритет, свободная исходная область отображает соседний dial. Физический N4 preview использует тот же итоговый JPEG, что отправляется транспорту, с обратным поворотом в UI.
 
-Preview/hardware/hit test используют одну geometry. Свайп и tap не исполняются одновременно. Elgato adapter соблюдает исходную logical area и event semantics; native panel API не наследует ограничение одной области на dial. Не определяет raw hardware contact lifecycle — он приходит из подтверждённых capabilities provider. [Исследование](../docs/research/2026-11-01/ADVANCED-INTERACTIONS.md), [архитектура](../docs/ARCHITECTURE.md), [план](../docs/PLAN.md).
+[Точный контракт](../docs/PANEL-CONTRACT.md), [совместимость layouts](../docs/PLUGIN-COMPATIBILITY.md), [неопределённая аппаратная часть](../docs/ACCEPTANCE-NEXT.md), [план](../docs/PLAN.md). Pixel-perfect всех Elgato styles ещё не заявляется.

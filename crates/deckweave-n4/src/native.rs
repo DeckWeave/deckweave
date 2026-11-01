@@ -49,15 +49,25 @@ pub fn discover() -> Result<Vec<Candidate>, String> {
     Ok(found)
 }
 pub struct Connection(HidDevice);
+#[derive(Debug)]
+pub enum OpenError {
+    Offline,
+    Failed(String),
+}
+impl From<String> for OpenError {
+    fn from(message: String) -> Self {
+        Self::Failed(message)
+    }
+}
 impl Connection {
-    pub fn open(wanted: &str) -> Result<Self, String> {
+    pub fn open(wanted: &str) -> Result<Self, OpenError> {
         let api = HidApi::new().map_err(|e| e.to_string())?;
         let mut matches = api
             .device_list()
             .filter(|i| supported(i) && identity(i).identity == wanted);
-        let info = matches.next().ok_or("N4 is disconnected")?;
+        let info = matches.next().ok_or(OpenError::Offline)?;
         if matches.next().is_some() {
-            return Err("Ambiguous N4 identity".into());
+            return Err(OpenError::Failed("Ambiguous N4 identity".into()));
         }
         let connection = Self(info.open_device(&api).map_err(|e| e.to_string())?);
         let mut buffer = [0; 1024];
@@ -74,7 +84,7 @@ impl Connection {
             }
         }
         if !drained {
-            return Err("N4 has an input backlog".into());
+            return Err(OpenError::Failed("N4 has an input backlog".into()));
         }
         connection.write(&packets::wake())?;
         connection.write(&packets::heartbeat())?;

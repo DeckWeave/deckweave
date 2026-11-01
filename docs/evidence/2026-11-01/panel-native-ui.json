@@ -1,0 +1,13 @@
+{
+  "environment": "Windows 11, debug, isolated .local/ui-resume database, virtual provider only",
+  "plugin": "dev.deckweave.panel.slider",
+  "layout": "one full-width 800x128 Panel region",
+  "observed": [
+    "Assigning the plugin started its Node backend and displayed Panel 50% without executing an action",
+    "A real UI drag inside the separate test surface changed the widget to Panel 86%",
+    "The widget image reported panelUp and Y: 0.49",
+    "The main device preview remained a selection surface"
+  ],
+  "physical_hardware_test": false,
+  "screenshot": "panel-native-ui.png"
+}

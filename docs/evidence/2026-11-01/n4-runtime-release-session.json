@@ -1,0 +1,10 @@
+{
+  "profile": "Acceptance 2026-11-01",
+  "state": "connected",
+  "generation": 1,
+  "input_events": 0,
+  "output_frames": 110,
+  "plugin_errors": [],
+  "same_hardware_instance": true,
+  "display_observation": "Preview of the transmitted JPEG only; physical observation pending"
+}

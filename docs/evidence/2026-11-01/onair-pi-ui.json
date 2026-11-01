@@ -1,0 +1,9 @@
+{
+  "environment":"Windows 11, debug, isolated .local/ui-resume database and separate plugin browser profiles",
+  "package":"fail.marc.onairclock",
+  "version":"1.3.0",
+  "installed_files_modified":false,
+  "observed":["HTML backend running in headless Edge generated an updating clock image","Original Property Inspector opened with Watchface, Date Format, Hour Format and color controls","Changed Hour Format from 24 Hour to 12 Hour using the original PI","After closing PI the same action displayed 11:14 instead of 23:xx; clock continued updating"],
+  "screenshots":["onair-original-pi.png","onair-after-pi.png"],
+  "physical_device_observed":false
+}

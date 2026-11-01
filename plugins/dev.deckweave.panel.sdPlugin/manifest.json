@@ -1,0 +1,9 @@
+{
+  "UUID": "dev.deckweave.panel",
+  "Name": "DeckWeave Panel Lab",
+  "Version": "0.1.0",
+  "CodePath": "plugin.mjs",
+  "Actions": [
+    { "UUID": "dev.deckweave.panel.slider", "Name": "Panel Slider", "Controllers": ["Panel"] }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "environment":"Windows 11, debug, isolated virtual instance",
+  "scenario":"Multi Action Switch with Counter A and Counter B, assigned through the native editor",
+  "observations":["After assignment key 4 showed A and value 0","First explicit Test executed A and changed key 4 to B with value 0","Second Test executed B and changed the same key 4 to A with value 1","Inspector showed the next action name"],
+  "screenshots":["switch-state-b-ui.png","switch-state-a-ui.png"]
+}

@@ -1,7 +1,7 @@
 # Действия
 
-Ответственность: action instances, ввод и feedback. Первая реализация: Counter/Toggle в Core. Внешние процессы, Elgato compatibility host, compose scheduler — следующие фазы.
+Ответственность: action instances, scheduler, ввод и feedback. Core actions.rs исполняет Counter/Toggle, навигацию, Multi Action/Delay/Switch, Key Logic, Dial Stack/Action Wheel и отдельные dial directions/push/tap. OS effects выполняет desktop engine после Core lock; FFI изолирован в deckweave-platform.
 
-Целевой интерфейс: appear/disappear/input/settings/feedback с устойчивым context. Процесс плагина отличается от пакета и action instance. Counter/Toggle демонстрационные и не выполняют OS-команды. Multi Action, Switch, Key Logic и состояния плагина — разные механизмы; userDesiredState сохраняется в шагах.
+Elgato host: apps/desktop/src-tauri/src/plugins. Устойчивый context принадлежит binding, package/process отличается от action instance. Native/Node/HTML backend лениво запускается на пакет и обслуживает много contexts. Невидимые назначения получают willDisappear, retained holds/jobs завершаются в исходном context. Ошибка отменяет ещё не исполненные шаги владельца.
 
-Elgato PI остаётся исходной формой пакета без доступа к desktop IPC. Scheduler не спит под глобальным mutex. Падение одного backend не уничтожает соседний browser session. [Архитектура](../docs/ARCHITECTURE.md), [план](../docs/PLAN.md).
+Оригинальный PI работает без editor IPC. Windows HTML backend — headless Edge с собственным Job/profile; Node/native backend обходятся без browser. [Матрица совместимости](../docs/PLUGIN-COMPATIBILITY.md), [runtime evidence](../docs/RUNTIME-PROGRESS.md), [план](../docs/PLAN.md).

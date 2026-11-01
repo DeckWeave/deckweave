@@ -1,0 +1,7 @@
+{
+  "environment":"Windows 11, debug, isolated ui-resume workspace; Node diagnostics, native Panel Lab and installed OnAirClock assigned",
+  "observations":["Closing the device editor changed registry status to settings closed","After closing the registry there were no DeckWeave windows; one application process and nine owned headless Edge processes remained","Relaunching the same executable reopened the registry in the existing runtime","Explicit Quit terminated the application and all nine owned Edge processes"],
+  "before_quit":{"application_processes":1,"owned_test_edge_processes":9},
+  "after_quit":{"application_processes":0,"owned_test_edge_processes":0},
+  "inspection":"Read-only process metadata filtered to the own ui-resume plugin browser profile"
+}

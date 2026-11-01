@@ -27,13 +27,13 @@
 
 ## Фаза 3 — Hardware provider и N4
 
-Цель: тот же сценарий на железе. Трудоёмкость M. Статус: [ ] В работе: кнопки/полоса/D1 подтверждены владельцем; остаются tray, provider contracts и оставшаяся аппаратная приёмка. Ближайший срез детализирован в [NEXT](NEXT.md).
+Цель: тот же сценарий на железе. Трудоёмкость M. Статус: [~] Код/tray/internal contract реализованы; остаются внешнее provider SDK и физическая приёмка D2–D4/reconnect/новых жестов. [NEXT](NEXT.md), [доказательства](RUNTIME-PROGRESS.md).
 
 Контекст: назначения и input router проверены на виртуальном provider. Старые низкоуровневые N4 codec/fixtures используются выборочно с сохранением происхождения.
 
-- [ ] Provider boundary, capabilities и lifecycle нескольких instances ([providers](../modules/providers.md)).
-- [ ] N4 transport, framebuffer, reconnect и независимость от окон ([providers](../modules/providers.md), [panels](../modules/panels.md)).
-- [ ] Tray/фоновая работа и остановка приложения ([desktop](../modules/desktop.md)).
+- [~] Internal provider boundary/capabilities/lifecycle описаны и реализованы для N4; внешний SDK после второго adapter ([providers](../modules/providers.md), [контракт](PROVIDER-CONTRACT.md)).
+- [~] N4 transport/framebuffer/reconnect и независимость от окон реализованы; оставшаяся физическая приёмка отдельно ([providers](../modules/providers.md), [панели](../modules/panels.md), [приёмка](ACCEPTANCE-NEXT.md)).
+- [x] Tray/фоновая работа, повторное открытие runtime и завершение процессов проверены ([desktop](../modules/desktop.md), [evidence](evidence/2026-11-01/runtime-window-lifecycle-ui.json)).
 
 Сделано: отдельный transport crate, автообнаружение/постоянная identity, workers с generation, down/up/Click/rotation adapter, bounded key renderer, общие JPEG preview/output, очистка held и автоматические regression tests. На подключённом PID 1021 успешно переданы 10 начальных кадров, изменение Counter и два перехода страниц (32 кадра без reconnect/error). Закрытие редактора оставляет соединение активным. Эти результаты не закрывают аппаратную приёмку: [следующая проверка владельцем](N4-ACCEPTANCE.md).
 
@@ -43,37 +43,37 @@
 
 ## Фаза 4 — Elgato compatibility host
 
-Цель: реальные native/Node/HTML действия и PI. Трудоёмкость L; разбить на отдельные срезы при начале. Статус: [ ] Не начата.
+Цель: реальные native/Node/HTML действия и PI. Трудоёмкость L. Статус: [~] Первый сквозной срез проверен, расширение совместимости и runtime distribution остаются в v1. [Матрица](PLUGIN-COMPATIBILITY.md).
 
 Контекст: runtime и provider независимы. Существуют проверенные диагностические пакеты и журнал совместимости, но не готовый production host.
 
-- [ ] Scanner, process supervision, WebSocket contexts, настройки и feedback ([actions](../modules/actions.md)).
-- [ ] PI isolation, browser owner и lifecycle HTML backend ([desktop](../modules/desktop.md), [actions](../modules/actions.md)).
-- [ ] Диагностический native/HTML пакет, часы и полезная OBS-интеграция ([actions](../modules/actions.md)).
+- [x] Scanner, process supervision, WebSocket contexts, настройки и feedback ([actions](../modules/actions.md)).
+- [x] PI isolation, browser owner и lifecycle HTML backend ([desktop](../modules/desktop.md), [actions](../modules/actions.md)).
+- [x] Собственные diagnostic/Panel/OBS пакеты и установленный OnAirClock с оригинальным PI ([actions](../modules/actions.md), [проверки](RUNTIME-PROGRESS.md)).
 
 Проверки: down/up, setImage/settings после restart, закрытие PI не останавливает backend, падение одного плагина не затрагивает соседей. Результат: проверенные exact artifacts уровня OpenDeck. Исходный импорт профилей исключён.
 
 ## Фаза 5 — Полная навигация и составные действия
 
-Цель: profiles/folders/pinned, Multi Action/Delay/Switch и Key Logic. Трудоёмкость L; отдельные этапы внутри фазы. Статус: [ ] Не начата.
+Цель: profiles/folders/pinned, Multi Action/Delay/Switch и Key Logic. Трудоёмкость L. Статус: [~] Создание/навигация и сложные действия реализованы; полный CRUD и дальнейший UX остаются. [Статус](STATUS.md).
 
 Контекст: действия имеют устойчивые context IDs и lifecycle. UI работает с единой runtime navigation.
 
-- [ ] Профили/папки/закрепление ([runtime](../modules/runtime.md), [editor](../modules/editor.md)).
-- [ ] Scheduler, отмена, desired state, Switch A/B/A, gesture resolver ([actions](../modules/actions.md)).
-- [ ] Smart Profiles с глобальной паузой настроек ([desktop](../modules/desktop.md), [runtime](../modules/runtime.md)).
+- [~] Профили/папки/закрепление: базовые сценарии и persistence есть, полный CRUD ещё нет ([runtime](../modules/runtime.md), [editor](../modules/editor.md)).
+- [x] Scheduler, отмена, Switch A/B/A, single/double/hold и независимые dial directions/push/tap ([actions](../modules/actions.md), [проверки](RUNTIME-PROGRESS.md)).
+- [x] Smart Profiles monitor и глобальная пауза; ручной выбор без правил и неизвестный foreground не вызывают reset ([desktop](../modules/desktop.md), [runtime](../modules/runtime.md)).
 
 Проверки: fake clock для задержек, повторный запуск, ошибка, navigation/restart, single/double/hold без лишних ветвей. Результат: проверяемые сложные сценарии, смена самой кнопки видна.
 
 ## Фаза 6 — Панели, Dial Stack и Action Wheel
 
-Цель: полноценная сенсорная поверхность и крутилки. Трудоёмкость L; разделить panel SDK, compositor и редактор при начале. Статус: [ ] Не начата.
+Цель: полноценная сенсорная поверхность и крутилки. Трудоёмкость L. Статус: [~] Panel contract/compositor/editor и Stack/Wheel реализованы; остаются физическая приёмка и точность полного Elgato UX/styles. [Контракт](PANEL-CONTRACT.md).
 
 Контекст: control geometry не привязана к прямоугольной сетке, action instances и feedback уже существуют.
 
-- [ ] Native panel plugin, layouts/regions, размещение совместимых действий ([panels](../modules/panels.md)).
-- [ ] Связь с dials, Elgato layouts, tap/hold/swipe, hit testing ([panels](../modules/panels.md), [providers](../modules/providers.md)).
-- [ ] Dial Stack и Action Wheel с различием выбора/исполнения ([actions](../modules/actions.md), [editor](../modules/editor.md)).
+- [x] Native Panel plugin, layouts/regions и размещение совместимых действий ([panels](../modules/panels.md), [UI evidence](evidence/2026-11-01/panel-native-ui.json)).
+- [~] Dial associations, Encoder layouts/touchTap и hit testing реализованы; hardware Y/swipe и все visual styles ещё не приняты ([panels](../modules/panels.md), [providers](../modules/providers.md), [совместимость](PLUGIN-COMPATIBILITY.md)).
+- [x] Dial Stack и Action Wheel различают выбор и исполнение; fake-clock/input проверки проходят ([actions](../modules/actions.md), [editor](../modules/editor.md)).
 
 Проверки: одна геометрия preview/hardware/input, координаты и масштаб, отсутствие tap+swipe, произвольное число виджетов, два instances. Результат: оба сценария панели, а не только полоса громкости.
 

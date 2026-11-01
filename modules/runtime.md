@@ -1,7 +1,7 @@
 # Runtime
 
-Ответственность: единое состояние независимых instances, навигация и адресация ввода. Расположение: `crates/deckweave-core/src/lib.rs`, `model.rs`.
+Ответственность: единое состояние независимых instances, navigation и адресация ввода. Код: crates/deckweave-core, включая model.rs, actions.rs и panels.rs. API: Core, Command, Snapshot, InputEvent; транзакции — [Store](storage.md).
 
-Публичный интерфейс: `Core`, `Command`, `Snapshot`, `InputEvent`. Зависимости: serde DTO и [Store](storage.md). Конфигурация меняется только после commit; revision конфигурации не является счётчиком runtime feedback. Выбор UI не является командой ввода. Down/up адресуются исходному action instance.
+Revision конфигурации отличается от runtime sequence. Выбор UI не является вводом; release адресуется исходному binding/source. Snapshot проецирует pinned и связанные dial/panel aliases; persistent binding остаётся один. Scheduler монотонный, ошибки/отмена очищают ещё не исполненные шаги. OS/USB/процессы не исполняются под Core lock.
 
-Не обрабатывает OS foreground monitoring, внешние процессы и USB. Их добавляют adapters через будущую provider/action границу. Первая реализация содержит безопасные builtins и виртуальные устройства. [Архитектура](../docs/ARCHITECTURE.md), [план](../docs/PLAN.md).
+Desktop adapters поставляют foreground observations и hardware events. Editing pause глобальна; без Smart rules ручной выбор сохраняется, неизвестное окно не вызывает fallback. Native panel использует нормализованную geometry и optional Y. [Контракт панели](../docs/PANEL-CONTRACT.md), [результаты](../docs/RUNTIME-PROGRESS.md), [план](../docs/PLAN.md).

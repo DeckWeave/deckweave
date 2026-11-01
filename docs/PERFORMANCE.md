@@ -19,3 +19,9 @@
 Артефакты: [два окна](evidence/2026-11-01/release-idle.json), [только реестр](evidence/2026-11-01/release-registry-idle.json), [скрипт измерения](../scripts/measure-idle.ps1). Перед финальной поставкой измерять также N4, Elgato native/Node/HTML, PI, несколько instances и длительную работу всего дерева процессов.
 
 Текущая аппаратная проба: [N4, всё дерево процессов](evidence/2026-11-01/n4-release-resources.json).
+
+## Следующий runtime с плагинами
+
+Первый дополнительный замер — debug, виртуальное устройство и установленный OnAirClock в headless Edge, все окна закрыты: 10 процессов, private commit 218.1 MiB, сумма working sets 539.3 MiB, CPU time 0.0625 s за 5.282 s. [Артефакт](evidence/2026-11-01/runtime-clock-debug-resources.json). Это другая конфигурация/режим сборки, её нельзя напрямую объявлять улучшением или ухудшением release baseline.
+
+Скрипт теперь учитывает всех descendants, в том числе Node и Edge, проверяет creation time и отмечает изменение дерева. Фоновый runtime и завершение всего собственного дерева браузера после Quit проверены отдельно: [lifecycle](evidence/2026-11-01/runtime-window-lifecycle-ui.json). Длительные прогоны и release-замеры сложных сценариев остаются впереди.

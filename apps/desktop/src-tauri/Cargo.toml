@@ -13,15 +13,22 @@ tauri-build = { version = "2.7.2", features = [] }
 [dependencies]
 deckweave-core = { path = "../../../crates/deckweave-core" }
 deckweave-n4 = { path = "../../../crates/deckweave-n4" }
+deckweave-platform = { path="../../../crates/deckweave-platform" }
 base64 = "0.22.1"
 serde_json.workspace = true
-tauri = { version = "2.12.3", features = [] }
+uuid.workspace = true
+tungstenite = { version = "0.28.0", default-features = false, features = ["handshake"] }
+tauri = { version = "2.12.3", features = ["tray-icon"] }
 tauri-plugin-single-instance = "2.5.3"
 serde.workspace = true
+
 
 [features]
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
+
+[dev-dependencies]
+sha2="0.10.9"
 
 [lints]
 workspace = true

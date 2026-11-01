@@ -1,0 +1,13 @@
+{
+  "Name": "DeckWeave OBS",
+  "Version": "0.1.0",
+  "SDKVersion": 2,
+  "CodePath": "backend.mjs",
+  "PropertyInspectorPath": "settings.html",
+  "Actions": [
+    { "UUID": "dev.deckweave.obs.status", "Name": "OBS connection", "Controllers": ["Keypad"] },
+    { "UUID": "dev.deckweave.obs.scene", "Name": "OBS scene", "Controllers": ["Keypad"] },
+    { "UUID": "dev.deckweave.obs.mute", "Name": "OBS input mute", "Controllers": ["Keypad"] },
+    { "UUID": "dev.deckweave.obs.record", "Name": "OBS recording", "Controllers": ["Keypad"] }
+  ]
+}

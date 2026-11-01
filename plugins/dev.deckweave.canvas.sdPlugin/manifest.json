@@ -1,0 +1,13 @@
+{
+  "Name": "DeckWeave Canvas",
+  "Version": "0.1.0",
+  "SDKVersion": 2,
+  "CodePath": "backend.html",
+  "Actions": [
+    {
+      "UUID": "dev.deckweave.canvas.clock",
+      "Name": "Canvas clock",
+      "Controllers": ["Keypad", "Encoder"]
+    }
+  ]
+}

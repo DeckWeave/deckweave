@@ -1,0 +1,11 @@
+{
+  "measuredAtUtc": "2026-11-01T16:46:20.1068729Z",
+  "scenario": "Debug; isolated virtual instance; installed OnAirClock 1.3.0 headless Edge backend; all editor/registry windows closed",
+  "processCount": 10,
+  "privateCommitMiB": 218.1,
+  "summedWorkingSetMiB": 539.3,
+  "cpuSeconds": 0.0625,
+  "processTreeChanged": false,
+  "sampleSeconds": 5.282,
+  "notes": "Includes all descendants, including Node and Edge. CPU covers processes alive at both observations; process churn makes it a lower bound. Short observation, not a resource budget or endurance test. Summed working sets may count shared pages repeatedly."
+}

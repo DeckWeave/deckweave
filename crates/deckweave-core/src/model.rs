@@ -19,6 +19,35 @@ pub enum Locale {
 pub enum ActionKind {
     Counter,
     Toggle,
+    Plugin,
+    Program,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub struct PluginAction {
+    pub package: String,
+    pub action: String,
+    #[serde(default)]
+    pub settings: serde_json::Value,
+    #[serde(default)]
+    pub controller: Option<Controller>,
+}
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
+pub enum Controller {
+    Keypad,
+    Encoder,
+    Panel,
+}
+pub fn controller_for(binding: &Binding, kind: ControlKind) -> Controller {
+    binding
+        .plugin
+        .as_ref()
+        .and_then(|p| p.controller)
+        .unwrap_or(if kind == ControlKind::Dial {
+            Controller::Encoder
+        } else {
+            Controller::Keypad
+        })
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -26,6 +55,93 @@ pub struct Binding {
     pub id: String,
     pub kind: ActionKind,
     pub label: String,
+    #[serde(default)]
+    pub plugin: Option<PluginAction>,
+    #[serde(default)]
+    pub plan: Option<Plan>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum Plan {
+    DialBindings {
+        left: Option<Box<Binding>>,
+        right: Option<Box<Binding>>,
+        press: Option<Box<Binding>>,
+        tap: Option<Box<Binding>>,
+    },
+    Page {
+        page_id: String,
+    },
+    Profile {
+        profile_id: String,
+    },
+    Back,
+    Launch {
+        program: String,
+        #[serde(default)]
+        args: Vec<String>,
+    },
+    Hotkey {
+        keys: Vec<String>,
+    },
+    Sequence {
+        steps: Vec<Step>,
+    },
+    Switch {
+        states: Vec<Binding>,
+    },
+    KeyLogic {
+        single: Option<Box<Binding>>,
+        double: Option<Box<Binding>>,
+        hold: Option<Box<Binding>>,
+        double_ms: u64,
+        hold_ms: u64,
+    },
+    DialStack {
+        actions: Vec<Binding>,
+    },
+    ActionWheel {
+        actions: Vec<Binding>,
+    },
+}
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Step {
+    pub delay_ms: u64,
+    pub action: Binding,
+}
+impl Binding {
+    pub fn children(&self) -> Vec<&Binding> {
+        match &self.plan {
+            Some(Plan::DialBindings {
+                left,
+                right,
+                press,
+                tap,
+            }) => [left, right, press, tap]
+                .into_iter()
+                .filter_map(|b| b.as_deref())
+                .collect(),
+            Some(Plan::Sequence { steps }) => steps.iter().map(|s| &s.action).collect(),
+            Some(Plan::Switch { states }) => states.iter().collect(),
+            Some(Plan::KeyLogic {
+                single,
+                double,
+                hold,
+                ..
+            }) => [single, double, hold]
+                .into_iter()
+                .filter_map(|b| b.as_deref())
+                .collect(),
+            Some(Plan::DialStack { actions } | Plan::ActionWheel { actions }) => {
+                actions.iter().collect()
+            }
+            _ => vec![],
+        }
+    }
+    pub fn contains(&self, id: &str) -> bool {
+        self.id == id || self.children().iter().any(|b| b.contains(id))
+    }
 }
 
 impl Binding {
@@ -34,6 +150,8 @@ impl Binding {
             id: new_id(),
             kind,
             label: label.into(),
+            plugin: None,
+            plan: None,
         }
     }
 }
@@ -43,6 +161,60 @@ pub struct Page {
     pub id: String,
     pub name: String,
     pub bindings: BTreeMap<String, Binding>,
+    #[serde(default)]
+    pub parent: Option<String>,
+    #[serde(default)]
+    pub panel: Option<PanelLayout>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct PanelLayout {
+    pub regions: Vec<PanelRegion>,
+    #[serde(default = "enabled")]
+    pub swipe_pages: bool,
+}
+impl PanelLayout {
+    pub fn dial_slots(provider: &str) -> Self {
+        let dials: Vec<_> = geometry_for(provider)
+            .controls
+            .into_iter()
+            .filter(|c| c.kind == ControlKind::Dial)
+            .collect();
+        Self {
+            swipe_pages: true,
+            regions: dials
+                .iter()
+                .enumerate()
+                .map(|(i, d)| PanelRegion {
+                    id: new_id(),
+                    name: format!("D{}", d.number),
+                    rect: [
+                        i as f64 / dials.len() as f64,
+                        0.0,
+                        1.0 / dials.len() as f64,
+                        1.0,
+                    ],
+                    dials: vec![d.id.clone()],
+                })
+                .collect(),
+        }
+    }
+}
+fn enabled() -> bool {
+    true
+}
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct PanelRegion {
+    pub id: String,
+    pub name: String,
+    pub rect: [f64; 4],
+    #[serde(default)]
+    pub dials: Vec<String>,
+}
+impl PanelRegion {
+    pub fn control_id(&self) -> String {
+        format!("panel-{}", self.id)
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -51,6 +223,8 @@ pub struct Profile {
     pub name: String,
     pub active_page_id: String,
     pub pages: Vec<Page>,
+    #[serde(default)]
+    pub application: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -61,6 +235,12 @@ pub struct Device {
     #[serde(default)]
     pub hardware_key: Option<String>,
     pub profile: Profile,
+    #[serde(default)]
+    pub profiles: Vec<Profile>,
+    #[serde(default)]
+    pub pinned: BTreeMap<String, Binding>,
+    #[serde(default)]
+    pub default_profile: Option<String>,
 }
 
 impl Device {
@@ -71,11 +251,16 @@ impl Device {
             name: format!("Virtual Studio {number:02}"),
             provider_id: "deckweave.virtual".into(),
             hardware_key: None,
+            profiles: vec![],
+            pinned: BTreeMap::new(),
+            default_profile: None,
             profile: Profile {
                 id: new_id(),
                 name: "Default".into(),
                 active_page_id: page_id.clone(),
                 pages: vec![Page {
+                    panel: None,
+                    parent: None,
                     id: page_id,
                     name: "1".into(),
                     bindings: BTreeMap::from([
@@ -83,6 +268,7 @@ impl Device {
                         ("key-2".into(), Binding::new(ActionKind::Toggle, "Toggle")),
                     ]),
                 }],
+                application: None,
             },
         }
     }
@@ -115,6 +301,7 @@ pub enum ControlKind {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Control {
+    pub pointer: bool,
     pub id: String,
     pub kind: ControlKind,
     pub rect: [f64; 4],
@@ -127,6 +314,7 @@ pub struct Geometry {
     pub height: f64,
     pub surface: [f64; 4],
     pub controls: Vec<Control>,
+    pub surface_pixels: [u32; 2],
 }
 
 /// Virtual provider geometry, not a claim about N4 hardware capabilities.
@@ -134,6 +322,7 @@ pub fn virtual_geometry() -> Geometry {
     let mut controls = Vec::new();
     for i in 0..10 {
         controls.push(Control {
+            pointer: false,
             id: format!("key-{}", i + 1),
             kind: ControlKind::Key,
             rect: [
@@ -147,12 +336,14 @@ pub fn virtual_geometry() -> Geometry {
     }
     for i in 0..4 {
         controls.push(Control {
+            pointer: false,
             id: format!("touch-{}", i + 1),
             kind: ControlKind::Touch,
             rect: [32.0 + i as f64 * 140.0, 264.0, 136.0, 64.0],
             number: i + 1,
         });
         controls.push(Control {
+            pointer: false,
             id: format!("dial-{}", i + 1),
             kind: ControlKind::Dial,
             rect: [64.0 + i as f64 * 140.0, 350.0, 72.0, 72.0],
@@ -160,6 +351,7 @@ pub fn virtual_geometry() -> Geometry {
         });
     }
     Geometry {
+        surface_pixels: [800, 128],
         width: 608.0,
         height: 448.0,
         surface: [32.0, 264.0, 556.0, 64.0],
@@ -184,6 +376,7 @@ pub fn geometry_for(provider: &str) -> Geometry {
         geometry.controls.retain(|c| c.kind != ControlKind::Touch);
         for i in 0..5 {
             geometry.controls.push(Control {
+                pointer: false,
                 id: format!("touch-{}", i + 1),
                 kind: ControlKind::Touch,
                 rect: [32.0 + i as f64 * 112.0, 264.0, 108.0, strip_height],
@@ -192,6 +385,62 @@ pub fn geometry_for(provider: &str) -> Geometry {
         }
     }
     geometry
+}
+
+pub fn page_geometry(provider: &str, page: &Page) -> Geometry {
+    let mut geometry = geometry_for(provider);
+    if let Some(panel) = &page.panel {
+        geometry.surface[3] = geometry.surface[2] * 128.0 / 800.0;
+        geometry.height = 464.0;
+        for c in &mut geometry.controls {
+            if c.kind == ControlKind::Dial {
+                c.rect[1] = 370.0;
+            }
+        }
+        geometry.controls.retain(|c| c.kind != ControlKind::Touch);
+        let [x, y, w, h] = geometry.surface;
+        geometry
+            .controls
+            .extend(panel.regions.iter().enumerate().map(|(i, r)| {
+                Control {
+                    pointer: page
+                        .bindings
+                        .get(&r.control_id())
+                        .and_then(|b| b.plugin.as_ref())
+                        .is_some_and(|p| p.controller == Some(Controller::Panel)),
+                    id: r.control_id(),
+                    kind: ControlKind::Touch,
+                    number: i + 1,
+                    rect: [
+                        x + r.rect[0] * w,
+                        y + r.rect[1] * h,
+                        r.rect[2] * w,
+                        r.rect[3] * h,
+                    ],
+                }
+            }));
+    }
+    for control in &mut geometry.controls {
+        if control.kind == ControlKind::Touch {
+            control.pointer = page
+                .bindings
+                .get(&control.id)
+                .and_then(|b| b.plugin.as_ref())
+                .is_some_and(|p| p.controller == Some(Controller::Panel));
+        }
+    }
+    geometry
+}
+pub fn device_geometry(device: &Device) -> Geometry {
+    device
+        .profile
+        .pages
+        .iter()
+        .find(|p| p.id == device.profile.active_page_id)
+        .map_or_else(
+            || geometry_for(&device.provider_id),
+            |p| page_geometry(&device.provider_id, p),
+        )
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -232,16 +481,103 @@ impl DeviceRuntime {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum InputEvent {
+    Pointer {
+        phase: PointerPhase,
+        x: f64,
+        y: Option<f64>,
+    },
+    Swipe {
+        right: bool,
+    },
     Down,
     Up,
     Click,
-    Rotate { ticks: i32 },
+    Rotate {
+        ticks: i32,
+    },
     Cancel,
+}
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum PointerPhase {
+    Down,
+    Move,
+    Up,
+    Cancel,
+}
+#[derive(Clone, Copy, Debug, Serialize)]
+pub struct PointerPosition {
+    pub x: f64,
+    pub y: Option<f64>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Command {
+    SetPanelLayout {
+        device_id: String,
+        page_id: String,
+        layout: Option<PanelLayout>,
+        expected_revision: u64,
+    },
+    ConfigureProgram {
+        device_id: String,
+        page_id: String,
+        control_id: String,
+        plan: Plan,
+        label: String,
+        expected_revision: u64,
+    },
+    RenameBinding {
+        device_id: String,
+        binding_id: String,
+        label: String,
+        expected_revision: u64,
+    },
+    SetPinned {
+        device_id: String,
+        control_id: String,
+        pinned: bool,
+        expected_revision: u64,
+    },
+    AddProfile {
+        device_id: String,
+        name: String,
+        expected_revision: u64,
+    },
+    SelectProfile {
+        device_id: String,
+        profile_id: String,
+        expected_revision: u64,
+    },
+    ProfileApplication {
+        device_id: String,
+        application: Option<String>,
+        expected_revision: u64,
+    },
+    AddFolder {
+        device_id: String,
+        control_id: String,
+        name: String,
+        expected_revision: u64,
+    },
+    CancelActions {
+        device_id: String,
+    },
+    ConfigurePlugin {
+        device_id: String,
+        page_id: String,
+        control_id: String,
+        plugin: PluginAction,
+        label: String,
+        expected_revision: u64,
+    },
+    PluginSettings {
+        device_id: String,
+        binding_id: String,
+        settings: serde_json::Value,
+        expected_revision: u64,
+    },
     AddDevice {
         expected_revision: u64,
     },
@@ -281,7 +617,18 @@ pub enum Command {
 impl Command {
     pub fn device_id(&self) -> Option<&str> {
         match self {
-            Self::RenameDevice { device_id, .. }
+            Self::SetPanelLayout { device_id, .. } => Some(device_id),
+            Self::ConfigureProgram { device_id, .. }
+            | Self::RenameBinding { device_id, .. }
+            | Self::SetPinned { device_id, .. }
+            | Self::AddProfile { device_id, .. }
+            | Self::SelectProfile { device_id, .. }
+            | Self::ProfileApplication { device_id, .. }
+            | Self::AddFolder { device_id, .. }
+            | Self::CancelActions { device_id, .. }
+            | Self::ConfigurePlugin { device_id, .. }
+            | Self::PluginSettings { device_id, .. }
+            | Self::RenameDevice { device_id, .. }
             | Self::ConfigureControl { device_id, .. }
             | Self::AddPage { device_id, .. }
             | Self::SelectPage { device_id, .. }
@@ -291,7 +638,37 @@ impl Command {
     }
     pub fn expected_revision(&self) -> Option<u64> {
         match self {
-            Self::AddDevice { expected_revision }
+            Self::SetPanelLayout {
+                expected_revision, ..
+            } => Some(*expected_revision),
+            Self::ConfigureProgram {
+                expected_revision, ..
+            }
+            | Self::RenameBinding {
+                expected_revision, ..
+            }
+            | Self::SetPinned {
+                expected_revision, ..
+            }
+            | Self::AddProfile {
+                expected_revision, ..
+            }
+            | Self::SelectProfile {
+                expected_revision, ..
+            }
+            | Self::ProfileApplication {
+                expected_revision, ..
+            }
+            | Self::AddFolder {
+                expected_revision, ..
+            }
+            | Self::ConfigurePlugin {
+                expected_revision, ..
+            }
+            | Self::PluginSettings {
+                expected_revision, ..
+            }
+            | Self::AddDevice { expected_revision }
             | Self::RenameDevice {
                 expected_revision, ..
             }
@@ -307,17 +684,42 @@ impl Command {
             | Self::SetLocale {
                 expected_revision, ..
             } => Some(*expected_revision),
-            Self::Input { .. } => None,
+            Self::Input { .. } | Self::CancelActions { .. } => None,
         }
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct Feedback {
     pub device_id: String,
     pub binding_id: String,
     pub value: i64,
     pub active: bool,
+    pub title: Option<String>,
+    pub image: Option<String>,
+    pub error: Option<String>,
+    pub display: Option<String>,
+    pub running: bool,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct PluginInput {
+    pub device_id: String,
+    pub control_id: String,
+    pub binding: Binding,
+    pub event: String,
+    pub ticks: i32,
+    pub owner_id: String,
+    pub position: Option<PointerPosition>,
+    pub hold: bool,
+    pub canvas: [u32; 2],
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq, Eq, PartialOrd, Ord)]
+pub struct RetainedAction {
+    pub device_id: String,
+    pub control_id: String,
+    pub binding_id: String,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -337,4 +739,5 @@ pub struct Snapshot {
     pub editing_windows: usize,
     pub smart_profiles_paused: bool,
     pub event_sequence: u64,
+    pub retained_actions: Vec<RetainedAction>,
 }

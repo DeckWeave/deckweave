@@ -1,0 +1,9 @@
+{
+  "binary": "target/release/deckweave-desktop.exe",
+  "sha256": "459bea26ecbebf56891defa00ac55ab7b44ff98259abe4edbc883f385dc493be",
+  "bytes": 19134464,
+  "validation": "60 Rust tests; Svelte 0 errors/warnings; fmt/clippy; production web; docs; native release",
+  "profile": "Acceptance 2026-11-01",
+  "physical_display_acceptance": "pending owner observation",
+  "backup_validated": true
+}

@@ -17,14 +17,50 @@ pub struct RegionVisual {
     pub rect: [u16; 4],
     pub visual: KeyVisual,
     pub detail: String,
+    pub image: Option<String>,
 }
 
 pub struct Renderer {
     font: Font,
+    pub(crate) svg_options: resvg::usvg::Options<'static>,
 }
 impl Renderer {
+    pub fn image_jpeg(&self, bytes: &[u8]) -> Result<Vec<u8>, String> {
+        let reader = image::ImageReader::new(std::io::Cursor::new(bytes))
+            .with_guessed_format()
+            .map_err(|e| e.to_string())?;
+        let mut limits = image::Limits::default();
+        limits.max_image_width = Some(2048);
+        limits.max_image_height = Some(2048);
+        limits.max_alloc = Some(32 * 1024 * 1024);
+        let mut reader = reader;
+        reader.limits(limits);
+        let image = reader
+            .decode()
+            .map_err(|e| e.to_string())?
+            .resize_exact(112, 112, image::imageops::FilterType::Triangle)
+            .to_rgba8();
+        let rgb: Vec<u8> = image
+            .pixels()
+            .flat_map(|p| {
+                let a = u32::from(p[3]);
+                [0, 1, 2].map(|c| ((u32::from(p[c]) * a + 18 * (255 - a)) / 255) as u8)
+            })
+            .collect();
+        encode(&rgb, 112, 112, 10240)
+    }
     pub fn new() -> Result<Self, String> {
+        let mut svg_options = resvg::usvg::Options::default();
+        svg_options
+            .fontdb_mut()
+            .load_font_data(include_bytes!("../assets/IBMPlexSans.ttf").to_vec());
+        svg_options.font_family = "IBM Plex Sans".into();
+        svg_options.image_href_resolver = resvg::usvg::ImageHrefResolver {
+            resolve_string: Box::new(|_, _| None),
+            resolve_data: Box::new(|_, _, _| None),
+        };
         Ok(Self {
+            svg_options,
             font: Font::from_bytes(
                 include_bytes!("../assets/IBMPlexSans.ttf") as &[u8],
                 FontSettings::default(),
@@ -76,6 +112,12 @@ impl Renderer {
                     rgb[offset..offset + 3].copy_from_slice(&bg);
                 }
             }
+            if let Some(image) = &region.image
+                && let Ok(image) = self.data_image(image, u32::from(width), u32::from(height))
+            {
+                self.composite(&mut rgb, 800, [x, y, width, height], &image, 1.0);
+                continue;
+            }
             self.text(
                 &mut rgb,
                 800,
@@ -100,7 +142,14 @@ impl Renderer {
         }
         encode(&rgb, 800, 128, 128 * 1024)
     }
-    fn text(&self, rgb: &mut [u8], canvas_width: usize, bounds: [u16; 4], text: &str, size: f32) {
+    pub(crate) fn text(
+        &self,
+        rgb: &mut [u8],
+        canvas_width: usize,
+        bounds: [u16; 4],
+        text: &str,
+        size: f32,
+    ) {
         let [left, top, width, height] = bounds;
         let canvas_height = rgb.len() / (canvas_width * 3);
         let mut layout = Layout::new(CoordinateSystem::PositiveYDown);
@@ -145,7 +194,7 @@ impl Renderer {
     }
 }
 
-fn encode(rgb: &[u8], width: u16, height: u16, limit: usize) -> Result<Vec<u8>, String> {
+pub(crate) fn encode(rgb: &[u8], width: u16, height: u16, limit: usize) -> Result<Vec<u8>, String> {
     let rotated: Vec<u8> = rgb
         .as_chunks::<3>()
         .0
@@ -173,6 +222,7 @@ mod tests {
     fn strip_is_bounded_and_invalid_regions_are_rejected() {
         let renderer = Renderer::new().unwrap();
         let region = RegionVisual {
+            image: None,
             rect: [0, 0, 160, 128],
             visual: KeyVisual {
                 title: "Область".into(),

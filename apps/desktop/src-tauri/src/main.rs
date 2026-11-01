@@ -1,7 +1,12 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use deckweave_core::{Command, Core, Error, Snapshot};
+mod engine;
 mod hardware;
+mod plugins;
+mod shell;
+#[cfg(debug_assertions)]
+mod smoke;
 mod touch;
 use hardware::{Hardware, LiveSnapshot};
 use std::sync::{Arc, Mutex};
@@ -13,6 +18,8 @@ enum Application {
     Ready {
         core: Arc<Mutex<Core>>,
         hardware: Hardware,
+        plugins: plugins::Host,
+        engine: engine::Engine,
     },
     Failed(Error),
 }
@@ -63,6 +70,9 @@ fn dispatch(
         ));
     }
     let snapshot = locked(&state)?.dispatch(command, label)?;
+    if let Some(shell) = app.try_state::<shell::Shell>() {
+        shell.locale(snapshot.configuration.locale);
+    }
     if let Application::Ready { hardware, .. } = state.inner() {
         hardware.changed();
     }
@@ -81,6 +91,101 @@ fn permitted(label: &str, command: &Command) -> bool {
     } else {
         false
     }
+}
+
+#[tauri::command]
+fn list_plugins(
+    window: WebviewWindow,
+    state: State<'_, Application>,
+) -> Result<Vec<plugins::catalog::Package>, Error> {
+    if window.label() != "main" && !window.label().starts_with("device-") {
+        return Err(Error::new("window", "Not an editor window"));
+    }
+    match state.inner() {
+        Application::Ready { plugins, .. } => Ok(plugins.packages()),
+        Application::Failed(e) => Err(e.clone()),
+    }
+}
+
+#[tauri::command]
+async fn open_inspector(
+    context: String,
+    window: WebviewWindow,
+    app: tauri::AppHandle,
+    state: State<'_, Application>,
+) -> Result<(), Error> {
+    let device_id = window
+        .label()
+        .strip_prefix("device-")
+        .ok_or_else(|| Error::new("window", "Open action settings from its device"))?;
+    let owned = locked(&state)?
+        .snapshot()
+        .configuration
+        .devices
+        .iter()
+        .find(|d| d.id == device_id)
+        .is_some_and(|d| {
+            d.profile
+                .pages
+                .iter()
+                .flat_map(|p| p.bindings.values())
+                .any(|b| b.contains(&context))
+        });
+    if !owned {
+        return Err(Error::new("window", "Action belongs to another device"));
+    }
+    let label = format!("pi-{context}");
+    if let Some(w) = app.get_webview_window(&label) {
+        let _ = w.show();
+        let _ = w.set_focus();
+        return Ok(());
+    }
+    let host = app.clone();
+    let target = context.clone();
+    let (url, package) = tauri::async_runtime::spawn_blocking(move || {
+        let state = host.state::<Application>();
+        match state.inner() {
+            Application::Ready { plugins, .. } => plugins.inspector(target),
+            Application::Failed(e) => Err(e.clone()),
+        }
+    })
+    .await
+    .map_err(|e| Error::new("plugin", e.to_string()))??;
+    let directory = directory_override()
+        .map(Ok)
+        .unwrap_or_else(|| app.path().app_data_dir())
+        .map_err(|e| Error::new("plugin", e.to_string()))?;
+    let built = WebviewWindowBuilder::new(
+        &app,
+        &label,
+        WebviewUrl::External(
+            url.parse()
+                .map_err(|e| Error::new("plugin", format!("Invalid inspector URL: {e}")))?,
+        ),
+    )
+    .title("DeckWeave — Plugin settings")
+    .data_directory(directory.join("plugin-inspectors").join(package))
+    .inner_size(540.0, 720.0)
+    .build()
+    .map_err(|e| Error::new("window", e.to_string()))?;
+    locked(&state)?.editor_opened(built.label());
+    let _ = app.emit("deckweave:changed", ());
+    Ok(())
+}
+
+#[tauri::command]
+fn restart_plugin(
+    package: String,
+    window: WebviewWindow,
+    state: State<'_, Application>,
+) -> Result<(), Error> {
+    if !window.label().starts_with("device-") {
+        return Err(Error::new("window", "Not an editor window"));
+    }
+    if let Application::Ready { plugins, .. } = state.inner() {
+        plugins.restart(package);
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -112,7 +217,11 @@ async fn open_device(
         return Ok(());
     }
     // Async Tauri command avoids creating a WebView from a synchronous IPC handler on Windows.
-    let built = WebviewWindowBuilder::new(&app, &label, WebviewUrl::App("index.html".into()))
+    let mut builder = WebviewWindowBuilder::new(&app, &label, WebviewUrl::App("index.html".into()));
+    if let Some(directory) = directory_override() {
+        builder = builder.data_directory(directory.join("web-editor"));
+    }
+    let built = builder
         .title(format!("DeckWeave — {name}"))
         .inner_size(1180.0, 860.0)
         .min_inner_size(920.0, 720.0)
@@ -124,16 +233,22 @@ async fn open_device(
 }
 
 fn main() {
+    startup("builder");
+    let mut context = tauri::generate_context!();
+    if let Some(directory) = directory_override() {
+        for window in &mut context.config_mut().app.windows {
+            window.data_directory = Some(std::path::PathBuf::from(&directory).join("web-editor"));
+        }
+    }
     let result = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.show();
-                let _ = window.set_focus();
-            }
+            shell::show_registry(app);
         }))
         .setup(|app| {
-            let directory = std::env::var_os("DECKWEAVE_DATA_DIR")
-                .map(std::path::PathBuf::from)
+            startup("setup");
+            app.manage(shell::Shell::install(app.handle())?);
+            startup("tray");
+            let directory = directory_override()
                 .map(Ok)
                 .unwrap_or_else(|| app.path().app_data_dir())
                 .map_err(|error| Error::new("storage", error.to_string()));
@@ -144,18 +259,44 @@ fn main() {
             });
             app.manage(match core {
                 Ok((core, directory)) => {
+                    startup("core");
                     let core = Arc::new(Mutex::new(core));
                     let hardware =
-                        Hardware::start(Arc::clone(&core), app.handle().clone(), directory);
-                    Application::Ready { core, hardware }
+                        Hardware::start(Arc::clone(&core), app.handle().clone(), directory.clone());
+                    let plugins = plugins::Host::start(
+                        Arc::clone(&core),
+                        app.handle().clone(),
+                        directory,
+                        hardware.invalidation(),
+                    );
+                    startup("plugins");
+                    let engine = engine::Engine::start(
+                        Arc::clone(&core),
+                        app.handle().clone(),
+                        hardware.invalidation(),
+                    );
+                    Application::Ready {
+                        core,
+                        hardware,
+                        plugins,
+                        engine,
+                    }
                 }
                 Err(error) => Application::Failed(error),
             });
+            startup("managed");
+            if let Ok(core) = locked(&app.state::<Application>()) {
+                app.state::<shell::Shell>()
+                    .locale(core.snapshot().configuration.locale);
+            }
+            startup("ready");
+            #[cfg(debug_assertions)]
+            smoke::start(app.handle());
             Ok(())
         })
         .on_window_event(|window, event| {
             if matches!(event, WindowEvent::Destroyed)
-                && window.label().starts_with("device-")
+                && (window.label().starts_with("device-") || window.label().starts_with("pi-"))
                 && let Some(state) = window.app_handle().try_state::<Application>()
             {
                 if let Ok(mut core) = locked(&state) {
@@ -170,20 +311,63 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             get_snapshot,
             dispatch,
-            open_device
+            open_device,
+            list_plugins,
+            open_inspector,
+            restart_plugin,
+            shell::quit_application
         ])
-        .build(tauri::generate_context!());
+        .build(context);
     match result {
         Ok(app) => app.run(|app, event| {
+            if let tauri::RunEvent::ExitRequested {
+                code: None, api, ..
+            } = &event
+                && let Some(shell) = app.try_state::<shell::Shell>()
+                && !shell.quitting.load(std::sync::atomic::Ordering::Relaxed)
+            {
+                api.prevent_exit();
+            }
             if matches!(event, tauri::RunEvent::Exit)
                 && let Some(state) = app.try_state::<Application>()
-                && let Application::Ready { hardware, .. } = state.inner()
+                && let Application::Ready {
+                    hardware,
+                    plugins,
+                    engine,
+                    ..
+                } = state.inner()
             {
+                plugins.stop();
+                engine.stop();
                 hardware.stop();
             }
         }),
         Err(error) => eprintln!("DeckWeave startup failed: {error}"),
     }
+}
+
+fn startup(marker: &str) {
+    #[cfg(debug_assertions)]
+    {
+        use std::io::Write;
+        if let Ok(mut file) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(std::env::temp_dir().join("deckweave-startup.log"))
+        {
+            let _ = writeln!(file, "{} {marker}", std::process::id());
+        }
+    }
+    #[cfg(not(debug_assertions))]
+    let _ = marker;
+}
+
+fn directory_override() -> Option<std::path::PathBuf> {
+    let from_env = std::env::var_os("DECKWEAVE_DATA_DIR").map(std::path::PathBuf::from);
+    #[cfg(debug_assertions)]
+    return from_env.or_else(|| smoke::configuration().map(|c| c.directory.clone()));
+    #[cfg(not(debug_assertions))]
+    from_env
 }
 
 #[cfg(test)]
