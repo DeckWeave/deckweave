@@ -304,7 +304,10 @@ impl Core {
         self.sequence != sequence
     }
     pub fn foreground_application(&mut self, application: Option<&str>) -> Result<bool> {
-        if !self.editors.is_empty() || application.is_none() {
+        if !self.config.preferences.smart_profiles
+            || !self.editors.is_empty()
+            || application.is_none()
+        {
             return Ok(false);
         }
         let mut next = self.config.clone();

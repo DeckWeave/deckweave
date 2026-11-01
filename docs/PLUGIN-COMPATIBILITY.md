@@ -5,6 +5,7 @@
 | Часть | Текущее поведение |
 |---|---|
 | Catalog | `.sdPlugin` из каталога приложения, workspace plugins и установленного каталога Elgato. Platform entry point, Controllers, PI, state images и Encoder layout из manifest |
+| Elgato Weather | Отдельный дескриптор для установленного backend 1.2.1.103 с проверкой SHA-256; оригинальные Keypad/Encoder, backend и PI в собственной рабочей копии. Защищённый manifest не расшифровывается. Старт и PI требуют отдельного разрешения IP-геолокации, по умолчанию выключены. [Подробности и границы проверки](ELGATO-WEATHER.md) |
 | Backend | Один процесс на пакет; несколько contexts/instances независимы. Запускается при первом использовании, остаётся, пока пакет назначен где-либо в конфигурации. `willDisappear` снимает невидимый context, не обрывая остальные действия |
 | Keypad / Encoder | keyDown/keyUp, dialDown/dialUp/dialRotate, touchTap с hold и tapPos в canvas 200×100. N4 click не выдаётся за измеренную длительность удержания крутилки |
 | Settings | set/getSettings, per-package global settings, didReceiveSettings, sendToPlugin/sendToPropertyInspector. Оригинальный PI имеет отдельное окно и глобальную editing pause |

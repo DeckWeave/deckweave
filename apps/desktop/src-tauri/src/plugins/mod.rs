@@ -382,6 +382,14 @@ fn start(
         if let Some(e) = &s.package.error {
             return Err(e.clone());
         }
+        if let Some(error) = weather_permission_error(
+            &s.package,
+            snapshot.configuration.preferences.allow_weather_geolocation,
+            snapshot.configuration.locale,
+        ) {
+            return Err(error);
+        }
+        let environment = catalog::prepare_runtime(&mut s.package, directory)?;
         let entry = s.package.entry.as_ref().ok_or("Missing entry point")?;
         let relative = entry
             .strip_prefix(&s.package.root)
@@ -483,6 +491,15 @@ fn start(
                     command.env_remove(key);
                 }
             }
+            if let Some(environment) = environment {
+                command
+                    .env("USERPROFILE", &environment.home)
+                    .env("HOME", &environment.home)
+                    .env("APPDATA", &environment.roaming)
+                    .env("LOCALAPPDATA", &environment.local)
+                    .env("TEMP", &environment.temp)
+                    .env("TMP", &environment.temp);
+            }
             #[cfg(windows)]
             {
                 use std::os::windows::process::CommandExt;
@@ -514,6 +531,7 @@ fn run(
     };
     let mut active = BTreeMap::new();
     let mut assigned = BTreeSet::new();
+    let mut weather_geolocation = snapshot.configuration.preferences.allow_weather_geolocation;
     while !stop.load(Ordering::Relaxed) {
         let Ok((revision, changed, retained, inputs)) = core.lock().map(|mut c| {
             (
@@ -532,6 +550,9 @@ fn run(
         if let Some(changed) = changed {
             snapshot = changed;
         }
+        let weather_permission_changed =
+            weather_geolocation != snapshot.configuration.preferences.allow_weather_geolocation;
+        weather_geolocation = snapshot.configuration.preferences.allow_weather_geolocation;
         if revision != last_revision {
             assigned = assigned_packages(&snapshot);
         }
@@ -548,6 +569,11 @@ fn run(
             net = Network::start().ok();
         }
         if let Some(network) = &net {
+            if weather_permission_changed
+                && let Some(session) = sessions.remove("com.elgato.weather")
+            {
+                session.close(&app, network);
+            }
             let unused: Vec<_> = sessions
                 .keys()
                 .filter(|p| !assigned.contains(*p))
@@ -729,7 +755,10 @@ fn run(
                             core.action_error(
                                 &input.device_id,
                                 &input.owner_id,
-                                "Plugin is not ready; retry after it starts",
+                                session
+                                    .error
+                                    .as_deref()
+                                    .unwrap_or("Plugin is not ready; retry after it starts"),
                             );
                         }
                         notify(&app, &epoch);
@@ -800,6 +829,13 @@ fn prepare_inspector(
     let session = sessions
         .get_mut(&plugin.package)
         .ok_or("Plugin is not running")?;
+    if let Some(error) = weather_permission_error(
+        &session.package,
+        snapshot.configuration.preferences.allow_weather_geolocation,
+        snapshot.configuration.locale,
+    ) {
+        return Err(error);
+    }
     let page = session
         .package
         .actions
@@ -820,6 +856,21 @@ fn prepare_inspector(
         errors: None,
     });
     Ok((net.url(&nonce, &page), session.package.id.clone()))
+}
+
+fn weather_permission_error(
+    package: &Package,
+    allowed: bool,
+    locale: deckweave_core::Locale,
+) -> Option<String> {
+    if package.id != "com.elgato.weather" || allowed {
+        return None;
+    }
+    Some(if locale == deckweave_core::Locale::Ru {
+        "Elgato Weather выключен: оригинальный плагин определяет внешний IP через api.ipify.org и передаёт его сервисам геолокации. Разрешите это в общих настройках приложения или используйте DeckWeave Weather."
+    } else {
+        "Elgato Weather is disabled: the original plugin detects your public IP via api.ipify.org and sends it to geolocation services. Allow this in application settings or use DeckWeave Weather."
+    }.into())
 }
 fn handle(
     session: &mut Session,
@@ -1008,6 +1059,25 @@ fn drain(socket: &mut Socket) -> Result<Vec<Value>, String> {
 mod tests {
     use super::*;
     use deckweave_core::{InputEvent, PluginAction};
+    #[test]
+    fn elgato_weather_requires_explicit_permission_before_process_or_inspector() {
+        let mut package = Package {
+            id: "com.elgato.weather".into(),
+            name: "Elgato Weather".into(),
+            version: "1.2.1.103".into(),
+            actions: vec![],
+            error: None,
+            root: PathBuf::new(),
+            entry: None,
+            isolated_weather: true,
+        };
+        let reason = weather_permission_error(&package, false, deckweave_core::Locale::En).unwrap();
+        assert!(reason.contains("api.ipify.org"));
+        assert!(reason.contains("application settings"));
+        assert!(weather_permission_error(&package, true, deckweave_core::Locale::En).is_none());
+        package.id = "other.plugin".into();
+        assert!(weather_permission_error(&package, false, deckweave_core::Locale::En).is_none());
+    }
     #[test]
     fn original_plugin_context_is_retained_until_release_after_navigation() {
         let mut core = Core::memory().unwrap();

@@ -53,6 +53,12 @@
     );
   }
   function accepts(item: LibraryAction, control: Control): boolean {
+    if (
+      item.type === 'plugin' &&
+      item.package === 'com.elgato.weather' &&
+      !snapshot.configuration.preferences.allow_weather_geolocation
+    )
+      return false;
     const region = regionFor(control);
     if (item.type === 'folder') return control.kind === 'key';
     if (item.type === 'plan' && ['dial_stack', 'action_wheel', 'dial_bindings'].includes(item.plan))
@@ -223,13 +229,22 @@
     client.plugins
       .map((pack) => ({
         ...pack,
-        actions: pack.name.toLocaleLowerCase().includes(search.toLocaleLowerCase())
-          ? pack.actions
-          : pack.actions.filter((a) =>
-              a.name.toLocaleLowerCase().includes(search.toLocaleLowerCase()),
-            ),
+        actions: pack.actions.filter(
+          (a) =>
+            (filter === 'plugins' ||
+              a.controllers.includes(filter === 'keys' ? 'Keypad' : 'Encoder') ||
+              (filter === 'dials' && a.controllers.includes('Panel'))) &&
+            (pack.name.toLocaleLowerCase().includes(search.toLocaleLowerCase()) ||
+              a.name.toLocaleLowerCase().includes(search.toLocaleLowerCase())),
+        ),
       }))
-      .filter((pack) => pack.actions.length || (!search && pack.error)),
+      .filter(
+        (pack) =>
+          (filter === 'plugins' ||
+            pack.id !== 'com.elgato.weather' ||
+            snapshot.configuration.preferences.allow_weather_geolocation) &&
+          (pack.actions.length || (!search && pack.error)),
+      ),
   );
   const matchingPlans = $derived(
     (filter === 'dials'
@@ -381,21 +396,18 @@
   <section class="device-workspace">
     <div class="device-toolbar">
       <div>
-        <input
-          class="device-name"
-          aria-label={t('deviceName')}
-          maxlength="80"
-          value={device.name}
+        <select
+          class="device-selector"
+          aria-label={t('devices')}
+          value={device.id}
           onchange={(e) => {
-            const name = e.currentTarget.value;
-            void client.send((revision) => ({
-              type: 'rename_device',
-              device_id: device.id,
-              name,
-              expected_revision: revision,
-            }));
+            const id = e.currentTarget.value;
+            e.currentTarget.value = device.id;
+            void client.openDevice(id);
           }}
-        />
+          >{#each snapshot.configuration.devices as item}<option value={item.id}>{item.name}</option
+            >{/each}</select
+        >
         <div class="toolbar-meta">
           <span
             class="status-dot"
@@ -426,7 +438,12 @@
           >
         </div>
       </div>
-      <span class="pill muted">{t('preview')}</span>
+      <button
+        class="quiet device-settings-link"
+        aria-label={t('deviceSettings')}
+        title={t('deviceSettings')}
+        onclick={() => void client.openSettings(device.id)}>⚙</button
+      >
     </div>
     {#if profileSettings}<div class="profile-settings">
         <label
@@ -472,6 +489,7 @@
         class="device-panel"
         style:aspect-ratio={`${geometry.width}/${geometry.height}`}
         style:--device-ratio={geometry.width / geometry.height}
+        style:--preview-scale={snapshot.configuration.preferences.preview_scale / 100}
       >
         <div
           class="touch-surface"
@@ -824,9 +842,6 @@
       {/if}
     </footer>
     {#if connection.error}<p class="connection-error hardware-error">{connection.error}</p>{/if}
-    {#if device.provider_id === 'deckweave.n4'}<p class="hardware-note hardware-limit">
-        {t('n4Limit')}
-      </p>{/if}
   </section>
   <PaneSplitter
     orientation="vertical"
@@ -856,11 +871,52 @@
         bind:value={search}
       />
     </div>
-    {#if filter === 'plugins'}
-      {#each visiblePlugins as pack}
-        <div class="library-category">{pack.name} · {pack.version}</div>
-        {#if pack.error}<p class="connection-error">{pack.error}</p>{:else}
-          <div class="action-list">
+    {#if filter !== 'plugins'}
+      {#each [{ name: 'navigationGroup', types: ['page', 'page_cycle', 'profile', 'back'] }, { name: 'multiActionGroup', types: ['sequence', 'switch', 'key_logic', 'dial_bindings', 'dial_stack', 'action_wheel', 'launch', 'hotkey'] }] as group}
+        {@const plans = matchingPlans.filter((type) => group.types.includes(type))}
+        {#if plans.length || (group.name === 'navigationGroup' && folderVisible)}<details
+            class="library-group"
+            open
+          >
+            <summary>{t(group.name as 'navigationGroup' | 'multiActionGroup')}</summary>
+            <div class="action-list">
+              {#each plans as type}<button
+                  class="action-item"
+                  {...source({ type: 'plan', plan: type })}
+                  ><span class="action-icon" aria-hidden="true"
+                    >{type === 'sequence'
+                      ? '☷'
+                      : type === 'switch'
+                        ? '⇄'
+                        : type === 'key_logic'
+                          ? '⌘'
+                          : type === 'back'
+                            ? '←'
+                            : '◇'}</span
+                  ><strong>{t(type)}</strong></button
+                >{/each}
+              {#if group.name === 'navigationGroup' && folderVisible}<button
+                  class="action-item"
+                  {...source({ type: 'folder' })}
+                  ><span class="action-icon" aria-hidden="true">▱</span><strong
+                    >{t('folder')}</strong
+                  ></button
+                >{/if}
+            </div>
+          </details>{/if}
+      {/each}
+    {/if}
+    {#each visiblePlugins as pack}
+      <details class="library-group" open>
+        <summary>{pack.name}<span>{pack.version}</span></summary>
+        {#if pack.id === 'com.elgato.weather' && !snapshot.configuration.preferences.allow_weather_geolocation}<p
+            class="library-empty"
+          >
+            {t('disabledWeather')}
+          </p>
+        {:else if pack.error}<p class="connection-error library-empty">{pack.error}</p>{:else}<div
+            class="action-list"
+          >
             {#each pack.actions as action}<button
                 class="action-item"
                 {...source({
@@ -870,64 +926,26 @@
                   label: action.name,
                   controllers: action.controllers,
                 })}
-                aria-disabled={!selected ||
-                  !accepts(
-                    {
-                      type: 'plugin',
-                      package: pack.id,
-                      action: action.id,
-                      label: action.name,
-                      controllers: action.controllers,
-                    },
-                    selected,
-                  )}
-                ><span class="action-icon purple">◈</span><span
-                  ><strong>{action.name}</strong><small>{action.controllers.join(' · ')}</small
-                  ></span
+                ><span class="action-icon" aria-hidden="true">◈</span><strong>{action.name}</strong
                 ></button
               >{/each}
-          </div>
-        {/if}
-      {/each}
-      {#if !client.plugins.length}<p class="library-empty">{t('pluginsNote')}</p>{/if}
-    {:else}<div class="library-category">
-        ⌄ {t('builtin')}
-      </div>
-      <div class="action-list">
-        {#each matchingPlans as type}<button
-            class="action-item"
-            {...source({ type: 'plan', plan: type })}
-            ><span class="action-icon purple"
-              >{type === 'sequence'
-                ? '☷'
-                : type === 'switch'
-                  ? '⇄'
-                  : type === 'key_logic'
-                    ? '⌘'
-                    : '◇'}</span
-            ><strong>{t(type)}</strong></button
-          >{/each}
-        {#if folderVisible}<button class="action-item" {...source({ type: 'folder' })}
-            ><span class="action-icon">▱</span><strong>{t('folder')}</strong></button
-          >{/if}
-        {#each items as kind}<button
-            class="action-item"
-            {...source({ type: 'builtin', kind })}
-            title={selectedId
-              ? t(kind === 'counter' ? 'counterHint' : 'toggleHint')
-              : t('chooseFirst')}
-            ><span class="action-icon" class:purple={kind === 'toggle'}
-              >{kind === 'counter' ? '＋' : '◉'}</span
-            ><span
-              ><strong>{t(kind)}</strong><small
-                >{t(kind === 'counter' ? 'counterHint' : 'toggleHint')}</small
-              ></span
-            ></button
-          >{/each}{#if items.length === 0 && matchingPlans.length === 0 && !folderVisible}<p
-            class="library-empty"
-          >
-            {t('noResults')}
-          </p>{/if}
-      </div>{/if}
+          </div>{/if}
+      </details>
+    {/each}
+    {#if filter !== 'plugins' && items.length}<details class="library-group">
+        <summary>{t('testActionsGroup')}</summary>
+        <div class="action-list">
+          {#each items as kind}<button class="action-item" {...source({ type: 'builtin', kind })}
+              ><span class="action-icon">{kind === 'counter' ? '＋' : '◉'}</span><strong
+                >{t(kind)}</strong
+              ></button
+            >{/each}
+        </div>
+      </details>{/if}
+    {#if !visiblePlugins.length && !matchingPlans.length && !folderVisible && !items.length}<p
+        class="library-empty"
+      >
+        {t('noResults')}
+      </p>{/if}
   </aside>
 </div>

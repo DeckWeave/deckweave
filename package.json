@@ -18,7 +18,8 @@
     "check:format": "prettier --check \"apps/desktop/src/**/*.{svelte,ts,css}\" apps/desktop/vite.config.ts apps/desktop/svelte.config.js apps/desktop/tsconfig.json package.json scripts/*.mjs",
     "check:docs": "node scripts/check-docs.mjs",
     "check:rust": "cargo fmt --all --check && cargo clippy --workspace --all-targets --locked -- -D warnings && cargo test --workspace --locked",
-    "check": "npm run check:ui && npm run check:format && npm run build:web && npm run check:rust && npm run check:docs"
+    "check": "npm run check:ui && npm run check:format && npm run build:web && npm run check:rust && npm run test:weather && npm run check:docs",
+    "test:weather": "node --test scripts/tests/weather.test.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "2.12.3"

@@ -21,14 +21,12 @@ tungstenite = { version = "0.28.0", default-features = false, features = ["hands
 tauri = { version = "2.12.3", features = ["tray-icon"] }
 tauri-plugin-single-instance = "2.5.3"
 serde.workspace = true
+sha2 = "0.10.9"
 
 
 [features]
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
-
-[dev-dependencies]
-sha2="0.10.9"
 
 [lints]
 workspace = true

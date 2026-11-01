@@ -1,4 +1,10 @@
 export type Locale = 'ru' | 'en';
+export interface Preferences {
+  allow_weather_geolocation: boolean;
+  smart_profiles: boolean;
+  preview_scale: number;
+  compact: boolean;
+}
 export type ActionKind = 'counter' | 'toggle' | 'plugin' | 'program';
 export type Plan =
   | { type: 'page_cycle'; direction: 'previous' | 'next' | 'dial' }
@@ -95,7 +101,7 @@ export interface Snapshot {
     string,
     Record<string, { page_id: string; binding_id: string | null; data_url: string }>
   >;
-  configuration: { revision: number; locale: Locale; devices: Device[] };
+  configuration: { revision: number; locale: Locale; preferences: Preferences; devices: Device[] };
   geometries: Record<
     string,
     {
@@ -138,6 +144,13 @@ export interface PanelLayout {
   swipe_pages: boolean;
 }
 export type Command =
+  | { type: 'set_preferences'; preferences: Preferences; expected_revision: number }
+  | {
+      type: 'device_preferences';
+      device_id: string;
+      default_profile: string | null;
+      expected_revision: number;
+    }
   | {
       type: 'folder_behavior';
       device_id: string;

@@ -239,6 +239,22 @@ impl Core {
             None
         };
         match command {
+            Command::SetPreferences { preferences, .. } => {
+                if !(75..=150).contains(&preferences.preview_scale) {
+                    return Err(Error::new(
+                        "preferences",
+                        "Preview scale must be between 75 and 150",
+                    ));
+                }
+                next.preferences = preferences;
+            }
+            Command::DevicePreferences {
+                device_id,
+                default_profile,
+                ..
+            } => {
+                device_mut(&mut next, &device_id)?.default_profile = default_profile;
+            }
             Command::FolderBehavior {
                 device_id,
                 page_id,

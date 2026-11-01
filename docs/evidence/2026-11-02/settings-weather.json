@@ -1,0 +1,61 @@
+{
+  "date": "2026-11-02",
+  "status": "passed: final native release UI, live weather, restart and settings recreation",
+  "owner_decision": "Keep original Elgato Weather disabled; use DeckWeave Weather",
+  "open_meteo_live": {
+    "test_city": "London",
+    "temperature_c": 9,
+    "timezone": "Europe/London",
+    "hourly_entries": 72,
+    "solar_days": 3
+  },
+  "validation": {
+    "rust_tests": 76,
+    "weather_tests": 7,
+    "svelte": "zero errors/warnings",
+    "npm_run_check": "passed",
+    "final_ipc_change": "clippy -D warnings,21 desktop tests and release build passed; native recreation confirmed"
+  },
+  "ui": {
+    "reference": "Installed Elgato Stream Deck 7.6.0 (23012): main editor, General and Devices preferences",
+    "settings": [
+      "General/Devices views, separate settings window",
+      "Device-specific gear selects corresponding device",
+      "Resizable inspector: 311 to 218 pixels, retained after restart",
+      "Close Settings, recreate from device-specific gear, correct device selected"
+    ],
+    "weather": [
+      "Drag Current onto key 1",
+      "Original PI connection, city search London returned explicit alternatives",
+      "Select London, England; settings save immediately",
+      "Key image shows current 9 degrees, feels 7, sunset16:31",
+      "Drag Forecast onto native Panel region1; choose same city",
+      "Panel shows forecast10 degrees, +3h, precipitation21%",
+      "Full application restart preserves profile, assignments, selected cities and pane sizes; fresh images received"
+    ],
+    "test_device": "Virtual Studio 02",
+    "test_profile": "Weather QA 2026-11-02",
+    "physical_assignments_changed": false,
+    "physical_weather_readability_observed": false,
+    "screenshots": [
+      "settings-general.png",
+      "settings-devices.png",
+      "settings-reopened.png",
+      "weather-inspector.png",
+      "weather-editor.png",
+      "weather-after-restart.png"
+    ]
+  },
+  "original_weather": {
+    "adapter": "available, exact SHA256-gated installed backend",
+    "allow_weather_geolocation": false,
+    "owner_decision": "disabled; use own weather"
+  },
+  "optional_registry_commit": "52c27cb",
+  "settings_recreation": "Passed: asynchronous IPC; closed main Settings while editor remained open, recreated from device gear, loaded target Virtual Studio 02",
+  "release": {
+    "path": "target/release/deckweave-desktop.exe",
+    "bytes": 19308032,
+    "sha256": "29B6EC98EB64399C895797ECD4B6AB7836D505D5B6D929A2324F079E9C43465D"
+  }
+}

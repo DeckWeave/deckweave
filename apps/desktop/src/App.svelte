@@ -3,8 +3,7 @@
   import { Client } from './client.svelte';
   import { text } from './i18n';
   import DeviceEditor from './DeviceEditor.svelte';
-  import Registry from './Registry.svelte';
-  import type { Locale } from './types';
+  import Settings from './Settings.svelte';
 
   const client = new Client();
   const locale = $derived(client.snapshot?.configuration.locale ?? 'ru');
@@ -21,34 +20,20 @@
   });
 </script>
 
-<div class="app-shell">
+<div class="app-shell" class:compact={client.snapshot?.configuration.preferences.compact}>
   <header class="app-bar">
     <div class="brand">
-      <span class="brand-mark">D</span><strong>DeckWeave</strong><span class="build-label"
-        >0.1 · {t('foundation')}</span
-      >
+      <span class="brand-mark">D</span><strong>DeckWeave</strong>
     </div>
     <div class="app-tools">
       <span class="save-status" aria-live="polite"
         >{client.busy ? t('saving') : client.snapshot ? t('saved') : ''}</span
       >
-      <select
-        aria-label="Language"
-        value={locale}
-        onchange={(e) => {
-          const nextLocale = e.currentTarget.value as Locale;
-          void client.send((revision) => ({
-            type: 'set_locale',
-            locale: nextLocale,
-            expected_revision: revision,
-          }));
-        }}
-        disabled={!client.snapshot}
-      >
-        <option value="ru">RU</option><option value="en">EN</option>
-      </select>
-      {#if client.deviceId === 'main'}<button class="quiet" onclick={() => void client.quit()}
-          >{t('quit')}</button
+      {#if client.deviceId !== 'main'}<button
+          class="settings-button quiet"
+          aria-label={t('settings')}
+          title={t('settings')}
+          onclick={() => void client.openSettings()}>⚙</button
         >{/if}
     </div>
   </header>
@@ -72,7 +57,7 @@
       {#if client.error}<button onclick={() => void client.refresh()}>{t('retry')}</button>{/if}
     </main>
   {:else if client.deviceId === 'main'}
-    <Registry {client} />
+    <Settings {client} />
   {:else if device}
     <DeviceEditor {client} {device} />
   {:else}

@@ -1,0 +1,19 @@
+{
+  "Name": "DeckWeave Weather",
+  "Version": "0.1.0",
+  "SDKVersion": 2,
+  "CodePath": "plugin.mjs",
+  "PropertyInspectorPath": "settings.html",
+  "Actions": [
+    {
+      "UUID": "dev.deckweave.weather.current",
+      "Name": "Weather · Current",
+      "Controllers": ["Keypad", "Panel"]
+    },
+    {
+      "UUID": "dev.deckweave.weather.forecast",
+      "Name": "Weather · Forecast",
+      "Controllers": ["Keypad", "Panel"]
+    }
+  ]
+}

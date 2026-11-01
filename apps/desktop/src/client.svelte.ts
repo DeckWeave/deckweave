@@ -8,10 +8,13 @@ export class Client {
   busy = $state(false);
   error = $state('');
   plugins = $state<PluginPackage[]>([]);
+  settingsDevice = $state<string | null>(null);
+  settingsRequest = $state(0);
   available = isTauri();
   deviceId = this.available ? getCurrentWindow().label.replace(/^device-/, '') : 'main';
   private queue: Promise<unknown> = Promise.resolve();
   private unlisten?: UnlistenFn;
+  private unlistenSettings?: UnlistenFn;
   private stopped = false;
   private refreshing?: Promise<void>;
   private refreshAgain = false;
@@ -19,11 +22,20 @@ export class Client {
   async start() {
     if (!this.available) return;
     try {
+      this.unlistenSettings = await listen<string | null>('deckweave:settings', (event) => {
+        this.settingsDevice = event.payload;
+        this.settingsRequest++;
+      });
+      if (this.deviceId === 'main') {
+        this.settingsDevice = await invoke<string | null>('settings_context');
+        this.settingsRequest++;
+      }
       this.unlisten = await listen('deckweave:changed', () => {
         void this.refresh();
       });
       if (this.stopped) {
         this.unlisten();
+        this.unlistenSettings?.();
         return;
       }
       await this.refresh();
@@ -35,6 +47,7 @@ export class Client {
   stop() {
     this.stopped = true;
     this.unlisten?.();
+    this.unlistenSettings?.();
   }
   private adopt(snapshot: Snapshot) {
     if (
@@ -102,6 +115,13 @@ export class Client {
   async quit() {
     try {
       await invoke('quit_application');
+    } catch (e) {
+      this.fail(e);
+    }
+  }
+  async openSettings(deviceId: string | null = null) {
+    try {
+      await invoke('open_settings', { deviceId });
     } catch (e) {
       this.fail(e);
     }

@@ -1,5 +1,6 @@
 use serde::Serialize;
-use serde_json::Value;
+use serde_json::{Value, json};
+use sha2::{Digest, Sha256};
 use std::{
     collections::BTreeSet,
     path::{Component, Path, PathBuf},
@@ -27,7 +28,13 @@ pub struct Package {
     pub root: PathBuf,
     #[serde(skip)]
     pub entry: Option<PathBuf>,
+    #[serde(skip)]
+    pub isolated_weather: bool,
 }
+const WEATHER_ID: &str = "com.elgato.weather";
+const WEATHER_VERSION: &str = "1.2.1.103";
+const WEATHER_BACKEND_SHA256: &str =
+    "d4b0b6ec32dee0de0eb9ee0ef33e62f1ce9fa7bc32521b75c6941653be267827";
 pub fn scan(roots: &[PathBuf]) -> Vec<Package> {
     let mut packages = vec![];
     let mut seen = BTreeSet::new();
@@ -62,14 +69,25 @@ fn read_package(root: PathBuf, id: String) -> Package {
         error: None,
         root: root.clone(),
         entry: None,
+        isolated_weather: false,
     };
     let result = (|| -> Result<(), String> {
         let bytes = std::fs::read(root.join("manifest.json")).map_err(|e| e.to_string())?;
         if bytes.len() > 1024 * 1024 {
             return Err("Manifest exceeds 1 MiB".into());
         }
-        let manifest: Value = serde_json::from_slice(&bytes)
-            .map_err(|_| "Protected or invalid manifest".to_string())?;
+        let manifest: Value = match serde_json::from_slice(&bytes) {
+            Ok(manifest) => manifest,
+            Err(_) if package.id == WEATHER_ID && bytes.starts_with(b"ELGATO") => {
+                // This descriptor describes the readable backend and PI, not the protected
+                // manifest. Keep the vendor package intact; its SDK accepts a protected
+                // manifest itself. Unknown backend versions must be reviewed separately.
+                verify_weather_backend(&root)?;
+                package.isolated_weather = true;
+                weather_descriptor()
+            }
+            Err(_) => return Err("Protected or invalid manifest".into()),
+        };
         package.name = manifest["Name"]
             .as_str()
             .filter(|s| !s.trim().is_empty())
@@ -138,6 +156,116 @@ fn read_package(root: PathBuf, id: String) -> Package {
     }
     package
 }
+
+fn verify_weather_backend(root: &Path) -> Result<(), String> {
+    let entry = resolve(root, "bin/plugin.js")?;
+    if std::fs::metadata(&entry).map_err(|e| e.to_string())?.len() > 1024 * 1024 {
+        return Err("Elgato Weather backend exceeds the tested size".into());
+    }
+    let bytes = std::fs::read(entry).map_err(|e| e.to_string())?;
+    if format!("{:x}", Sha256::digest(&bytes)) != WEATHER_BACKEND_SHA256 {
+        return Err(format!(
+            "Elgato Weather backend is not the tested version {WEATHER_VERSION}; compatibility descriptor needs review"
+        ));
+    }
+    Ok(())
+}
+
+fn weather_descriptor() -> Value {
+    // Identities and capabilities are observable in the installed readable ea/*,
+    // en.json, ui/*.html, layouts/weather.json and bin/plugin.js. No vendor code
+    // or decrypted manifest is distributed by DeckWeave.
+    json!({
+        "Name": "Elgato Weather",
+        "Version": WEATHER_VERSION,
+        "CodePath": "bin/plugin.js",
+        "Actions": [
+            {"UUID":"com.elgato.weather.weather","Name":"Weather", "Controllers":["Keypad","Encoder"],"PropertyInspectorPath":"ui/weather-info.html", "Encoder":{"layout":"layouts/weather.json"}, "States":[{"Image":"imgs/actions/weather/icons/key.svg"}]},
+            {"UUID":"com.elgato.weather.forecast","Name":"Forecast", "Controllers":["Keypad","Encoder"],"PropertyInspectorPath":"ui/weather-info.html", "Encoder":{"layout":"layouts/weather.json"}, "States":[{"Image":"imgs/actions/weather/icons/key-forecast.svg"}]},
+            {"UUID":"com.elgato.weather.aqi","Name":"Air Quality", "Controllers":["Keypad","Encoder"],"PropertyInspectorPath":"ui/air-quality.html", "Encoder":{"layout":"layouts/weather.json"}, "States":[{"Image":"imgs/actions/weather/icons/aqi-key.svg"}]}
+        ]
+    })
+}
+
+pub struct RuntimeEnvironment {
+    pub home: PathBuf,
+    pub roaming: PathBuf,
+    pub local: PathBuf,
+    pub temp: PathBuf,
+}
+
+/// Weather's original backend stores data relative to cwd, APPDATA and homedir.
+/// Run an unchanged private copy so it never writes into the Elgato installation.
+pub fn prepare_runtime(
+    package: &mut Package,
+    directory: &Path,
+) -> Result<Option<RuntimeEnvironment>, String> {
+    if !package.isolated_weather {
+        return Ok(None);
+    }
+    verify_weather_backend(&package.root)?;
+    let home = directory
+        .join("plugin-runtime")
+        .join(WEATHER_ID)
+        .join(WEATHER_VERSION)
+        .join("home");
+    let roaming = home.join("AppData/Roaming");
+    let local = home.join("AppData/Local");
+    let temp = home.join("Temp");
+    let root = roaming.join("Elgato/StreamDeck/Plugins/com.elgato.weather.sdPlugin");
+    for path in [&root, &local, &temp] {
+        std::fs::create_dir_all(path).map_err(|e| e.to_string())?;
+    }
+    let mut remaining = 16 * 1024 * 1024;
+    copy_weather_assets(&package.root, &root, 0, &mut remaining)?;
+    std::fs::create_dir_all(root.join("storage")).map_err(|e| e.to_string())?;
+    verify_weather_backend(&root)?;
+    package.entry = Some(resolve(&root, "bin/plugin.js")?);
+    package.root = root;
+    Ok(Some(RuntimeEnvironment {
+        home,
+        roaming,
+        local,
+        temp,
+    }))
+}
+
+fn copy_weather_assets(
+    source: &Path,
+    target: &Path,
+    depth: u8,
+    remaining: &mut u64,
+) -> Result<(), String> {
+    if depth > 16 {
+        return Err("Elgato Weather asset tree is too deep".into());
+    }
+    for entry in std::fs::read_dir(source).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let name = entry.file_name();
+        if depth == 0 && matches!(name.to_str(), Some("logs" | "storage")) {
+            continue;
+        }
+        let kind = entry.file_type().map_err(|e| e.to_string())?;
+        let destination = target.join(name);
+        if kind.is_symlink()
+            || std::fs::symlink_metadata(&destination).is_ok_and(|m| m.file_type().is_symlink())
+        {
+            return Err("Elgato Weather asset symlinks are unsupported".into());
+        }
+        if kind.is_dir() {
+            std::fs::create_dir_all(&destination).map_err(|e| e.to_string())?;
+            copy_weather_assets(&entry.path(), &destination, depth + 1, remaining)?;
+        } else if kind.is_file() {
+            *remaining = remaining
+                .checked_sub(entry.metadata().map_err(|e| e.to_string())?.len())
+                .ok_or("Elgato Weather assets exceed 16 MiB")?;
+            std::fs::copy(entry.path(), destination).map_err(|e| e.to_string())?;
+        } else {
+            return Err("Elgato Weather has an unsupported asset type".into());
+        }
+    }
+    Ok(())
+}
 pub fn resolve(root: &Path, relative: &str) -> Result<PathBuf, String> {
     let path = Path::new(relative);
     if path.is_absolute()
@@ -159,6 +287,23 @@ pub fn resolve(root: &Path, relative: &str) -> Result<PathBuf, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn fixture() -> PathBuf {
+        let root = std::env::temp_dir().join(format!("deckweave-weather-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&root).unwrap();
+        root
+    }
+    fn remove_fixture(root: &Path) {
+        let root = root.canonicalize().unwrap();
+        let temporary = std::env::temp_dir().canonicalize().unwrap();
+        assert_eq!(root.parent(), Some(temporary.as_path()));
+        assert!(
+            root.file_name()
+                .unwrap()
+                .to_string_lossy()
+                .starts_with("deckweave-weather-")
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
     #[test]
     fn bundle_paths_cannot_escape_or_open_directories() {
         let root = Path::new(env!("CARGO_MANIFEST_DIR"));
@@ -171,5 +316,75 @@ mod tests {
             assert!(resolve(root, path).is_err());
         }
         assert!(resolve(root, "Cargo.toml").is_ok());
+    }
+    #[test]
+    fn protected_weather_requires_the_tested_backend_and_never_decodes_manifest() {
+        let root = fixture();
+        std::fs::create_dir(root.join("bin")).unwrap();
+        let protected = b"ELGATO\x01\x00\x00unreadable-protected-manifest";
+        std::fs::write(root.join("manifest.json"), protected).unwrap();
+        std::fs::write(root.join("bin/plugin.js"), b"different backend").unwrap();
+        let package = read_package(root.clone(), WEATHER_ID.into());
+        assert!(package.actions.is_empty());
+        assert!(!package.isolated_weather);
+        assert!(package.error.unwrap().contains("not the tested version"));
+        assert_eq!(
+            std::fs::read(root.join("manifest.json")).unwrap(),
+            protected
+        );
+        let other = read_package(root.clone(), "other.protected.plugin".into());
+        assert_eq!(
+            other.error.as_deref(),
+            Some("Protected or invalid manifest")
+        );
+        remove_fixture(&root);
+    }
+    #[test]
+    fn weather_descriptor_exposes_only_documented_production_actions() {
+        let descriptor = weather_descriptor();
+        assert_eq!(descriptor["Version"], WEATHER_VERSION);
+        assert_eq!(descriptor["CodePath"], "bin/plugin.js");
+        let actions = descriptor["Actions"].as_array().unwrap();
+        assert_eq!(actions.len(), 3);
+        assert_eq!(actions[0]["UUID"], "com.elgato.weather.weather");
+        assert_eq!(actions[1]["UUID"], "com.elgato.weather.forecast");
+        assert_eq!(actions[2]["UUID"], "com.elgato.weather.aqi");
+        for action in actions {
+            assert_eq!(action["Controllers"], json!(["Keypad", "Encoder"]));
+            assert_eq!(action["Encoder"]["layout"], "layouts/weather.json");
+        }
+    }
+    #[test]
+    fn runtime_copy_preserves_vendor_bytes_and_keeps_our_storage_separate() {
+        let root = fixture();
+        let source = root.join("vendor");
+        let target = root.join("runtime");
+        std::fs::create_dir_all(source.join("bin")).unwrap();
+        std::fs::create_dir_all(source.join("storage")).unwrap();
+        std::fs::create_dir_all(source.join("logs")).unwrap();
+        std::fs::create_dir_all(target.join("storage")).unwrap();
+        std::fs::write(source.join("manifest.json"), b"ELGATO\x01vendor bytes").unwrap();
+        std::fs::write(source.join("bin/plugin.js"), b"unchanged executable").unwrap();
+        std::fs::write(source.join("storage/private.json"), b"vendor settings").unwrap();
+        std::fs::write(source.join("logs/private.log"), b"vendor logs").unwrap();
+        std::fs::write(target.join("storage/ours.json"), b"DeckWeave settings").unwrap();
+        let mut budget = 4096;
+        copy_weather_assets(&source, &target, 0, &mut budget).unwrap();
+        assert_eq!(
+            std::fs::read(target.join("manifest.json")).unwrap(),
+            std::fs::read(source.join("manifest.json")).unwrap()
+        );
+        assert_eq!(
+            std::fs::read(target.join("bin/plugin.js")).unwrap(),
+            b"unchanged executable"
+        );
+        assert!(!target.join("storage/private.json").exists());
+        assert!(!target.join("logs").exists());
+        assert_eq!(
+            std::fs::read(target.join("storage/ours.json")).unwrap(),
+            b"DeckWeave settings"
+        );
+        assert!(copy_weather_assets(&source, &target, 0, &mut 0).is_err());
+        remove_fixture(&root);
     }
 }

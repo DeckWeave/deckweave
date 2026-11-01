@@ -1,12 +1,13 @@
 use deckweave_core::{Error, Locale};
 use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use tauri::{
-    Manager,
+    Emitter, Manager,
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIcon, TrayIconBuilder, TrayIconEvent},
 };
 
 pub struct Shell {
+    pub settings_device: std::sync::Mutex<Option<String>>,
     pub quitting: AtomicBool,
     open: MenuItem<tauri::Wry>,
     quit: MenuItem<tauri::Wry>,
@@ -16,7 +17,7 @@ pub struct Shell {
 }
 impl Shell {
     pub fn install(app: &tauri::AppHandle) -> tauri::Result<Self> {
-        let open = MenuItem::with_id(app, "registry", "Устройства", true, None::<&str>)?;
+        let open = MenuItem::with_id(app, "registry", "Настройки", true, None::<&str>)?;
         let quit = MenuItem::with_id(app, "quit", "Выйти из DeckWeave", true, None::<&str>)?;
         let menu = Menu::with_items(app, &[&open, &quit])?;
         let mut builder = TrayIconBuilder::with_id("deckweave")
@@ -45,6 +46,7 @@ impl Shell {
         }
         let tray = builder.build(app)?;
         Ok(Self {
+            settings_device: std::sync::Mutex::new(None),
             quitting: AtomicBool::new(false),
             open,
             quit,
@@ -59,8 +61,8 @@ impl Shell {
             return;
         }
         let (open, quit) = match locale {
-            Locale::Ru => ("Устройства", "Выйти из DeckWeave"),
-            Locale::En => ("Devices", "Quit DeckWeave"),
+            Locale::Ru => ("Настройки", "Выйти из DeckWeave"),
+            Locale::En => ("Settings", "Quit DeckWeave"),
         };
         let (open_item, quit_item) = (self.open.clone(), self.quit.clone());
         let _ = self.app.run_on_main_thread(move || {
@@ -86,10 +88,16 @@ pub fn show_registry(app: &tauri::AppHandle) {
                 builder = builder.data_directory(directory.join("web-editor"));
             }
             let _ = builder
-                .title("DeckWeave")
-                .inner_size(920.0, 640.0)
-                .min_inner_size(720.0, 500.0)
+                .title("DeckWeave — Settings")
+                .inner_size(980.0, 720.0)
+                .min_inner_size(820.0, 600.0)
                 .build();
+        }
+        if handle.get_webview_window("main").is_some() {
+            if let Ok(mut core) = crate::locked(&handle.state::<crate::Application>()) {
+                core.editor_opened("main");
+            }
+            let _ = handle.emit("deckweave:changed", ());
         }
     });
 }

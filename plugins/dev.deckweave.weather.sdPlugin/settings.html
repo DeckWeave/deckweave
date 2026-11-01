@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" /><title>DeckWeave Weather</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font:
+        13px 'Segoe UI',
+        sans-serif;
+      background: #27292f;
+      color: #e4eaf5;
+      margin: 0;
+      padding: 24px;
+    }
+    h1 {
+      font-size: 20px;
+      margin: 0 0 8px;
+    }
+    p {
+      font-size: 12px;
+      color: #a5b3c9;
+      line-height: 1.6;
+    }
+    label {
+      display: grid;
+      gap: 7px;
+      margin: 19px 0;
+    }
+    input,
+    select,
+    button {
+      font: inherit;
+      color: inherit;
+      background: #20242b;
+      border: 1px solid #465169;
+      border-radius: 6px;
+      padding: 10px;
+      min-width: 0;
+    }
+    button {
+      cursor: pointer;
+    }
+    button:hover {
+      background: #35435b;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: wait;
+    }
+    .search {
+      display: flex;
+      gap: 8px;
+    }
+    .search input {
+      flex: 1;
+    }
+    #places {
+      display: grid;
+      gap: 6px;
+      margin: 14px 0;
+    }
+    #places button {
+      text-align: left;
+    }
+    #selected {
+      background: #203b46;
+      padding: 12px;
+      border-radius: 6px;
+      color: #c3e6ed;
+    }
+    small {
+      display: block;
+      color: #9aa9c0;
+      margin-top: 5px;
+    }
+    #status {
+      min-height: 20px;
+      color: #c4d4f0;
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    a {
+      color: #a4c7ff;
+    }
+  </style>
+  <h1 id="heading">Weather</h1>
+  <p id="intro"></p>
+  <form id="searchForm">
+    <label
+      ><span id="cityLabel">City</span>
+      <div class="search">
+        <input id="query" maxlength="120" autocomplete="off" required minlength="2" /><button
+          id="searchButton"
+          type="submit"
+        >
+          Search
+        </button>
+      </div></label
+    >
+  </form>
+  <div id="places"></div>
+  <div id="selected" hidden></div>
+  <div class="row">
+    <label
+      ><span id="unitsLabel">Units</span
+      ><select id="units">
+        <option value="c">°C</option>
+        <option value="f">°F</option>
+      </select></label
+    ><label
+      ><span id="hoursLabel">Forecast</span
+      ><select id="hours">
+        <option value="1">+1 h</option>
+        <option value="3">+3 h</option>
+        <option value="6">+6 h</option>
+        <option value="12">+12 h</option>
+        <option value="24">+24 h</option>
+      </select></label
+    >
+  </div>
+  <p id="status" role="status"></p>
+  <p id="saveHint"></p>
+  <p>
+    <a href="https://open-meteo.com/" target="_blank" rel="noreferrer"
+      >Weather data by Open-Meteo.com</a
+    >
+    · <a href="https://www.geonames.org/" target="_blank" rel="noreferrer">GeoNames</a>
+  </p>
+  <script>
+    let socket,
+      context,
+      settings = {},
+      language = 'en',
+      request = null,
+      ready = false;
+    const el = (id) => document.getElementById(id);
+    const words = {
+      en: {
+        heading: 'Weather',
+        intro: 'Choose a city. The same widget works on keys and touch panels.',
+        cityLabel: 'City',
+        searchButton: 'Search',
+        unitsLabel: 'Units',
+        hoursLabel: 'Forecast',
+        saveHint:
+          'Saves automatically. Weather refreshes every 15 minutes. An amber dot marks stale data; a press retries after a network error, at most once per minute.',
+        searching: 'Searching…',
+        noResults: 'No locations found.',
+        error: 'Could not reach location service.',
+        saved: 'Location saved.',
+        connected: 'Ready',
+      },
+      ru: {
+        heading: 'Погода',
+        intro: 'Выберите город. Виджет работает на кнопках и сенсорной панели.',
+        cityLabel: 'Город',
+        searchButton: 'Найти',
+        unitsLabel: 'Единицы',
+        hoursLabel: 'Прогноз',
+        saveHint:
+          'Сохраняется автоматически. Обновление раз в 15 минут. Оранжевая точка означает устаревшие данные; нажатие повторяет запрос после сетевой ошибки, не чаще раза в минуту.',
+        searching: 'Поиск…',
+        noResults: 'Город не найден.',
+        error: 'Сервис поиска недоступен.',
+        saved: 'Город сохранён.',
+        connected: 'Готово',
+      },
+    };
+    const t = (key) => words[language][key];
+    function show() {
+      for (const id of [
+        'heading',
+        'intro',
+        'cityLabel',
+        'searchButton',
+        'unitsLabel',
+        'hoursLabel',
+        'saveHint',
+      ])
+        el(id).textContent = t(id);
+      el('units').value = settings.units || 'c';
+      el('hours').value = String(settings.hours || 3);
+      for (const option of el('hours').options)
+        option.textContent = '+' + option.value + (language === 'ru' ? ' ч' : ' h');
+      el('selected').hidden = !settings.name;
+      el('selected').textContent = settings.name
+        ? `${settings.name} · ${settings.region || settings.country || ''}`
+        : '';
+    }
+    function save() {
+      if (ready)
+        socket.send(
+          JSON.stringify({ event: 'setSettings', context, payload: { ...settings, language } }),
+        );
+    }
+    function connectElgatoStreamDeckSocket(port, uuid, event, info, actionInfo) {
+      context = uuid;
+      const host = JSON.parse(info);
+      language = host.application?.language?.startsWith('ru') ? 'ru' : 'en';
+      settings = JSON.parse(actionInfo).payload.settings || {};
+      show();
+      socket = new WebSocket(`ws://127.0.0.1:${port}`);
+      socket.onopen = () => {
+        socket.send(JSON.stringify({ event, uuid }));
+        ready = true;
+        el('status').textContent = t('connected');
+      };
+      socket.onmessage = ({ data }) => {
+        const m = JSON.parse(data);
+        if (m.event === 'didReceiveSettings') {
+          settings = m.payload.settings || {};
+          show();
+        }
+        if (
+          m.event === 'sendToPropertyInspector' &&
+          m.payload.command === 'locations' &&
+          m.payload.request === request
+        ) {
+          el('searchButton').disabled = false;
+          el('places').replaceChildren();
+          el('status').textContent = m.payload.error
+            ? t('error')
+            : m.payload.places.length
+              ? ''
+              : t('noResults');
+          for (const place of m.payload.places) {
+            const b = document.createElement('button');
+            b.textContent = `${place.name} · ${place.region} · ${place.country}`;
+            b.onclick = () => {
+              settings = { ...settings, ...place, language };
+              save();
+              show();
+              el('places').replaceChildren();
+              el('status').textContent = t('saved');
+            };
+            el('places').append(b);
+          }
+        }
+      };
+      socket.onclose = () => {
+        ready = false;
+        el('status').textContent = t('error');
+      };
+    }
+    el('searchForm').onsubmit = (e) => {
+      e.preventDefault();
+      if (!ready) return;
+      el('searchButton').disabled = true;
+      el('status').textContent = t('searching');
+      const token = crypto.randomUUID();
+      request = token;
+      socket.send(
+        JSON.stringify({
+          event: 'sendToPlugin',
+          context,
+          payload: { command: 'search', request: token, query: el('query').value, language },
+        }),
+      );
+      setTimeout(() => {
+        if (token === request && el('searchButton').disabled) {
+          el('searchButton').disabled = false;
+          el('status').textContent = t('error');
+        }
+      }, 12000);
+    };
+    for (const field of ['units', 'hours'])
+      el(field).onchange = () => {
+        settings = {
+          ...settings,
+          [field]: field === 'hours' ? Number(el(field).value) : el(field).value,
+        };
+        save();
+      };
+  </script>
+</html>

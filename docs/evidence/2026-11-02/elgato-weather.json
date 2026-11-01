@@ -1,0 +1,70 @@
+{
+  "date": "2026-11-02",
+  "package": "com.elgato.weather",
+  "version": "1.2.1.103",
+  "backendSha256": "d4b0b6ec32dee0de0eb9ee0ef33e62f1ce9fa7bc32521b75c6941653be267827",
+  "backendBytes": 703591,
+  "protectedManifest": {
+    "header": "ELGATO",
+    "decrypted": false,
+    "modified": false,
+    "runtimeCopy": "original bytes"
+  },
+  "descriptorSources": [
+    "ea/weather/action.md",
+    "ea/forecast/action.md",
+    "ea/aqi/action.md",
+    "ea/*/settings-schema.json",
+    "en.json",
+    "changelog.md",
+    "ui/weather-info.html",
+    "ui/air-quality.html",
+    "layouts/weather.json",
+    "bin/plugin.js"
+  ],
+  "actions": [
+    "com.elgato.weather.weather",
+    "com.elgato.weather.forecast",
+    "com.elgato.weather.aqi"
+  ],
+  "controllers": ["Keypad", "Encoder"],
+  "runtimeProbe": {
+    "isolatedCopy": true,
+    "vendorStorageCopied": false,
+    "homeAndAppDataRedirected": true,
+    "registerPlugin": true,
+    "willAppearAccepted": true,
+    "setSettingsReceived": true,
+    "setImageReceived": true,
+    "initialImageCharacters": 317,
+    "initialNetworkResult": "sandbox EACCES to API HTTPS endpoint",
+    "authorizedNetworkProbe": {
+      "weatherApiCacheReceived": true,
+      "location": "Berlin, DE (explicit fixture coordinates)",
+      "dataImageCharacters": [5616, 5616],
+      "clickViewCycleConfirmed": false,
+      "simultaneousActionsFullyConfirmed": false
+    },
+    "liveWeatherConfirmed": true,
+    "physicalRenderingConfirmed": false
+  },
+  "permission": {
+    "preference": "allow_weather_geolocation",
+    "default": false,
+    "ownerDecision": "Leave Elgato Weather disabled; use DeckWeave Weather",
+    "ownerDecisionDate": "2026-11-02",
+    "selectedValue": false,
+    "processAndInspectorGated": true,
+    "revocationClosesSession": true,
+    "ipDetectionEndpoint": "https://api.ipify.org?format=json",
+    "geolocationServices": ["http://ip-api.com/json", "https://ipinfo.io", "https://ipapi.co"],
+    "autoSetUserLocationFalsePreventsTransmission": false,
+    "furtherNetworkProbe": "auto-review rejected because public IP is sent to external geolocation services; not retried"
+  },
+  "rea": {
+    "evidenceId": "ev_c9fa456b85697ac90152e59b33fd2eef2e37eafd9130e51873bafa52eda7994a",
+    "scope": "partial static analysis of readable bundled JavaScript",
+    "unselectedFiles": 87,
+    "runtimeClaimsFromStaticAnalysis": false
+  }
+}

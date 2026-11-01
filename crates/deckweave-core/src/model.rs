@@ -294,7 +294,34 @@ impl Device {
 pub struct Configuration {
     pub revision: u64,
     pub locale: Locale,
+    #[serde(default)]
+    pub preferences: Preferences,
     pub devices: Vec<Device>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Preferences {
+    #[serde(default)]
+    pub allow_weather_geolocation: bool,
+    #[serde(default = "enabled")]
+    pub smart_profiles: bool,
+    #[serde(default = "preview_scale")]
+    pub preview_scale: u16,
+    #[serde(default)]
+    pub compact: bool,
+}
+fn preview_scale() -> u16 {
+    100
+}
+impl Default for Preferences {
+    fn default() -> Self {
+        Self {
+            allow_weather_geolocation: false,
+            smart_profiles: true,
+            preview_scale: 100,
+            compact: false,
+        }
+    }
 }
 
 impl Default for Configuration {
@@ -302,6 +329,7 @@ impl Default for Configuration {
         Self {
             revision: 0,
             locale: Locale::Ru,
+            preferences: Preferences::default(),
             devices: vec![Device::virtual_studio(1)],
         }
     }
@@ -530,6 +558,15 @@ pub struct PointerPosition {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Command {
+    SetPreferences {
+        preferences: Preferences,
+        expected_revision: u64,
+    },
+    DevicePreferences {
+        device_id: String,
+        default_profile: Option<String>,
+        expected_revision: u64,
+    },
     SetPanelLayout {
         device_id: String,
         page_id: String,
@@ -639,6 +676,7 @@ pub enum Command {
 impl Command {
     pub fn device_id(&self) -> Option<&str> {
         match self {
+            Self::DevicePreferences { device_id, .. } => Some(device_id),
             Self::SetPanelLayout { device_id, .. } => Some(device_id),
             Self::FolderBehavior { device_id, .. } => Some(device_id),
             Self::ConfigureProgram { device_id, .. }
@@ -661,6 +699,12 @@ impl Command {
     }
     pub fn expected_revision(&self) -> Option<u64> {
         match self {
+            Self::SetPreferences {
+                expected_revision, ..
+            }
+            | Self::DevicePreferences {
+                expected_revision, ..
+            } => Some(*expected_revision),
             Self::SetPanelLayout {
                 expected_revision, ..
             } => Some(*expected_revision),

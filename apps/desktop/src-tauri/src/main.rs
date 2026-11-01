@@ -84,10 +84,17 @@ fn permitted(label: &str, command: &Command) -> bool {
     if label == "main" {
         matches!(
             command,
-            Command::AddDevice { .. } | Command::SetLocale { .. }
+            Command::AddDevice { .. }
+                | Command::SetLocale { .. }
+                | Command::SetPreferences { .. }
+                | Command::DevicePreferences { .. }
+                | Command::RenameDevice { .. }
         )
     } else if let Some(id) = label.strip_prefix("device-") {
-        matches!(command, Command::SetLocale { .. }) || command.device_id() == Some(id)
+        matches!(
+            command,
+            Command::SetLocale { .. } | Command::SetPreferences { .. }
+        ) || command.device_id() == Some(id)
     } else {
         false
     }
@@ -195,7 +202,7 @@ async fn open_device(
     app: tauri::AppHandle,
     state: State<'_, Application>,
 ) -> Result<(), Error> {
-    if window.label() != "main" {
+    if window.label() != "main" && !window.label().starts_with("device-") {
         return Err(Error::new("window", "Open devices from the registry"));
     }
     let name = locked(&state)?
@@ -231,6 +238,38 @@ async fn open_device(
     locked(&state)?.editor_opened(built.label());
     let _ = app.emit("deckweave:changed", ());
     Ok(())
+}
+
+#[tauri::command]
+async fn open_settings(
+    window: WebviewWindow,
+    app: tauri::AppHandle,
+    device_id: Option<String>,
+) -> Result<(), Error> {
+    if window.label() != "main" && !window.label().starts_with("device-") {
+        return Err(Error::new("window", "Not an editor window"));
+    }
+    if let Some(shell) = app.try_state::<shell::Shell>() {
+        *shell
+            .settings_device
+            .lock()
+            .map_err(|_| Error::new("window", "Settings are unavailable"))? = device_id.clone();
+    }
+    shell::show_registry(&app);
+    let _ = app.emit("deckweave:settings", device_id);
+    Ok(())
+}
+
+#[tauri::command]
+fn settings_context(window: WebviewWindow, app: tauri::AppHandle) -> Result<Option<String>, Error> {
+    if window.label() != "main" {
+        return Err(Error::new("window", "Not a settings window"));
+    }
+    app.state::<shell::Shell>()
+        .settings_device
+        .lock()
+        .map(|v| v.clone())
+        .map_err(|_| Error::new("window", "Settings are unavailable"))
 }
 
 fn main() {
@@ -286,7 +325,8 @@ fn main() {
                 Err(error) => Application::Failed(error),
             });
             startup("managed");
-            if let Ok(core) = locked(&app.state::<Application>()) {
+            if let Ok(mut core) = locked(&app.state::<Application>()) {
+                core.editor_opened("main");
                 app.state::<shell::Shell>()
                     .locale(core.snapshot().configuration.locale);
             }
@@ -297,7 +337,9 @@ fn main() {
         })
         .on_window_event(|window, event| {
             if matches!(event, WindowEvent::Destroyed)
-                && (window.label().starts_with("device-") || window.label().starts_with("pi-"))
+                && (window.label() == "main"
+                    || window.label().starts_with("device-")
+                    || window.label().starts_with("pi-"))
                 && let Some(state) = window.app_handle().try_state::<Application>()
             {
                 if let Ok(mut core) = locked(&state) {
@@ -313,6 +355,8 @@ fn main() {
             get_snapshot,
             dispatch,
             open_device,
+            open_settings,
+            settings_context,
             list_plugins,
             open_inspector,
             restart_plugin,
