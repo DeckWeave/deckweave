@@ -1,6 +1,14 @@
 import type { Locale } from './types';
 
 const ru = {
+  libraryDisplay: 'Настроить список действий',
+  libraryDisplayHint:
+    'Показывайте нужные группы и действия, меняйте порядок стрелками. Назначения на устройстве продолжают работать.',
+  showDevelopment: 'Показывать примеры и диагностику',
+  restoreLibrary: 'Восстановить список по умолчанию',
+  done: 'Готово',
+  resourcePackage: 'Библиотека ресурсов',
+  hiddenVendorActions: 'Служебные действия (скрыты автором)',
   elgatoWeatherPermission: 'Разрешить определение местоположения Elgato Weather',
   elgatoWeatherPermissionHint:
     'Оригинальный плагин получает внешний IP через api.ipify.org и передаёт его в ip-api.com (HTTP), при ошибке — ipinfo.io или ipapi.co (HTTPS), даже если город выбран вручную. Этот переключатель разрешает его запуск. DeckWeave Weather не определяет IP.',
@@ -184,6 +192,14 @@ const ru = {
   currentPage: 'Текущая страница',
 } as const;
 const en: Record<keyof typeof ru, string> = {
+  libraryDisplay: 'Customize action list',
+  libraryDisplayHint:
+    'Choose groups and actions, then reorder with arrows. Assigned actions keep running.',
+  showDevelopment: 'Show examples and diagnostics',
+  restoreLibrary: 'Restore default list',
+  done: 'Done',
+  resourcePackage: 'Resource library',
+  hiddenVendorActions: 'Internal actions (hidden by author)',
   elgatoWeatherPermission: 'Allow Elgato Weather location detection',
   elgatoWeatherPermissionHint:
     'The original plugin obtains your public IP from api.ipify.org and passes it to ip-api.com (HTTP), falling back to ipinfo.io or ipapi.co (HTTPS), even with a manually selected city. This switch permits it to run. DeckWeave Weather does not detect your IP.',

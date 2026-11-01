@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" /><title>System Monitor</title>
+  <style>
+    body {
+      font:
+        14px 'Segoe UI',
+        sans-serif;
+      background: #252831;
+      color: #eff4fa;
+      margin: 20px;
+    }
+    label {
+      display: grid;
+      gap: 6px;
+      margin: 16px 0;
+    }
+    input,
+    select {
+      font: inherit;
+      padding: 8px;
+      background: #171e29;
+      color: inherit;
+      border: 1px solid #566173;
+      border-radius: 5px;
+    }
+    p {
+      line-height: 1.5;
+      color: #b8c6d8;
+    }
+  </style>
+  <h2>System Monitor</h2>
+  <label><span id="labelText">Label</span><input id="label" maxlength="24" /></label
+  ><label
+    ><span id="languageText">Language</span
+    ><select id="language">
+      <option value="en">English</option>
+      <option value="ru">Русский</option>
+    </select></label
+  >
+  <p id="hint">
+    Read-only whole-system CPU, used physical memory and OS uptime. Shared sample every 2 seconds;
+    no network requests. Changes save automatically.
+  </p>
+  <p id="status" role="status"></p>
+  <script>
+    let socket,
+      context,
+      settings = {},
+      ready = false,
+      ru = false;
+    const dirty = new Set(),
+      el = (id) => document.getElementById(id);
+    function show() {
+      for (const id of ['label', 'language'])
+        if (!dirty.has(id) && document.activeElement !== el(id))
+          el(id).value = settings[id] ?? (id === 'language' ? (ru ? 'ru' : 'en') : '');
+    }
+    window.connectElgatoStreamDeckSocket = (port, uuid, event, info, actionInfo) => {
+      context = uuid;
+      ru = JSON.parse(info).application?.language?.startsWith('ru') ?? false;
+      document.documentElement.lang = ru ? 'ru' : 'en';
+      if (ru) {
+        el('labelText').textContent = 'Подпись';
+        el('languageText').textContent = 'Язык';
+        el('hint').textContent =
+          'CPU всей системы, занятая физическая память и время работы ОС. Общий замер каждые 2 секунды; без сети. Сохраняется автоматически.';
+      }
+      settings = JSON.parse(actionInfo).payload?.settings ?? {};
+      show();
+      socket = new WebSocket(`ws://127.0.0.1:${port}`);
+      socket.onopen = () => {
+        socket.send(JSON.stringify({ event, uuid }));
+        ready = true;
+        el('status').textContent = ru ? 'Готово' : 'Ready';
+      };
+      socket.onmessage = ({ data }) => {
+        try {
+          const m = JSON.parse(data);
+          if (m.event === 'didReceiveSettings') {
+            settings = m.payload.settings ?? {};
+            show();
+          }
+        } catch {}
+      };
+      socket.onclose = () => {
+        ready = false;
+        el('status').textContent = ru ? 'Нет связи' : 'Disconnected';
+      };
+    };
+    for (const id of ['label', 'language']) {
+      el(id).oninput = () => dirty.add(id);
+      el(id).onchange = () => {
+        if (!ready) return;
+        settings = { ...settings, [id]: el(id).value };
+        dirty.delete(id);
+        socket.send(JSON.stringify({ event: 'setSettings', context, payload: settings }));
+      };
+    }
+  </script>
+</html>

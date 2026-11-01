@@ -1,0 +1,27 @@
+{
+  "Name": "Timers",
+  "Version": "0.1.0",
+  "SDKVersion": 2,
+  "CodePath": "plugin.mjs",
+  "PropertyInspectorPath": "settings.html",
+  "Actions": [
+    {
+      "UUID": "dev.deckweave.timers.countdown",
+      "Name": "Countdown / Focus",
+      "Controllers": ["Keypad", "Encoder", "Panel"],
+      "Encoder": {
+        "layout": "$A0"
+      }
+    },
+    {
+      "UUID": "dev.deckweave.timers.stopwatch",
+      "Name": "Stopwatch",
+      "Controllers": ["Keypad", "Encoder", "Panel"],
+      "Encoder": {
+        "layout": "$A0"
+      }
+    }
+  ],
+  "UUID": "dev.deckweave.timers",
+  "Author": "DeckWeave contributors"
+}

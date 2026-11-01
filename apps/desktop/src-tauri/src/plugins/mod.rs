@@ -105,6 +105,41 @@ impl Slot {
         value
     }
 }
+struct RetiredSlot {
+    slot: Slot,
+    until: Instant,
+}
+#[derive(Default)]
+struct RetiredContexts {
+    entries: BTreeMap<String, RetiredSlot>,
+}
+impl RetiredContexts {
+    const LIMIT: usize = 256;
+    const LIFETIME: Duration = Duration::from_secs(10);
+    fn prune(&mut self, now: Instant) {
+        self.entries.retain(|_, retired| retired.until > now);
+    }
+    fn retire(&mut self, slot: Slot, now: Instant) {
+        self.prune(now);
+        if self.entries.len() >= Self::LIMIT
+            && !self.entries.contains_key(&slot.binding.id)
+            && let Some(oldest) = self
+                .entries
+                .iter()
+                .min_by_key(|(_, r)| r.until)
+                .map(|(id, _)| id.clone())
+        {
+            self.entries.remove(&oldest);
+        }
+        self.entries.insert(
+            slot.binding.id.clone(),
+            RetiredSlot {
+                slot,
+                until: now + Self::LIFETIME,
+            },
+        );
+    }
+}
 struct Session {
     package: Package,
     token: String,
@@ -114,6 +149,7 @@ struct Session {
     socket: Option<Socket>,
     inspectors: BTreeMap<String, Socket>,
     slots: BTreeMap<String, Slot>,
+    retired: RetiredContexts,
     child: Option<Child>,
     process_tree: Option<deckweave_platform::ProcessTree>,
     window: Option<String>,
@@ -369,6 +405,7 @@ fn start(
         socket: None,
         inspectors: BTreeMap::new(),
         slots: BTreeMap::new(),
+        retired: RetiredContexts::default(),
         child: None,
         process_tree: None,
         window: None,
@@ -638,6 +675,7 @@ fn run(
                             session.send(json!({"event":"deviceDidConnect","device":d.id,"deviceInfo":{"name":d.name,"type":0,"size":{"columns":5,"rows":2}}}));
                         }
                         session.slots.clear();
+                        session.retired.entries.clear();
                     } else {
                         let context = peer.uuid;
                         session.inspectors.insert(context.clone(), peer.socket);
@@ -660,12 +698,14 @@ fn run(
                     for (ctx, old) in session.slots.clone() {
                         if !wanted.contains_key(&ctx) {
                             session.send(old.event("willDisappear"));
+                            session.retired.retire(old, Instant::now());
                             network.remove(&ctx);
                             session.inspectors.remove(&ctx);
                             session.visuals.remove(&ctx);
                         }
                     }
                     for (ctx, slot) in &wanted {
+                        session.retired.entries.remove(ctx);
                         if !session.slots.contains_key(ctx) {
                             artwork::initial(session, slot, &core, &app, &epoch);
                             session.send(slot.event("willAppear"));
@@ -679,6 +719,7 @@ fn run(
                     }
                 }
                 session.slots = wanted;
+                session.retired.prune(Instant::now());
                 if let Some(child) = session.child.as_mut()
                     && let Ok(Some(status)) = child.try_wait()
                 {
@@ -928,21 +969,52 @@ fn handle(
             }
         }
         "setSettings" => {
-            if let Some(slot) = slot {
-                let changed = core.lock().is_ok_and(|mut c| {
-                    let revision = c.snapshot().configuration.revision;
-                    c.dispatch(
-                        Command::PluginSettings {
-                            device_id: slot.device,
-                            binding_id: context.into(),
-                            settings: payload.clone(),
-                            expected_revision: revision,
-                        },
-                        "plugin",
-                    )
-                    .is_ok()
-                });
+            let retired = slot.is_none() && pi.is_none();
+            let writable = slot.or_else(|| {
+                if retired {
+                    session
+                        .retired
+                        .entries
+                        .get(context)
+                        .filter(|r| r.until > Instant::now())
+                        .map(|r| r.slot.clone())
+                } else {
+                    None
+                }
+            });
+            if let Some(slot) = writable {
+                let baseline = if retired {
+                    slot.binding.plugin.as_ref().map(|p| &p.settings)
+                } else {
+                    None
+                };
+                let changed = core
+                    .lock()
+                    .is_ok_and(|mut c| persist_settings(&mut c, &slot, payload, baseline));
                 if changed {
+                    // Subsequent queued writes compare against the last accepted value.
+                    // If the owner/PI edits settings meanwhile, a retired writer cannot clobber it.
+                    let remembered = if retired {
+                        session
+                            .retired
+                            .entries
+                            .get_mut(context)
+                            .map(|r| &mut r.slot)
+                    } else {
+                        session.slots.get_mut(context)
+                    };
+                    if let Some(plugin) = remembered.and_then(|s| s.binding.plugin.as_mut()) {
+                        plugin.settings = payload.clone();
+                    }
+                    if !retired && let Some(current) = session.slots.get(context) {
+                        // Remembering the accepted baseline suppresses the next loop's
+                        // settings diff, so deliver the normal settings event explicitly.
+                        let value = current.event("didReceiveSettings");
+                        session.send(value.clone());
+                        if let Some(inspector) = session.inspectors.get_mut(context) {
+                            send(inspector, value);
+                        }
+                    }
                     notify(app, epoch);
                 }
             }
@@ -1011,6 +1083,37 @@ fn handle(
         _ => {}
     }
 }
+fn persist_settings(
+    core: &mut Core,
+    slot: &Slot,
+    settings: &Value,
+    baseline: Option<&Value>,
+) -> bool {
+    let Some(expected) = slot.binding.plugin.as_ref() else {
+        return false;
+    };
+    let Some((device, current)) = core.plugin_assignment(&slot.binding.id) else {
+        return false;
+    };
+    if device != slot.device
+        || current.package != expected.package
+        || current.action != expected.action
+        || current.controller != expected.controller
+        || baseline.is_some_and(|baseline| baseline != &current.settings)
+    {
+        return false;
+    }
+    core.dispatch(
+        Command::PluginSettings {
+            device_id: slot.device.clone(),
+            binding_id: slot.binding.id.clone(),
+            settings: settings.clone(),
+            expected_revision: core.revision(),
+        },
+        "plugin",
+    )
+    .is_ok()
+}
 fn feedback(
     core: &Mutex<Core>,
     app: &tauri::AppHandle,
@@ -1059,6 +1162,170 @@ fn drain(socket: &mut Socket) -> Result<Vec<Value>, String> {
 mod tests {
     use super::*;
     use deckweave_core::{InputEvent, PluginAction};
+    fn settings_fixture() -> (Core, Slot, String) {
+        let mut core = Core::memory().unwrap();
+        let device = core.snapshot().configuration.devices[0].clone();
+        let page = device.profile.active_page_id.clone();
+        core.dispatch(
+            Command::ConfigurePlugin {
+                device_id: device.id.clone(),
+                page_id: page.clone(),
+                control_id: "key-1".into(),
+                plugin: PluginAction {
+                    controller: None,
+                    package: "fixture".into(),
+                    action: "fixture.timer".into(),
+                    settings: json!({"running":false,"duration":60}),
+                },
+                label: "Timer".into(),
+                expected_revision: core.revision(),
+            },
+            "test",
+        )
+        .unwrap();
+        let slot = slots(&core.snapshot())
+            .into_values()
+            .find(|slot| {
+                slot.binding
+                    .plugin
+                    .as_ref()
+                    .is_some_and(|p| p.package == "fixture")
+            })
+            .unwrap();
+        (core, slot, page)
+    }
+    #[test]
+    fn retired_backend_settings_survive_navigation_and_do_not_overwrite_later_inspector_edits() {
+        let (mut core, slot, _) = settings_fixture();
+        core.dispatch(
+            Command::AddPage {
+                device_id: slot.device.clone(),
+                expected_revision: core.revision(),
+            },
+            "test",
+        )
+        .unwrap();
+        assert!(!slots(&core.snapshot()).contains_key(&slot.binding.id));
+        let mut retired = RetiredContexts::default();
+        retired.retire(slot.clone(), Instant::now());
+        let baseline = &retired.entries[&slot.binding.id]
+            .slot
+            .binding
+            .plugin
+            .as_ref()
+            .unwrap()
+            .settings;
+        let started = json!({"running":true,"duration":60,"elapsed":1});
+        assert!(persist_settings(&mut core, &slot, &started, Some(baseline)));
+        assert_eq!(
+            core.plugin_settings(&slot.binding.id),
+            Some(started.clone())
+        );
+        // Another queued backend write uses its last accepted settings as the baseline.
+        retired
+            .entries
+            .get_mut(&slot.binding.id)
+            .unwrap()
+            .slot
+            .binding
+            .plugin
+            .as_mut()
+            .unwrap()
+            .settings = started.clone();
+        let paused = json!({"running":false,"duration":60,"elapsed":2});
+        assert!(persist_settings(&mut core, &slot, &paused, Some(&started)));
+        // The user changes the duration while the old context is hidden.
+        let edited = json!({"running":false,"duration":120,"elapsed":2});
+        core.dispatch(
+            Command::PluginSettings {
+                device_id: slot.device.clone(),
+                binding_id: slot.binding.id.clone(),
+                settings: edited.clone(),
+                expected_revision: core.revision(),
+            },
+            "inspector",
+        )
+        .unwrap();
+        assert!(!persist_settings(
+            &mut core,
+            &slot,
+            &json!({"running":false,"duration":60,"elapsed":3}),
+            Some(&paused)
+        ));
+        assert_eq!(core.plugin_settings(&slot.binding.id), Some(edited));
+    }
+    #[test]
+    fn retired_settings_reject_removed_rebound_and_wrong_package_or_action_contexts() {
+        let (mut core, slot, page) = settings_fixture();
+        let baseline = slot.binding.plugin.as_ref().unwrap().settings.clone();
+        let mut impostor = slot.clone();
+        impostor.binding.plugin.as_mut().unwrap().package = "other.package".into();
+        assert!(!persist_settings(
+            &mut core,
+            &impostor,
+            &json!({}),
+            Some(&baseline)
+        ));
+        impostor = slot.clone();
+        impostor.binding.plugin.as_mut().unwrap().action = "fixture.other".into();
+        assert!(!persist_settings(
+            &mut core,
+            &impostor,
+            &json!({}),
+            Some(&baseline)
+        ));
+        core.dispatch(
+            Command::ConfigurePlugin {
+                device_id: slot.device.clone(),
+                page_id: page,
+                control_id: "key-1".into(),
+                plugin: PluginAction {
+                    controller: None,
+                    package: "fixture".into(),
+                    action: "fixture.other".into(),
+                    settings: json!({"preserve":true}),
+                },
+                label: "Replacement".into(),
+                expected_revision: core.revision(),
+            },
+            "test",
+        )
+        .unwrap();
+        assert!(core.plugin_assignment(&slot.binding.id).is_none());
+        assert!(!persist_settings(
+            &mut core,
+            &slot,
+            &json!({"running":true}),
+            Some(&baseline)
+        ));
+        let replacement = slots(&core.snapshot())
+            .into_values()
+            .find(|s| {
+                s.binding
+                    .plugin
+                    .as_ref()
+                    .is_some_and(|p| p.package == "fixture")
+            })
+            .unwrap();
+        assert_eq!(
+            core.plugin_settings(&replacement.binding.id),
+            Some(json!({"preserve":true}))
+        );
+    }
+    #[test]
+    fn retired_contexts_expire_and_have_a_fixed_entry_limit() {
+        let (_, slot, _) = settings_fixture();
+        let now = Instant::now();
+        let mut retired = RetiredContexts::default();
+        for n in 0..300 {
+            let mut candidate = slot.clone();
+            candidate.binding.id = format!("retired-{n}");
+            retired.retire(candidate, now);
+        }
+        assert_eq!(retired.entries.len(), RetiredContexts::LIMIT);
+        retired.prune(now + RetiredContexts::LIFETIME);
+        assert!(retired.entries.is_empty());
+    }
     #[test]
     fn elgato_weather_requires_explicit_permission_before_process_or_inspector() {
         let mut package = Package {
@@ -1067,6 +1334,8 @@ mod tests {
             version: "1.2.1.103".into(),
             actions: vec![],
             error: None,
+            resource_only: false,
+            development: false,
             root: PathBuf::new(),
             entry: None,
             isolated_weather: true,

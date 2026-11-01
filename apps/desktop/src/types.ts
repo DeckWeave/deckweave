@@ -1,9 +1,15 @@
 export type Locale = 'ru' | 'en';
 export interface Preferences {
+  library: LibraryPreferences;
   allow_weather_geolocation: boolean;
   smart_profiles: boolean;
   preview_scale: number;
   compact: boolean;
+}
+export interface LibraryPreferences {
+  hidden: string[];
+  order: string[];
+  show_development: boolean;
 }
 export type ActionKind = 'counter' | 'toggle' | 'plugin' | 'program';
 export type Plan =
@@ -42,7 +48,15 @@ export interface PluginPackage {
   name: string;
   version: string;
   error: string | null;
-  actions: { id: string; name: string; controllers: string[]; inspector: string | null }[];
+  resource_only: boolean;
+  development: boolean;
+  actions: {
+    id: string;
+    name: string;
+    visible: boolean;
+    controllers: string[];
+    inspector: string | null;
+  }[];
 }
 export type ControlKind = 'key' | 'dial' | 'touch';
 export interface Binding {

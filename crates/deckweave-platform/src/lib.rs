@@ -1,4 +1,5 @@
-//! Narrow safe OS boundary. Windows FFI is confined to the audited `windows` module.
+//! Narrow safe OS boundary. Windows FFI is confined to the audited `windows` modules.
+pub mod audio;
 #[cfg(windows)]
 #[allow(unsafe_code)]
 mod windows;

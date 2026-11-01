@@ -1,0 +1,27 @@
+name: Check
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install Rust toolchain
+        run: rustup show
+      - run: npm ci
+      - run: npm run check
+      - name: Build and validate audio bundle
+        shell: pwsh
+        run: ./scripts/build-audio.ps1
+      - name: Validate and package starter plugins
+        shell: pwsh
+        run: |
+          foreach ($name in 'audio', 'monitor', 'timers') {
+            npm run pack --prefix "plugins/dev.deckweave.$name.sdPlugin"
+            if ($LASTEXITCODE -ne 0) { throw "Failed to package $name" }
+          }

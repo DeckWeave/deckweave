@@ -15,3 +15,5 @@ SDK Mirabox использован как документированный р�
 Binaries и исходники исследованных сторонних Elgato-плагинов в репозиторий не включены. Наличие названий, версий и хешей в документации не означает их поставку или гарантию совместимости.
 
 Node.js и Microsoft Edge/WebView2 используются как установленные runtime; их binaries не включены в этот репозиторий. Собственные diagnostic/Panel/OBS пакеты в plugins являются исходниками DeckWeave под GPL-3.0-or-later, не копиями установленных сторонних пакетов. Declarative Encoder layout keys/bounds реализованы по [официальному контракту SDK](https://docs.elgato.com/streamdeck/sdk/guides/dials/); сторонние UI assets Elgato не поставляются.
+
+Новые Audio/Monitor/Timers и vendored SDK 0.1.0 — собственные исходники DeckWeave под GPL-3.0-or-later; полный текст лицензии включён в каждый bundle. CoreAudio использует Windows API через windows-rs; native helper собирается из исходников, его binary не хранится в Git. Шаблон создаёт SVG кодом и не включает чужие иконки.

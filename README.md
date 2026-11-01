@@ -2,7 +2,7 @@
 
 Новая реализация настольного редактора устройств управления. Основа продукта — привычное поведение Elgato Stream Deck, расширяемое поддержкой стороннего оборудования и плагинов действий.
 
-Рабочий репозиторий: `G:\APPS\DW\deckweave`. Первая целевая ОС — Windows 11; в перспективе — macOS и Linux.
+Первая целевая ОС — Windows 11; в перспективе — macOS и Linux.
 
 **Статус: следующий рабочий срез с Mirabox N4 Pro.** Реестр/отдельные окна, tray/фон, Elgato native/Node/HTML backend и оригинальные PI, навигация и составные действия, Smart Profiles, native panel widgets/regions, Dial Stack/Action Wheel, en/ru. Установленный OnAirClock прошёл сквозную проверку. Полный v1 ещё не завершён: [возможности и ограничения](docs/STATUS.md), [доказательства](docs/RUNTIME-PROGRESS.md).
 
@@ -52,4 +52,4 @@ npm run build
 - [Поведение редактора и будущая приёмка](docs/research/2026-11-01/UX-ACCEPTANCE.md).
 - [Изученная основа IO Type 84](docs/research/2026-11-01/IO-TYPE-84.md).
 
-Соседние репозитории `../plugin-sdk`, `../plugin-template` и `../plugin-registry` предусмотрены владельцем для SDK, шаблонов и каталога необязательных плагинов. Их содержимое и публичные контракты пока не созданы.
+Соседние репозитории `../plugin-sdk`, `../plugin-template` и `../plugin-registry` содержат SDK действий, самостоятельный генератор плагинов и проверяемый реестр. Готовы System Audio, System Monitor и Timers; Weather остаётся сетевым примером. [Начать расширение](docs/EXTENSIONS.md). SDK внешних драйверов оборудования пока не реализован.

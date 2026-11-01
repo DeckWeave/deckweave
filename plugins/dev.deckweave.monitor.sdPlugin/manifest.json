@@ -1,0 +1,35 @@
+{
+  "Name": "System Monitor",
+  "Version": "0.1.0",
+  "SDKVersion": 2,
+  "CodePath": "plugin.mjs",
+  "PropertyInspectorPath": "settings.html",
+  "Actions": [
+    {
+      "UUID": "dev.deckweave.monitor.cpu",
+      "Name": "CPU",
+      "Controllers": ["Keypad", "Encoder", "Panel"],
+      "Encoder": {
+        "layout": "$A0"
+      }
+    },
+    {
+      "UUID": "dev.deckweave.monitor.memory",
+      "Name": "Memory",
+      "Controllers": ["Keypad", "Encoder", "Panel"],
+      "Encoder": {
+        "layout": "$A0"
+      }
+    },
+    {
+      "UUID": "dev.deckweave.monitor.uptime",
+      "Name": "Uptime",
+      "Controllers": ["Keypad", "Encoder", "Panel"],
+      "Encoder": {
+        "layout": "$A0"
+      }
+    }
+  ],
+  "UUID": "dev.deckweave.monitor",
+  "Author": "DeckWeave contributors"
+}

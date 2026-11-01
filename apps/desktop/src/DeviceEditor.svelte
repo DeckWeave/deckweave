@@ -7,10 +7,13 @@
   import PanelEditor from './PanelEditor.svelte';
   import TouchTest from './TouchTest.svelte';
   import PaneSplitter from './PaneSplitter.svelte';
+  import LibraryOptions from './LibraryOptions.svelte';
+  import { ordered } from './library';
   import { pageLabel } from './page-label';
   let { client, device }: { client: Client; device: Device } = $props();
   let selectedId = $state<string | null>(null);
   let search = $state('');
+  let editingLibrary = $state(false);
   let filter = $state<'keys' | 'dials' | 'plugins'>('keys');
   let testing = $state(false);
   let profileSettings = $state(false);
@@ -218,56 +221,131 @@
       ? snapshot.feedback.find((f) => f.device_id === device.id && f.binding_id === binding.id)
       : undefined,
   );
-  const items = $derived(
-    (['counter', 'toggle'] as const).filter((kind) =>
-      `${t(kind)} ${t(kind === 'counter' ? 'counterHint' : 'toggleHint')}`
-        .toLocaleLowerCase()
-        .includes(search.toLocaleLowerCase()),
-    ),
-  );
-  const visiblePlugins = $derived(
-    client.plugins
-      .map((pack) => ({
-        ...pack,
-        actions: pack.actions.filter(
-          (a) =>
-            (filter === 'plugins' ||
-              a.controllers.includes(filter === 'keys' ? 'Keypad' : 'Encoder') ||
-              (filter === 'dials' && a.controllers.includes('Panel'))) &&
-            (pack.name.toLocaleLowerCase().includes(search.toLocaleLowerCase()) ||
-              a.name.toLocaleLowerCase().includes(search.toLocaleLowerCase())),
-        ),
+  type LibraryGroup = {
+    id: string;
+    name: string;
+    actions: { id: string; name: string; item: LibraryAction }[];
+  };
+  const libraryPrefs = $derived(snapshot.configuration.preferences.library);
+  const libraryGroups = $derived.by(() => {
+    const groups: LibraryGroup[] = [
+      {
+        id: 'group:navigation',
+        name: t('navigationGroup'),
+        actions: [
+          ...(['page', 'page_cycle', 'profile', 'back'] as const).map((type) => ({
+            id: 'plan:' + type,
+            name: t(type),
+            item: { type: 'plan', plan: type } as LibraryAction,
+          })),
+          { id: 'plan:folder', name: t('folder'), item: { type: 'folder' } },
+        ],
+      },
+      {
+        id: 'group:scenarios',
+        name: t('multiActionGroup'),
+        actions: (
+          [
+            'launch',
+            'hotkey',
+            'sequence',
+            'switch',
+            'key_logic',
+            'dial_bindings',
+            'dial_stack',
+            'action_wheel',
+          ] as const
+        ).map((type) => ({
+          id: 'plan:' + type,
+          name: t(type),
+          item: { type: 'plan', plan: type },
+        })),
+      },
+      ...client.plugins
+        .filter(
+          (pack) =>
+            !pack.error &&
+            !pack.resource_only &&
+            (!pack.development || libraryPrefs.show_development) &&
+            (pack.id !== 'com.elgato.weather' ||
+              snapshot.configuration.preferences.allow_weather_geolocation),
+        )
+        .map((pack) => ({
+          id: 'plugin:' + pack.id,
+          name: pack.name,
+          actions: pack.actions
+            .filter((action) => action.visible)
+            .map((action) => ({
+              id: 'action:' + action.id,
+              name: action.name,
+              item: {
+                type: 'plugin',
+                package: pack.id,
+                action: action.id,
+                label: action.name,
+                controllers: action.controllers,
+              } as LibraryAction,
+            })),
+        })),
+      ...(libraryPrefs.show_development
+        ? [
+            {
+              id: 'group:test',
+              name: t('testActionsGroup'),
+              actions: (['counter', 'toggle'] as const).map((kind) => ({
+                id: 'builtin:' + kind,
+                name: t(kind),
+                item: { type: 'builtin', kind } as LibraryAction,
+              })),
+            },
+          ]
+        : []),
+    ];
+    return ordered(
+      groups.filter((group) => group.actions.length),
+      (g) => g.id,
+      libraryPrefs.order,
+    ).map((group) => ({
+      ...group,
+      actions: ordered(group.actions, (a) => a.id, libraryPrefs.order),
+    }));
+  });
+  const visibleGroups = $derived(
+    libraryGroups
+      .filter((group) => !libraryPrefs.hidden.includes(group.id))
+      .map((group) => ({
+        ...group,
+        actions: group.actions.filter((action) => {
+          if (libraryPrefs.hidden.includes(action.id)) return false;
+          const item = action.item;
+          if (filter === 'plugins' && item.type !== 'plugin') return false;
+          if (filter === 'dials') {
+            if (item.type === 'folder' || item.type === 'builtin') return false;
+            if (
+              item.type === 'plan' &&
+              !['page_cycle', 'dial_bindings', 'dial_stack', 'action_wheel'].includes(item.plan)
+            )
+              return false;
+            if (
+              item.type === 'plugin' &&
+              !item.controllers.some((c) => ['Encoder', 'Panel'].includes(c))
+            )
+              return false;
+          }
+          if (filter === 'keys') {
+            if (
+              item.type === 'plan' &&
+              ['dial_bindings', 'dial_stack', 'action_wheel'].includes(item.plan)
+            )
+              return false;
+            if (item.type === 'plugin' && !item.controllers.includes('Keypad')) return false;
+          }
+          return (group.name + ' ' + action.name)
+            .toLocaleLowerCase()
+            .includes(search.toLocaleLowerCase());
+        }),
       }))
-      .filter(
-        (pack) =>
-          (filter === 'plugins' ||
-            pack.id !== 'com.elgato.weather' ||
-            snapshot.configuration.preferences.allow_weather_geolocation) &&
-          (pack.actions.length || (!search && pack.error)),
-      ),
-  );
-  const matchingPlans = $derived(
-    (filter === 'dials'
-      ? ['page_cycle', 'dial_bindings', 'dial_stack', 'action_wheel']
-      : [
-          'page',
-          'page_cycle',
-          'profile',
-          'back',
-          'launch',
-          'hotkey',
-          'sequence',
-          'switch',
-          'key_logic',
-        ]
-    ).filter((type) =>
-      t(type as Plan['type'])
-        .toLocaleLowerCase()
-        .includes(search.toLocaleLowerCase()),
-    ) as Plan['type'][],
-  );
-  const folderVisible = $derived(
-    filter === 'keys' && t('folder').toLocaleLowerCase().includes(search.toLocaleLowerCase()),
+      .filter((group) => group.actions.length),
   );
 
   function select(control: Control) {
@@ -864,88 +942,52 @@
             >{tab === 'keys' ? 'Keys' : tab === 'dials' ? 'Dials' : 'Plugins'}</button
           >{/each}
       </div>
-      <input
-        class="search-field"
-        aria-label={t('search')}
-        placeholder={t('search')}
-        bind:value={search}
-      />
+      <div class="library-search-row">
+        <input
+          class="search-field"
+          aria-label={t('search')}
+          placeholder={t('search')}
+          bind:value={search}
+        />
+        <button
+          class="library-display-button"
+          class:current={editingLibrary}
+          aria-label={t('libraryDisplay')}
+          title={t('libraryDisplay')}
+          aria-pressed={editingLibrary}
+          onclick={() => (editingLibrary = !editingLibrary)}
+        >
+          {editingLibrary ? t('done') : '☷'}
+        </button>
+      </div>
     </div>
-    {#if filter !== 'plugins'}
-      {#each [{ name: 'navigationGroup', types: ['page', 'page_cycle', 'profile', 'back'] }, { name: 'multiActionGroup', types: ['sequence', 'switch', 'key_logic', 'dial_bindings', 'dial_stack', 'action_wheel', 'launch', 'hotkey'] }] as group}
-        {@const plans = matchingPlans.filter((type) => group.types.includes(type))}
-        {#if plans.length || (group.name === 'navigationGroup' && folderVisible)}<details
-            class="library-group"
-            open
-          >
-            <summary>{t(group.name as 'navigationGroup' | 'multiActionGroup')}</summary>
-            <div class="action-list">
-              {#each plans as type}<button
-                  class="action-item"
-                  {...source({ type: 'plan', plan: type })}
-                  ><span class="action-icon" aria-hidden="true"
-                    >{type === 'sequence'
-                      ? '☷'
-                      : type === 'switch'
-                        ? '⇄'
-                        : type === 'key_logic'
-                          ? '⌘'
-                          : type === 'back'
-                            ? '←'
-                            : '◇'}</span
-                  ><strong>{t(type)}</strong></button
-                >{/each}
-              {#if group.name === 'navigationGroup' && folderVisible}<button
-                  class="action-item"
-                  {...source({ type: 'folder' })}
-                  ><span class="action-icon" aria-hidden="true">▱</span><strong
-                    >{t('folder')}</strong
-                  ></button
-                >{/if}
-            </div>
-          </details>{/if}
+    {#if editingLibrary}
+      <LibraryOptions {client} groups={libraryGroups} />
+    {:else}
+      {#each visibleGroups as group (group.id)}
+        <details class="library-group" open>
+          <summary>{group.name}</summary>
+          <div class="action-list">
+            {#each group.actions as action (action.id)}
+              <button class="action-item" {...source(action.item)}>
+                <span class="action-icon" aria-hidden="true"
+                  >{action.item.type === 'plugin'
+                    ? '◈'
+                    : action.item.type === 'folder'
+                      ? '▱'
+                      : action.id === 'plan:sequence'
+                        ? '☷'
+                        : action.id === 'plan:switch'
+                          ? '⇄'
+                          : '◇'}</span
+                >
+                <strong>{action.name}</strong>
+              </button>
+            {/each}
+          </div>
+        </details>
       {/each}
+      {#if !visibleGroups.length}<p class="library-empty">{t('noResults')}</p>{/if}
     {/if}
-    {#each visiblePlugins as pack}
-      <details class="library-group" open>
-        <summary>{pack.name}<span>{pack.version}</span></summary>
-        {#if pack.id === 'com.elgato.weather' && !snapshot.configuration.preferences.allow_weather_geolocation}<p
-            class="library-empty"
-          >
-            {t('disabledWeather')}
-          </p>
-        {:else if pack.error}<p class="connection-error library-empty">{pack.error}</p>{:else}<div
-            class="action-list"
-          >
-            {#each pack.actions as action}<button
-                class="action-item"
-                {...source({
-                  type: 'plugin',
-                  package: pack.id,
-                  action: action.id,
-                  label: action.name,
-                  controllers: action.controllers,
-                })}
-                ><span class="action-icon" aria-hidden="true">◈</span><strong>{action.name}</strong
-                ></button
-              >{/each}
-          </div>{/if}
-      </details>
-    {/each}
-    {#if filter !== 'plugins' && items.length}<details class="library-group">
-        <summary>{t('testActionsGroup')}</summary>
-        <div class="action-list">
-          {#each items as kind}<button class="action-item" {...source({ type: 'builtin', kind })}
-              ><span class="action-icon">{kind === 'counter' ? '＋' : '◉'}</span><strong
-                >{t(kind)}</strong
-              ></button
-            >{/each}
-        </div>
-      </details>{/if}
-    {#if !visiblePlugins.length && !matchingPlans.length && !folderVisible && !items.length}<p
-        class="library-empty"
-      >
-        {t('noResults')}
-      </p>{/if}
   </aside>
 </div>

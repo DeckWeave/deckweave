@@ -240,6 +240,14 @@ impl Core {
         };
         match command {
             Command::SetPreferences { preferences, .. } => {
+                for ids in [&preferences.library.hidden, &preferences.library.order] {
+                    if ids.len() > 4096 || ids.iter().any(|id| id.len() > 512) {
+                        return Err(Error::new(
+                            "preferences",
+                            "Library preferences exceed limits",
+                        ));
+                    }
+                }
                 if !(75..=150).contains(&preferences.preview_scale) {
                     return Err(Error::new(
                         "preferences",
@@ -1202,6 +1210,17 @@ impl Core {
             .find(|b| b.id == context)
             .and_then(|b| b.plugin.as_ref())
             .map(|p| p.settings.clone())
+    }
+    /// Current persisted assignment, including inactive pages/profiles. Runtime hosts use
+    /// this small lookup to validate a recently hidden context without cloning a snapshot.
+    pub fn plugin_assignment(&self, context: &str) -> Option<(String, PluginAction)> {
+        self.config.devices.iter().find_map(|device| {
+            actions::bindings(device)
+                .into_iter()
+                .find(|binding| binding.id == context)
+                .and_then(|binding| binding.plugin.clone())
+                .map(|plugin| (device.id.clone(), plugin))
+        })
     }
     pub fn plugin_feedback(
         &mut self,

@@ -98,13 +98,20 @@
             <span class="package-symbol">◈</span>
             <div>
               <h3>{pack.name}</h3>
-              <p>{pack.version} · {pack.actions.length} {t('actions').toLocaleLowerCase()}</p>
+              <p>
+                {pack.version} · {pack.resource_only
+                  ? t('resourcePackage')
+                  : `${pack.actions.filter((a) => a.visible).length} ${t('actions').toLocaleLowerCase()}`}
+              </p>
+              {#if pack.actions.length && pack.actions.every((a) => !a.visible)}<p>
+                  {t('hiddenVendorActions')}
+                </p>{/if}
               {#if pack.error}<p class="connection-error">{pack.error}</p>{/if}
-              <details>
-                <summary>{t('actions')}</summary>{#each pack.actions as action}<p>
-                    {action.name} <small>{action.controllers.join(' · ')}</small>
-                  </p>{/each}
-              </details>
+              {#if pack.actions.some((a) => a.visible)}<details>
+                  <summary>{t('actions')}</summary>{#each pack.actions as action}<p>
+                      {action.name} <small>{action.controllers.join(' · ')}</small>
+                    </p>{/each}
+                </details>{/if}
             </div>
             <span class="pill" class:plugin-error={!!pack.error}
               >{pack.error

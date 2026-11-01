@@ -1,0 +1,90 @@
+{
+  "dateLocal": "2026-11-02",
+  "releaseSha256": "60c163fa045be87343f974cff8c6683b7e3a7f8090cf8a75cfdc4a197e503658",
+  "scope": "Host-observed successful HID writes, not LCD presentation acknowledgement. Page batches exclude plugin artwork arriving later.",
+  "firstSessionObservedBatches": [
+    {
+      "scenario": "startup blank Default page2",
+      "frames": 11,
+      "elapsed_us": 6309,
+      "hid_us": 5087,
+      "render_us": 1021,
+      "input_wait_us": 0
+    },
+    {
+      "scenario": "Default page1 with existing assignments",
+      "frames": 11,
+      "elapsed_us": 11034,
+      "hid_us": 7699,
+      "render_us": 2718,
+      "input_wait_us": 0
+    },
+    {
+      "scenario": "new Tools page1",
+      "frames": 10,
+      "elapsed_us": 6512,
+      "hid_us": 5020,
+      "render_us": 1138,
+      "input_wait_us": 0
+    },
+    {
+      "scenario": "Tools page2, reuse unchanged blank keys",
+      "frames": 6,
+      "elapsed_us": 4204,
+      "hid_us": 3218,
+      "render_us": 712,
+      "input_wait_us": 0
+    },
+    {
+      "scenario": "Tools return page1",
+      "frames": 6,
+      "elapsed_us": 5947,
+      "hid_us": 4491,
+      "render_us": 773,
+      "input_wait_us": 2
+    }
+  ],
+  "secondSessionCounters": {
+    "cache_bytes": 1220745,
+    "cache_entries": 64,
+    "cache_hits": 348,
+    "hid_transfers": {
+      "calls": 473,
+      "max_us": 2603,
+      "total_us": 470658
+    },
+    "idle_input_reads": {
+      "calls": 21553,
+      "max_us": 26787,
+      "total_us": 547332900
+    },
+    "page_batches": [
+      {
+        "elapsed_us": 9660,
+        "frames": 11,
+        "hid_us": 6862,
+        "input_wait_us": 0,
+        "page_id": "18fd5825af1b4946b874a1ed6d878ba6",
+        "render_us": 2548,
+        "superseded": false
+      }
+    ],
+    "pending_input_reads": {
+      "calls": 186,
+      "max_us": 0,
+      "total_us": 0
+    },
+    "preview_notifications": 380,
+    "render_and_encode": {
+      "calls": 473,
+      "max_us": 2161,
+      "total_us": 68785
+    },
+    "snapshots": {
+      "calls": 297,
+      "max_us": 234,
+      "total_us": 33032
+    }
+  },
+  "libraryDefaultsRestored": true
+}

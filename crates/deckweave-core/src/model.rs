@@ -302,6 +302,8 @@ pub struct Configuration {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Preferences {
     #[serde(default)]
+    pub library: LibraryPreferences,
+    #[serde(default)]
     pub allow_weather_geolocation: bool,
     #[serde(default = "enabled")]
     pub smart_profiles: bool,
@@ -316,12 +318,24 @@ fn preview_scale() -> u16 {
 impl Default for Preferences {
     fn default() -> Self {
         Self {
+            library: LibraryPreferences::default(),
             allow_weather_geolocation: false,
             smart_profiles: true,
             preview_scale: 100,
             compact: false,
         }
     }
+}
+
+/// Display choices only. These never suppress execution of assigned bindings.
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+pub struct LibraryPreferences {
+    #[serde(default)]
+    pub hidden: Vec<String>,
+    #[serde(default)]
+    pub order: Vec<String>,
+    #[serde(default)]
+    pub show_development: bool,
 }
 
 impl Default for Configuration {

@@ -772,6 +772,9 @@ dependencies = [
 name = "deckweave-platform"
 version = "0.1.0"
 dependencies = [
+ "serde",
+ "serde_json",
+ "windows",
  "windows-sys 0.61.2",
 ]
 

@@ -1,0 +1,38 @@
+{
+  "measuredAtUtc": "2026-11-01T22:49:13.6593789Z",
+  "scenario": "Release, only Tools editor; breakdown includes still-configured virtual device plugins as well as Mirabox widgets",
+  "processCount": 16,
+  "privateCommitMiB": 511.4,
+  "summedWorkingSetMiB": 838.1,
+  "cpuSeconds": 1.0156,
+  "processTreeChanged": false,
+  "sampleSeconds": 10.147,
+  "processBreakdown": [
+    {
+      "name": "conhost",
+      "count": 4,
+      "privateCommitMiB": 8.5
+    },
+    {
+      "name": "deckweave-desktop",
+      "count": 1,
+      "privateCommitMiB": 83.4
+    },
+    {
+      "name": "deckweave-system",
+      "count": 1,
+      "privateCommitMiB": 2.3
+    },
+    {
+      "name": "msedgewebview2",
+      "count": 6,
+      "privateCommitMiB": 238.1
+    },
+    {
+      "name": "node",
+      "count": 4,
+      "privateCommitMiB": 179.1
+    }
+  ],
+  "notes": "Includes all descendants, including Node and Edge. CPU covers processes alive at both observations; process churn makes it a lower bound. Short observation, not a resource budget or endurance test. Summed working sets may count shared pages repeatedly."
+}

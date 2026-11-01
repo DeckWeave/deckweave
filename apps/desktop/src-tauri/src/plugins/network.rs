@@ -311,6 +311,155 @@ fn percent_decode(text: &str) -> Result<String, String> {
 mod tests {
     use super::*;
     #[test]
+    fn starter_widgets_use_real_host_socket_render_feedback_and_restore_timer_state() {
+        for (name, action, controller) in [
+            ("monitor", "cpu", "Encoder"),
+            ("timers", "countdown", "Panel"),
+        ] {
+            let net = Network::start().unwrap();
+            let (tx, rx) = Network::channel();
+            let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join(format!("../../../plugins/dev.deckweave.{name}.sdPlugin"))
+                .canonicalize()
+                .unwrap();
+            net.add(Route {
+                uuid: "starter-token".into(),
+                nonce: "starter-nonce".into(),
+                role: "registerPlugin".into(),
+                root: root.clone(),
+                page: "plugin.mjs".into(),
+                info: json!({}),
+                action_info: None,
+                sender: tx,
+                errors: None,
+            });
+            let mut command = std::process::Command::new("node");
+            command.arg(root.join("plugin.mjs")).args([
+                "-port",
+                &net.port.to_string(),
+                "-pluginUUID",
+                "starter-token",
+                "-registerEvent",
+                "registerPlugin",
+                "-info",
+                "{}",
+            ]);
+            #[cfg(windows)]
+            {
+                use std::os::windows::process::CommandExt;
+                command.creation_flags(0x08000000);
+            }
+            let mut child = command.spawn().unwrap();
+            let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                let mut peer = rx.recv_timeout(Duration::from_secs(5)).unwrap();
+                peer.socket.get_mut().set_nonblocking(false).unwrap();
+                peer.socket
+                    .get_mut()
+                    .set_read_timeout(Some(Duration::from_secs(3)))
+                    .unwrap();
+                let read_until = |socket: &mut Socket, event: &str| -> Value {
+                    for _ in 0..32 {
+                        let value: Value =
+                            serde_json::from_str(socket.read().unwrap().to_text().unwrap())
+                                .unwrap();
+                        if value["event"] == event {
+                            return value;
+                        }
+                    }
+                    panic!("Missing {event}");
+                };
+                let appear = |settings: Value| json!({"event":"willAppear","context":"starter","action":format!("dev.deckweave.{name}.{action}"),"payload":{"controller":controller,"canvas":if controller=="Panel"{json!([800,128])}else{json!([200,100])},"settings":settings}});
+                peer.socket
+                    .send(tungstenite::Message::Text(
+                        appear(json!({"seconds":60})).to_string().into(),
+                    ))
+                    .unwrap();
+                let image = if controller == "Encoder" {
+                    assert_eq!(
+                        read_until(&mut peer.socket, "setFeedbackLayout")["payload"]["layout"],
+                        "$A0"
+                    );
+                    read_until(&mut peer.socket, "setFeedback")["payload"]["full-canvas"]
+                        .as_str()
+                        .unwrap()
+                        .to_owned()
+                } else {
+                    read_until(&mut peer.socket, "setImage")["payload"]["image"]
+                        .as_str()
+                        .unwrap()
+                        .to_owned()
+                };
+                assert!(
+                    deckweave_n4::Renderer::new()
+                        .unwrap()
+                        .image_data_png(&image, [200, 128])
+                        .is_ok()
+                );
+                if name == "timers" {
+                    peer.socket
+                        .send(tungstenite::Message::Text(
+                            json!({"event":"panelDown","context":"starter","payload":{}})
+                                .to_string()
+                                .into(),
+                        ))
+                        .unwrap();
+                    peer.socket
+                        .send(tungstenite::Message::Text(
+                            json!({"event":"panelUp","context":"starter","payload":{}})
+                                .to_string()
+                                .into(),
+                        ))
+                        .unwrap();
+                    // Queue navigation and the next press before reading persistence.
+                    // The host can deliver an old snapshot before receiving final settings.
+                    peer.socket
+                        .send(tungstenite::Message::Text(
+                            json!({"event":"willDisappear","context":"starter","payload":{}})
+                                .to_string()
+                                .into(),
+                        ))
+                        .unwrap();
+                    peer.socket
+                        .send(tungstenite::Message::Text(
+                            appear(json!({"seconds":60})).to_string().into(),
+                        ))
+                        .unwrap();
+                    peer.socket
+                        .send(tungstenite::Message::Text(
+                            json!({"event":"panelDown","context":"starter","payload":{}})
+                                .to_string()
+                                .into(),
+                        ))
+                        .unwrap();
+                    peer.socket
+                        .send(tungstenite::Message::Text(
+                            json!({"event":"panelUp","context":"starter","payload":{}})
+                                .to_string()
+                                .into(),
+                        ))
+                        .unwrap();
+                    let started = read_until(&mut peer.socket, "setSettings")["payload"].clone();
+                    assert_eq!(started["runtime"]["status"], "running");
+                    let retired = read_until(&mut peer.socket, "setSettings")["payload"].clone();
+                    assert_eq!(retired["runtime"]["status"], "running");
+                    let saved = read_until(&mut peer.socket, "setSettings")["payload"].clone();
+                    assert_eq!(saved["runtime"]["status"], "paused");
+                    assert!(saved["runtime"]["value"].as_f64().unwrap() <= 60000.0);
+                }
+                peer.socket
+                    .send(tungstenite::Message::Text(
+                        json!({"event":"willDisappear","context":"starter","payload":{}})
+                            .to_string()
+                            .into(),
+                    ))
+                    .unwrap();
+            }));
+            let _ = child.kill();
+            let _ = child.wait();
+            outcome.unwrap();
+        }
+    }
+    #[test]
     fn obs_plugin_authenticates_and_reports_version_over_both_real_websockets() {
         use base64::{Engine, engine::general_purpose::STANDARD};
         use sha2::{Digest, Sha256};

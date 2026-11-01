@@ -7,7 +7,13 @@
     {
       "UUID": "dev.deckweave.canvas.clock",
       "Name": "Canvas clock",
-      "Controllers": ["Keypad", "Encoder"]
+      "Controllers": [
+        "Keypad",
+        "Encoder"
+      ]
     }
-  ]
+  ],
+  "DeckWeave": {
+    "DevelopmentOnly": true
+  }
 }

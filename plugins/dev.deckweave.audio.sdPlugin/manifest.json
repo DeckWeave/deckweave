@@ -1,0 +1,22 @@
+{
+  "UUID": "dev.deckweave.audio",
+  "Name": "DeckWeave Audio",
+  "Version": "0.1.0",
+  "SDKVersion": 2,
+  "CodePath": "plugin.mjs",
+  "PropertyInspectorPath": "settings.html",
+  "Actions": [
+    {
+      "UUID": "dev.deckweave.audio.output",
+      "Name": "System Volume · Громкость системы",
+      "Encoder": {
+        "layout": "$A0"
+      },
+      "Controllers": ["Keypad", "Encoder", "Panel"]
+    }
+  ],
+  "Author": "DeckWeave contributors",
+  "DeckWeave": {
+    "RequiredFiles": ["bin/deckweave-system.exe"]
+  }
+}

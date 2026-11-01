@@ -858,6 +858,60 @@ textarea {
   background: #1c1f25;
   font-size: 12px;
 }
+.library-search-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.library-search-row .search-field {
+  min-width: 0;
+  flex: 1;
+}
+.library-display-button {
+  padding: 7px;
+  min-width: 32px;
+  font-size: 16px;
+}
+.library-display-button.current {
+  font-size: 11px;
+  color: #adbbff;
+}
+.library-options {
+  padding: 0 12px 16px;
+  font-size: 12px;
+}
+.library-options > p {
+  color: #a6afbe;
+  line-height: 1.5;
+}
+.library-check,
+.library-option-row label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.library-option-group {
+  border-top: 1px solid #3a3e48;
+  padding: 8px 0;
+}
+.library-option-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 32px;
+}
+.library-option-row label {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.library-option-row .small {
+  padding: 3px 7px;
+}
+.library-option-action {
+  padding-left: 10px;
+  color: #b9c1d0;
+}
 .library-category {
   font-size: 11px;
   color: #9aa6ba;

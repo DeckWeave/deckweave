@@ -1,0 +1,33 @@
+{
+  "measuredAtUtc": "2026-11-01T22:50:02.0050253Z",
+  "scenario": "Release, all DeckWeave windows closed, Mirabox Tools still active in tray, same configured widgets",
+  "processCount": 10,
+  "privateCommitMiB": 231.1,
+  "summedWorkingSetMiB": 406.4,
+  "cpuSeconds": 0.0938,
+  "processTreeChanged": false,
+  "sampleSeconds": 10.163,
+  "processBreakdown": [
+    {
+      "name": "conhost",
+      "count": 4,
+      "privateCommitMiB": 8.4
+    },
+    {
+      "name": "deckweave-desktop",
+      "count": 1,
+      "privateCommitMiB": 40.7
+    },
+    {
+      "name": "deckweave-system",
+      "count": 1,
+      "privateCommitMiB": 2.3
+    },
+    {
+      "name": "node",
+      "count": 4,
+      "privateCommitMiB": 179.8
+    }
+  ],
+  "notes": "Includes all descendants, including Node and Edge. CPU covers processes alive at both observations; process churn makes it a lower bound. Short observation, not a resource budget or endurance test. Summed working sets may count shared pages repeatedly."
+}

@@ -1,0 +1,11 @@
+{
+  "measuredAtUtc": "2026-11-01T22:46:07.1871415Z",
+  "scenario": "Release, Mirabox Tools with CPU/RAM/uptime, two countdowns, stopwatch and master audio; settings + one editor open; no PI",
+  "processCount": 17,
+  "privateCommitMiB": 545.9,
+  "summedWorkingSetMiB": 910.2,
+  "cpuSeconds": 1.3906,
+  "processTreeChanged": false,
+  "sampleSeconds": 10.173,
+  "notes": "Includes all descendants, including Node and Edge. CPU covers processes alive at both observations; process churn makes it a lower bound. Short observation, not a resource budget or endurance test. Summed working sets may count shared pages repeatedly."
+}

@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" /><title>Timers</title>
+  <style>
+    body {
+      font:
+        14px 'Segoe UI',
+        sans-serif;
+      background: #252831;
+      color: #eff4fa;
+      margin: 20px;
+    }
+    label {
+      display: grid;
+      gap: 6px;
+      margin: 16px 0;
+    }
+    input,
+    select,
+    button {
+      font: inherit;
+      padding: 8px;
+      background: #171e29;
+      color: inherit;
+      border: 1px solid #566173;
+      border-radius: 5px;
+    }
+    button {
+      cursor: pointer;
+      margin-right: 8px;
+    }
+    p {
+      line-height: 1.5;
+      color: #b8c6d8;
+    }
+  </style>
+  <h2 id="heading">Timers</h2>
+  <label><span id="labelText">Label</span><input id="label" maxlength="24" /></label
+  ><label id="durationRow"
+    ><span id="minutesText">Duration, minutes</span
+    ><input id="minutes" type="number" min="0.0166667" max="1440" step="any" /></label
+  ><label
+    ><span id="languageText">Language</span
+    ><select id="language">
+      <option value="en">English</option>
+      <option value="ru">Русский</option>
+    </select></label
+  ><button id="toggle">Start / Pause</button
+  ><button id="reset">Reset</button>
+  <p id="hint">
+    Press to start/pause, hold 0.8 s to reset. Rotate a paused countdown to adjust minutes.
+    Continues across pages and restarts using the saved clock time. Finishes silently; no alert on a
+    hidden page. Changing duration resets the timer. Settings save automatically.
+  </p>
+  <p id="status" role="status"></p>
+  <script>
+    let socket,
+      context,
+      settings = {},
+      ready = false,
+      ru = false;
+    const dirty = new Set(),
+      el = (id) => document.getElementById(id);
+    function show() {
+      for (const id of ['label', 'minutes', 'language'])
+        if (!dirty.has(id) && document.activeElement !== el(id))
+          el(id).value =
+            id === 'minutes'
+              ? (settings.seconds ?? 1500) / 60
+              : (settings[id] ?? (id === 'language' ? (ru ? 'ru' : 'en') : ''));
+    }
+    function send(payload) {
+      if (ready) socket.send(JSON.stringify({ event: 'sendToPlugin', context, payload }));
+    }
+    window.connectElgatoStreamDeckSocket = (port, uuid, event, info, actionInfo) => {
+      context = uuid;
+      ru = JSON.parse(info).application?.language?.startsWith('ru') ?? false;
+      document.documentElement.lang = ru ? 'ru' : 'en';
+      const action = JSON.parse(actionInfo);
+      settings = action.payload?.settings ?? {};
+      el('durationRow').hidden = action.action?.endsWith('.stopwatch');
+      if (ru) {
+        el('heading').textContent = 'Таймеры';
+        el('labelText').textContent = 'Подпись';
+        el('minutesText').textContent = 'Длительность, минут';
+        el('languageText').textContent = 'Язык';
+        el('toggle').textContent = 'Старт / Пауза';
+        el('reset').textContent = 'Сброс';
+        el('hint').textContent =
+          'Нажать: старт/пауза; удержать 0,8 с: сброс. Поворот остановленного таймера меняет минуты. Продолжается между страницами и перезапусками по сохранённому времени. Завершается без звука; на скрытой странице уведомления нет. Изменение длительности сбрасывает таймер. Сохраняется автоматически.';
+      }
+      show();
+      socket = new WebSocket(`ws://127.0.0.1:${port}`);
+      socket.onopen = () => {
+        socket.send(JSON.stringify({ event, uuid }));
+        ready = true;
+        el('status').textContent = ru ? 'Готово' : 'Ready';
+      };
+      socket.onmessage = ({ data }) => {
+        try {
+          const m = JSON.parse(data);
+          if (m.event === 'didReceiveSettings') {
+            settings = m.payload.settings ?? {};
+            show();
+          }
+        } catch {}
+      };
+      socket.onclose = () => {
+        ready = false;
+        el('status').textContent = ru ? 'Нет связи' : 'Disconnected';
+      };
+    };
+    for (const id of ['label', 'minutes', 'language']) {
+      el(id).oninput = () => dirty.add(id);
+      el(id).onchange = () => {
+        if (!ready) return;
+        const next = { ...settings };
+        if (id === 'minutes')
+          next.seconds = Math.max(
+            1,
+            Math.min(86400, Math.round((Number(el(id).value) || 25) * 60)),
+          );
+        else next[id] = el(id).value;
+        settings = next;
+        dirty.delete(id);
+        send({
+          command: 'configure',
+          label: next.label ?? '',
+          seconds: next.seconds ?? 1500,
+          language: next.language ?? (ru ? 'ru' : 'en'),
+        });
+      };
+    }
+    el('toggle').onclick = () => send({ command: 'toggle' });
+    el('reset').onclick = () => send({ command: 'reset' });
+  </script>
+</html>

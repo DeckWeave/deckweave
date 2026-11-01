@@ -14,6 +14,11 @@ fn preferences_and_device_defaults_save_atomically_and_survive_restart() {
                 smart_profiles: false,
                 preview_scale: 125,
                 compact: true,
+                library: LibraryPreferences {
+                    hidden: vec!["plugin:example.test".into()],
+                    order: vec!["plugin:example.test".into()],
+                    show_development: true,
+                },
             },
             expected_revision: revision,
         },
@@ -69,6 +74,11 @@ fn preferences_and_device_defaults_save_atomically_and_survive_restart() {
     let core = Core::open(&path).unwrap();
     let snapshot = core.snapshot();
     assert!(snapshot.configuration.preferences.compact);
+    assert_eq!(
+        snapshot.configuration.preferences.library.hidden,
+        ["plugin:example.test"]
+    );
+    assert!(snapshot.configuration.preferences.library.show_development);
     assert_eq!(snapshot.configuration.preferences.preview_scale, 125);
     assert!(!snapshot.configuration.preferences.smart_profiles);
     assert_eq!(

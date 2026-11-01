@@ -92,7 +92,14 @@ impl Connection {
         Ok(connection)
     }
     pub fn read(&self, buffer: &mut [u8]) -> Result<usize, String> {
-        self.0.read_timeout(buffer, 25).map_err(|e| e.to_string())
+        self.read_timeout(buffer, 25)
+    }
+    /// A zero timeout polls queued input without delaying an already pending image.
+    /// The owner still reads between every indivisible image transaction.
+    pub fn read_timeout(&self, buffer: &mut [u8], timeout_ms: u8) -> Result<usize, String> {
+        self.0
+            .read_timeout(buffer, i32::from(timeout_ms))
+            .map_err(|e| e.to_string())
     }
     pub fn write(&self, report: &[u8]) -> Result<(), String> {
         let count = self.0.write(report).map_err(|e| e.to_string())?;

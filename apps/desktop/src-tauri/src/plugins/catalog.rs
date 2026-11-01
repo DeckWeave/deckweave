@@ -11,6 +11,7 @@ pub struct Action {
     pub id: String,
     pub name: String,
     pub controllers: Vec<String>,
+    pub visible: bool,
     pub inspector: Option<String>,
     #[serde(skip)]
     pub encoder_layout: Option<String>,
@@ -24,6 +25,8 @@ pub struct Package {
     pub version: String,
     pub actions: Vec<Action>,
     pub error: Option<String>,
+    pub resource_only: bool,
+    pub development: bool,
     #[serde(skip)]
     pub root: PathBuf,
     #[serde(skip)]
@@ -67,6 +70,8 @@ fn read_package(root: PathBuf, id: String) -> Package {
         version: String::new(),
         actions: vec![],
         error: None,
+        resource_only: false,
+        development: false,
         root: root.clone(),
         entry: None,
         isolated_weather: false,
@@ -94,6 +99,16 @@ fn read_package(root: PathBuf, id: String) -> Package {
             .unwrap_or(&package.id)
             .into();
         package.version = manifest["Version"].as_str().unwrap_or("0").into();
+        package.development = manifest["DeckWeave"]["DevelopmentOnly"]
+            .as_bool()
+            .unwrap_or(false);
+        // Elgato's icon editor has no backend or actions. It is a resource,
+        // not a broken executable plugin. Never launch it as an action backend.
+        if manifest["IconEditorPath"].is_string() && manifest.get("Actions").is_none() {
+            package.resource_only = true;
+            resolve(&root, manifest["IconEditorPath"].as_str().unwrap())?;
+            return Ok(());
+        }
         let platform = if cfg!(windows) {
             "CodePathWin"
         } else if cfg!(target_os = "macos") {
@@ -136,6 +151,7 @@ fn read_package(root: PathBuf, id: String) -> Package {
                 id,
                 name: action["Name"].as_str().unwrap_or("Action").into(),
                 controllers,
+                visible: action["VisibleInActionsList"].as_bool().unwrap_or(true),
                 inspector,
                 encoder_layout: action["Encoder"]["layout"].as_str().map(str::to_owned),
                 images: action["States"]
@@ -316,6 +332,30 @@ mod tests {
             assert!(resolve(root, path).is_err());
         }
         assert!(resolve(root, "Cargo.toml").is_ok());
+    }
+    #[test]
+    fn resources_and_hidden_actions_do_not_pollute_action_library() {
+        let root = fixture();
+        std::fs::write(root.join("icons.html"), "icons").unwrap();
+        std::fs::write(
+            root.join("manifest.json"),
+            r#"{"Name":"Icons","Version":"1","IconEditorPath":"icons.html"}"#,
+        )
+        .unwrap();
+        let resource = read_package(root.clone(), "example.icons".into());
+        assert!(resource.resource_only);
+        assert!(resource.entry.is_none());
+        assert!(resource.error.is_none());
+        std::fs::write(root.join("plugin.mjs"), "export {};").unwrap();
+        std::fs::write(root.join("manifest.json"), r#"{"Name":"Examples","CodePath":"plugin.mjs","DeckWeave":{"DevelopmentOnly":true},"Actions":[{"UUID":"example.hidden","VisibleInActionsList":false},{"UUID":"example.visible"}]}"#).unwrap();
+        let package = read_package(root.clone(), "example.actions".into());
+        assert!(package.error.is_none());
+        assert!(package.development);
+        assert!(!package.actions[0].visible);
+        assert!(package.actions[1].visible);
+        // Keep descriptors to execute existing assignments.
+        assert_eq!(package.actions.len(), 2);
+        remove_fixture(&root);
     }
     #[test]
     fn protected_weather_requires_the_tested_backend_and_never_decodes_manifest() {

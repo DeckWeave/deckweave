@@ -4,6 +4,9 @@
 
 ## Что реализовано
 
+- Настройка состава/порядка библиотеки рядом с поиском, скрытие служебных Elgato actions и отдельный учёт ресурсов. Action SDK, генератор и проверяемый реестр; новые Audio, Monitor и Timers, профиль Tools на Mirabox. [Результат, проверки и замеры](EXTENSIONS-RESULT.md), [как расширять](EXTENSIONS.md), [только оставшаяся физическая приёмка](EXTENSIONS-ACCEPTANCE.md).
+- N4 больше не ждёт 25 мс перед ожидающим кадром, повторно использует JPEG и объединяет обновления превью. Прежний искусственный минимум 275 мс убран; наблюдавшиеся HID page batches 4,2–11,0 мс не подменяют физическую задержку LCD. [Разбор](N4-OUTPUT-PERFORMANCE.md).
+
 - Общие настройки приложения с вкладками Общие/Устройства/Плагины/О приложении; реестр и параметры устройств находятся внутри. Компактная библиотека со сворачиваемыми группами и фильтрами Keys/Dials, отдельное окно каждого instance, tray и фоновые действия после закрытия всех окон. [Настройки, редактор и погода](SETTINGS-AND-WEATHER.md).
 - Редактор: drag-and-drop, регулируемые размеры областей и компактная сетка полей. Обычные страницы нумеруются без папок; папки открываются явной кнопкой или double click и поддерживают автозакрытие после запуска действия. Крутилка умеет перелистывать страницы и закрепляться глобально. Полоса совпадает по ширине с рядом кнопок; на крутилках нет bitmap. [Исправление вывода и навигации](NAVIGATION-AND-DISPLAY-FIX.md).
 - N4 Pro: автообнаружение, identity/generation, отдельные workers, Offline/Error, ввод keys/dials/touch и JPEG на клавиши/полосу. После регрессии JPEG возвращён аппаратно проверенный режим; владелец подтвердил восстановление изображения 2026-11-02. Ввод и reconnect также уже приняты, повторная приёмка без причины не нужна.
@@ -16,7 +19,7 @@
 
 ## Проверки и доказательства
 
-Общий check: Svelte без ошибок/предупреждений, format, production web, Rust fmt/clippy с запретом предупреждений, 76 Rust-тестов, 7 погодных JS-тестов и документация. Native release: `npm run build`; бинарник `target/release/deckweave-desktop.exe`.
+Общий check: Svelte без ошибок/предупреждений, format, production web, Rust fmt/clippy с запретом предупреждений, 87 Rust-тестов, 19 JS-тестов приложения и документация. Native release: `npm run build`; бинарник `target/release/deckweave-desktop.exe`.
 
 Через Windows UI проверены native Panel drag, оригинальный PI своего плагина с немедленным сохранением и выполнением, Switch A/B/A на одной кнопке, оригинальный PI установленного OnAirClock и смена 24/12 часов. Закрытие всех окон, повторное открытие runtime и завершение всего собственного дерева Edge проверены исполнением. Подробности: [журнал результата](RUNTIME-PROGRESS.md), [совместимость](PLUGIN-COMPATIBILITY.md), [историческая аппаратная приёмка](N4-ACCEPTANCE.md).
 
@@ -26,6 +29,6 @@ OBS: собственный plugin по obs-websocket 5; challenge authenticatio
 
 Физическая приёмка новых touch координат/жестов, D2–D4 и reconnect подтверждена владельцем 2026-11-02: [результат](ACCEPTANCE-NEXT.md). Замечания к редактору и читаемости изображения разобраны в [изменениях интерфейса](EDITOR-REFINEMENT.md).
 
-Внешний hardware process provider/публичный SDK ещё не реализован: N4 встроен, граница описана в [provider contract](PROVIDER-CONTRACT.md). Нет Marketplace installer, профилей из Elgato/старого проекта, полного SDK resources/app monitoring и pixel-perfect всех feedback styles. Редактор профилей/папок пока покрывает создание и навигацию, не полный CRUD и все удобства Elgato. Packaging/runtime distribution, длительные нагрузочные прогоны и macOS/Linux не завершены. IO84/MX4/Android и sync groups остаются отложенными по принятым решениям.
+SDK действий уже доступен: [workflow](EXTENSIONS.md). Внешний hardware process provider/SDK драйверов ещё не реализован: N4 встроен, граница описана в [provider contract](PROVIDER-CONTRACT.md). Нет Marketplace installer, профилей из Elgato/старого проекта, полного SDK resources/app monitoring и pixel-perfect всех feedback styles. Редактор профилей/папок пока покрывает создание и навигацию, не полный CRUD и все удобства Elgato. Packaging/runtime distribution, длительные нагрузочные прогоны и macOS/Linux не завершены. IO84/MX4/Android и sync groups остаются отложенными по принятым решениям.
 
 Это сохранённый объём оставшейся работы, а не исключение обязательных функций v1. [Полный план](PLAN.md), [ближайшее продолжение](NEXT.md), [решения владельца](DECISIONS.md).

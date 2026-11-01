@@ -1,0 +1,22 @@
+{
+  "date": "2026-11-02",
+  "scope": "cpu-only-no-usb",
+  "command": "cargo test -p deckweave-desktop hardware::tests::output_render_benchmark --release -- --ignored --nocapture",
+  "result": "passed",
+  "pages": 20,
+  "frames_per_page": 11,
+  "workload": "default builtin key and strip visuals; no SVG plugin images",
+  "cold_render_us": 34038,
+  "warm_cache_us": 16,
+  "cache_bytes": 54551,
+  "previous_idle_read_floor_us_per_page": 275000,
+  "pending_idle_read_floor_us_per_page": 0,
+  "scheduling_floor_source": "11 empty HID input reads with a 25 ms timeout in the previous session loop; the new pending-output loop uses timeout 0",
+  "hardware_observation": "This sample does not open USB and does not measure firmware display latency.",
+  "targeted_debug_tests": {
+    "command": "cargo test -p deckweave-desktop hardware::tests -- --nocapture",
+    "passed": 9,
+    "failed": 0,
+    "ignored": 1
+  }
+}

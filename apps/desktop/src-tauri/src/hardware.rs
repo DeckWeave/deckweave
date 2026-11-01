@@ -46,6 +46,8 @@ struct Shared {
     epoch: Arc<AtomicU64>,
     images: Mutex<Images>,
     trace: Mutex<VecDeque<Trace>>,
+    output_performance: Mutex<BTreeMap<String, OutputPerformance>>,
+    output_performance_revision: AtomicU64,
 }
 
 pub struct Hardware {
@@ -62,6 +64,8 @@ impl Hardware {
             epoch: Arc::new(AtomicU64::new(1)),
             images: Mutex::new(BTreeMap::new()),
             trace: Mutex::new(VecDeque::new()),
+            output_performance: Mutex::new(BTreeMap::new()),
+            output_performance_revision: AtomicU64::new(0),
         });
         let worker = Arc::clone(&shared);
         let supervisor = thread::spawn(move || {
@@ -137,6 +141,7 @@ fn supervise(shared: Arc<Shared>, directory: PathBuf) {
     let mut workers = vec![];
     let mut last_scan = Instant::now() - Duration::from_secs(3);
     let mut last_diagnostic = None;
+    let mut last_diagnostic_write = Instant::now();
     while !shared.stop.load(Ordering::Relaxed) {
         if last_scan.elapsed() >= Duration::from_secs(2) {
             last_scan = Instant::now();
@@ -188,11 +193,17 @@ fn supervise(shared: Arc<Shared>, directory: PathBuf) {
             }
         }
         // Bounded diagnostic data, no image blobs, no serial numbers or USB paths.
+        let performance_revision = shared.output_performance_revision.load(Ordering::Relaxed);
         if !known.is_empty()
             && let Ok(mut snapshot) = shared.core.lock().map(|c| c.snapshot())
-            && last_diagnostic != Some(snapshot.event_sequence)
+            && diagnostic_due(
+                last_diagnostic,
+                snapshot.event_sequence,
+                performance_revision,
+                last_diagnostic_write.elapsed(),
+            )
         {
-            last_diagnostic = Some(snapshot.event_sequence);
+            let observed = (snapshot.event_sequence, performance_revision);
             for feedback in &mut snapshot.feedback {
                 feedback.image = None;
             }
@@ -200,14 +211,20 @@ fn supervise(shared: Arc<Shared>, directory: PathBuf) {
             let mut diagnostic = serde_json::json!({
                 "snapshot": snapshot,
                 "recent_inputs": trace.as_deref(),
-                "note": "Output frames count successful HID transfers, not display acknowledgements."
+                "output_performance": shared.output_performance.lock().ok().as_deref(),
+                "note": "Output frames and completion timings describe successful HID transfers, not display acknowledgements. Timings begin when the hardware worker observes a page change."
             });
             redact_settings(&mut diagnostic);
             drop(trace);
             if let Ok(json) = serde_json::to_vec_pretty(&diagnostic) {
                 let temporary = directory.join("n4-diagnostics.tmp");
-                if std::fs::write(&temporary, json).is_ok() {
-                    let _ = std::fs::rename(temporary, directory.join("n4-diagnostics.json"));
+                if std::fs::write(&temporary, json).is_ok()
+                    && std::fs::rename(temporary, directory.join("n4-diagnostics.json")).is_ok()
+                {
+                    // A concurrent metrics publication after this observation remains dirty.
+                    // Failed writes are retried rather than consuming the diagnostic revision.
+                    last_diagnostic = Some(observed);
+                    last_diagnostic_write = Instant::now();
                 }
             }
         }
@@ -216,6 +233,20 @@ fn supervise(shared: Arc<Shared>, directory: PathBuf) {
     for worker in workers {
         let _ = worker.join();
     }
+}
+
+#[cfg(any(windows, test))]
+fn diagnostic_due(
+    last: Option<(u64, u64)>,
+    event_sequence: u64,
+    performance_revision: u64,
+    elapsed: Duration,
+) -> bool {
+    let Some((last_event, last_performance)) = last else {
+        return true;
+    };
+    last_event != event_sequence
+        || (last_performance != performance_revision && elapsed >= Duration::from_secs(5))
 }
 
 #[cfg(any(windows, test))]
@@ -279,6 +310,174 @@ struct Desired {
     visual: KeyVisual,
     regions: Vec<RegionVisual>,
     image: Option<String>,
+}
+
+impl Desired {
+    // Page/binding identity describes the preview, not the physical pixels. In particular,
+    // empty keys and pinned actions need not be transferred again on every page change.
+    fn same_pixels(&self, other: &Self) -> bool {
+        if self.key == 11 || other.key == 11 {
+            return self.key == other.key && self.regions == other.regions;
+        }
+        match (&self.image, &other.image) {
+            (Some(a), Some(b)) => a == b && self.visual == other.visual,
+            (None, None) => self.visual == other.visual,
+            _ => false,
+        }
+    }
+    fn source_bytes(&self) -> usize {
+        self.image.as_ref().map_or(0, String::len)
+            + self
+                .regions
+                .iter()
+                .map(|r| r.image.as_ref().map_or(0, String::len))
+                .sum::<usize>()
+            + self.visual.title.len()
+            + self.visual.value.len()
+            + self
+                .regions
+                .iter()
+                .map(|r| r.visual.title.len() + r.visual.value.len() + r.detail.len())
+                .sum::<usize>()
+    }
+}
+
+struct PreparedFrame {
+    source: Desired,
+    jpeg: Vec<u8>,
+    data_url: String,
+}
+impl PreparedFrame {
+    fn bytes(&self) -> usize {
+        self.source.source_bytes() + self.jpeg.len() + self.data_url.len()
+    }
+}
+
+#[derive(Default)]
+struct FrameCache {
+    frames: VecDeque<Arc<PreparedFrame>>,
+    bytes: usize,
+}
+impl FrameCache {
+    const LIMIT: usize = 8 * 1024 * 1024;
+    const ENTRIES: usize = 64;
+    fn get(&mut self, desired: &Desired) -> Option<Arc<PreparedFrame>> {
+        let index = self
+            .frames
+            .iter()
+            .position(|p| p.source.same_pixels(desired))?;
+        let frame = self.frames.remove(index)?;
+        self.frames.push_back(Arc::clone(&frame));
+        Some(frame)
+    }
+    fn insert(&mut self, frame: PreparedFrame) -> Arc<PreparedFrame> {
+        let frame = Arc::new(frame);
+        let bytes = frame.bytes();
+        if bytes <= Self::LIMIT {
+            while self.bytes + bytes > Self::LIMIT || self.frames.len() >= Self::ENTRIES {
+                if let Some(old) = self.frames.pop_front() {
+                    self.bytes -= old.bytes();
+                }
+            }
+            self.bytes += bytes;
+            self.frames.push_back(Arc::clone(&frame));
+        }
+        frame
+    }
+    fn prepare(
+        &mut self,
+        frame: &Desired,
+        renderer: &Renderer,
+    ) -> Result<(Arc<PreparedFrame>, bool), String> {
+        if let Some(prepared) = self.get(frame) {
+            return Ok((prepared, true));
+        }
+        let jpeg = if let Some(image) = &frame.image {
+            renderer
+                .image_data_jpeg(image)
+                .or_else(|_| renderer.jpeg(&frame.visual))?
+        } else if frame.key == 11 {
+            renderer.strip(&frame.regions)?
+        } else {
+            renderer.jpeg(&frame.visual)?
+        };
+        let data_url = format!("data:image/jpeg;base64,{}", STANDARD.encode(&jpeg));
+        Ok((
+            self.insert(PreparedFrame {
+                source: frame.clone(),
+                jpeg,
+                data_url,
+            }),
+            false,
+        ))
+    }
+}
+
+#[derive(Clone, Default, Serialize)]
+struct Timing {
+    calls: u64,
+    total_us: u64,
+    max_us: u64,
+}
+impl Timing {
+    fn record(&mut self, started: Instant) {
+        let elapsed = started.elapsed().as_micros().min(u128::from(u64::MAX)) as u64;
+        self.calls += 1;
+        self.total_us = self.total_us.saturating_add(elapsed);
+        self.max_us = self.max_us.max(elapsed);
+    }
+}
+
+#[derive(Clone, Default, Serialize)]
+struct OutputPerformance {
+    pending_input_reads: Timing,
+    idle_input_reads: Timing,
+    snapshots: Timing,
+    render_and_encode: Timing,
+    hid_transfers: Timing,
+    cache_hits: u64,
+    cache_entries: usize,
+    cache_bytes: usize,
+    preview_notifications: u64,
+    page_batches: VecDeque<PageBatch>,
+}
+#[derive(Clone, Serialize)]
+struct PageBatch {
+    page_id: String,
+    elapsed_us: u64,
+    frames: u64,
+    render_us: u64,
+    hid_us: u64,
+    input_wait_us: u64,
+    superseded: bool,
+}
+struct PendingPage {
+    page_id: String,
+    started: Instant,
+    frames: u64,
+    render_us: u64,
+    hid_us: u64,
+    input_wait_us: u64,
+}
+impl PendingPage {
+    fn complete(self, performance: &mut OutputPerformance, superseded: bool) {
+        if performance.page_batches.len() == 32 {
+            performance.page_batches.pop_front();
+        }
+        performance.page_batches.push_back(PageBatch {
+            page_id: self.page_id,
+            elapsed_us: self.started.elapsed().as_micros().min(u128::from(u64::MAX)) as u64,
+            frames: self.frames,
+            render_us: self.render_us,
+            hid_us: self.hid_us,
+            input_wait_us: self.input_wait_us,
+            superseded,
+        });
+    }
+}
+
+fn input_timeout_ms(pending_output: bool) -> u8 {
+    if pending_output { 0 } else { 25 }
 }
 
 fn desired(snapshot: &Snapshot, id: &str) -> Vec<Desired> {
@@ -434,9 +633,11 @@ fn next_frame<'a>(
     sent: &BTreeMap<u8, Desired>,
     after: u8,
 ) -> Option<&'a Desired> {
-    let mut changed = target
-        .iter()
-        .filter(|frame| sent.get(&frame.key) != Some(frame));
+    let mut changed = target.iter().filter(|frame| {
+        !sent
+            .get(&frame.key)
+            .is_some_and(|old| old.same_pixels(frame))
+    });
     changed
         .clone()
         .find(|frame| frame.key > after)
@@ -458,16 +659,55 @@ fn session(
     let mut sent: BTreeMap<u8, Desired> = BTreeMap::new();
     let mut last_key = 0;
     let mut touch = crate::touch::TouchRouter::default();
+    let mut cache = FrameCache::default();
+    let mut performance = OutputPerformance::default();
+    let mut page_batch: Option<PendingPage> = None;
+    let mut last_page = String::new();
+    let mut preview_dirty = false;
+    let mut last_preview = Instant::now() - Duration::from_millis(33);
+    let mut last_metrics = Instant::now();
+    let mut geometry = shared
+        .core
+        .lock()
+        .map_err(|e| e.to_string())?
+        .snapshot()
+        .geometries[id]
+        .clone();
     while !shared.stop.load(Ordering::Relaxed) {
-        let count = connection.read(&mut buffer)?;
+        let pending = shared.epoch.load(Ordering::Relaxed) != epoch
+            || next_frame(&target, &sent, last_key).is_some();
+        let read_started = Instant::now();
+        let count = connection.read_timeout(&mut buffer, input_timeout_ms(pending))?;
+        if pending {
+            performance.pending_input_reads.record(read_started);
+        } else {
+            performance.idle_input_reads.record(read_started);
+        }
+        if let Some(batch) = &mut page_batch {
+            batch.input_wait_us += read_started.elapsed().as_micros() as u64;
+        }
         if count > 0
             && let Some(decoded) = deckweave_n4::decode(&buffer[..count])
         {
+            // A layout can change while an input read is in progress. Resolve a newly
+            // arrived touch against the current layout, never a previously cached page.
+            if matches!(
+                decoded,
+                Input::Touch { .. } | Input::Pointer { .. } | Input::Swipe { .. }
+            ) && shared.epoch.load(Ordering::Relaxed) != epoch
+            {
+                let started = Instant::now();
+                geometry = shared
+                    .core
+                    .lock()
+                    .map_err(|e| e.to_string())?
+                    .snapshot()
+                    .geometries[id]
+                    .clone();
+                performance.snapshots.record(started);
+            }
             let (control, event) = {
-                let snapshot = shared.core.lock().map_err(|e| e.to_string())?.snapshot();
-                if let Some((control, event)) =
-                    touch.route(&decoded, &snapshot.geometries[id], Instant::now())
-                {
+                if let Some((control, event)) = touch.route(&decoded, &geometry, Instant::now()) {
                     (Some(control), Some(event))
                 } else {
                     translate(&decoded)
@@ -520,42 +760,76 @@ fn session(
         }
         let current = shared.epoch.load(Ordering::Relaxed);
         if current != epoch {
+            let started = Instant::now();
             let snapshot = shared.core.lock().map_err(|e| e.to_string())?.snapshot();
+            performance.snapshots.record(started);
+            geometry = snapshot.geometries[id].clone();
             target = desired(&snapshot, id);
             epoch = current;
+            if let Some(frame) = target.first()
+                && frame.page_id != last_page
+            {
+                if let Some(batch) = page_batch.take() {
+                    batch.complete(&mut performance, true);
+                }
+                last_page = frame.page_id.clone();
+                page_batch = Some(PendingPage {
+                    page_id: frame.page_id.clone(),
+                    started,
+                    frames: 0,
+                    render_us: 0,
+                    hid_us: 0,
+                    input_wait_us: 0,
+                });
+            }
+            // Metadata follows the selected page even when identical pixels need no USB write.
+            if let Ok(mut images) = shared.images.lock()
+                && let Some(device_images) = images.get_mut(id)
+            {
+                for frame in &target {
+                    if sent
+                        .get(&frame.key)
+                        .is_some_and(|old| old.same_pixels(frame))
+                        && let Some(image) = device_images.get_mut(&frame_control(frame.key))
+                        && (image.page_id != frame.page_id || image.binding_id != frame.binding_id)
+                    {
+                        image.page_id.clone_from(&frame.page_id);
+                        image.binding_id.clone_from(&frame.binding_id);
+                        sent.insert(frame.key, frame.clone());
+                        preview_dirty = true;
+                    }
+                }
+            }
         }
         // Complete one indivisible BAT/chunks/STP transaction between input reads.
         if let Some(frame) = next_frame(&target, &sent, last_key) {
-            let jpeg = if let Some(image) = &frame.image {
-                renderer
-                    .image_data_jpeg(image)
-                    .ok()
-                    .map(Ok)
-                    .unwrap_or_else(|| renderer.jpeg(&frame.visual))?
-            } else if frame.key == 11 {
-                renderer.strip(&frame.regions)?
-            } else {
-                renderer.jpeg(&frame.visual)?
-            };
+            let render_started = Instant::now();
+            let (prepared, hit) = cache.prepare(frame, renderer)?;
+            performance.render_and_encode.record(render_started);
+            performance.cache_hits += u64::from(hit);
+            let render_us = render_started.elapsed().as_micros() as u64;
+            let write_started = Instant::now();
             if frame.key == 11 {
-                connection.present_strip(&jpeg)?;
+                connection.present_strip(&prepared.jpeg)?;
             } else {
-                connection.present(frame.key, &jpeg)?;
+                connection.present(frame.key, &prepared.jpeg)?;
+            }
+            performance.hid_transfers.record(write_started);
+            if let Some(batch) = &mut page_batch {
+                batch.frames += 1;
+                batch.render_us += render_us;
+                batch.hid_us += write_started.elapsed().as_micros() as u64;
             }
             let image = Frame {
                 page_id: frame.page_id.clone(),
                 binding_id: frame.binding_id.clone(),
-                data_url: format!("data:image/jpeg;base64,{}", STANDARD.encode(&jpeg)),
+                data_url: prepared.data_url.clone(),
             };
             if let Ok(mut images) = shared.images.lock() {
-                images.entry(id.into()).or_default().insert(
-                    if frame.key == 11 {
-                        "touch-strip".into()
-                    } else {
-                        format!("key-{}", frame.key)
-                    },
-                    image,
-                );
+                images
+                    .entry(id.into())
+                    .or_default()
+                    .insert(frame_control(frame.key), image);
             }
             sent.insert(frame.key, frame.clone());
             last_key = frame.key;
@@ -565,8 +839,30 @@ fn session(
                 .map_err(|e| e.to_string())?
                 .hardware_frame_sent(id, generation)
             {
-                shared.notify(false);
+                preview_dirty = true;
             }
+        }
+        let settled = next_frame(&target, &sent, last_key).is_none();
+        let completed_page = settled && page_batch.is_some();
+        if settled && let Some(batch) = page_batch.take() {
+            batch.complete(&mut performance, false);
+        }
+        if preview_dirty && (settled || last_preview.elapsed() >= Duration::from_millis(33)) {
+            shared.notify(false);
+            performance.preview_notifications += 1;
+            last_preview = Instant::now();
+            preview_dirty = false;
+        }
+        if completed_page || last_metrics.elapsed() >= Duration::from_secs(1) {
+            performance.cache_entries = cache.frames.len();
+            performance.cache_bytes = cache.bytes;
+            if let Ok(mut metrics) = shared.output_performance.lock() {
+                metrics.insert(id.into(), performance.clone());
+                shared
+                    .output_performance_revision
+                    .fetch_add(1, Ordering::Relaxed);
+            }
+            last_metrics = Instant::now();
         }
         if heartbeat.elapsed() >= Duration::from_millis(deckweave_n4::packets::HEARTBEAT_MS) {
             connection.heartbeat()?;
@@ -574,6 +870,14 @@ fn session(
         }
     }
     Ok(())
+}
+
+fn frame_control(key: u8) -> String {
+    if key == 11 {
+        "touch-strip".into()
+    } else {
+        format!("key-{key}")
+    }
 }
 
 fn translate(input: &Input) -> (Option<String>, Option<InputEvent>) {
@@ -597,6 +901,40 @@ fn translate(input: &Input) -> (Option<String>, Option<InputEvent>) {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn diagnostics_publish_late_metrics_without_another_core_event_or_hot_idle_writes() {
+        use std::time::Duration;
+        let before_metrics_publication = Some((7, 2));
+        // A page completes just after the supervisor persisted its last frame event.
+        // A later metrics revision must eventually be written despite unchanged Core sequence.
+        assert!(!super::diagnostic_due(
+            before_metrics_publication,
+            7,
+            3,
+            Duration::from_secs(1)
+        ));
+        assert!(super::diagnostic_due(
+            before_metrics_publication,
+            7,
+            3,
+            Duration::from_secs(5)
+        ));
+        // Continued idle polling does not write unchanged metrics or bypass throttling.
+        assert!(!super::diagnostic_due(
+            Some((7, 3)),
+            7,
+            3,
+            Duration::from_secs(60)
+        ));
+        assert!(!super::diagnostic_due(
+            Some((7, 3)),
+            7,
+            4,
+            Duration::from_secs(4)
+        ));
+        // Actual input/configuration events retain the existing next-supervisor-tick behavior.
+        assert!(super::diagnostic_due(Some((7, 3)), 8, 3, Duration::ZERO));
+    }
     #[test]
     fn diagnostics_redact_nested_plugin_settings() {
         let mut value = serde_json::json!({"configuration":{"devices":[{"settings":{"password":"private"},"children":[{"settings":{"token":"private"}}]}]},"events":3});
@@ -752,5 +1090,114 @@ mod tests {
         sent.insert(1, outdated);
         assert_eq!(next_frame(&frames, &sent, 1).unwrap().key, 2);
         assert_eq!(next_frame(&frames, &sent, 11).unwrap().key, 1);
+    }
+    #[test]
+    fn pending_output_polls_input_between_each_frame_without_timeout_waits() {
+        let mut core = Core::memory().unwrap();
+        let id = core
+            .register_n4(&format!("n4pro-{}", "a".repeat(64)))
+            .unwrap();
+        let frames = desired(&core.snapshot(), &id);
+        let mut sent = BTreeMap::new();
+        let mut after = 0;
+        let mut input_polls = 0;
+        while let Some(frame) = next_frame(&frames, &sent, after) {
+            // Even an empty input queue must not add 25 ms to every output frame.
+            assert_eq!(input_timeout_ms(true), 0);
+            input_polls += 1;
+            sent.insert(frame.key, frame.clone());
+            after = frame.key;
+        }
+        assert_eq!(input_polls, 11);
+        assert_eq!(
+            input_timeout_ms(false),
+            25,
+            "idle workers must not busy-spin"
+        );
+    }
+    #[test]
+    fn identical_pixels_do_not_retransfer_when_page_and_binding_identity_change() {
+        let mut core = Core::memory().unwrap();
+        let id = core
+            .register_n4(&format!("n4pro-{}", "a".repeat(64)))
+            .unwrap();
+        let before = desired(&core.snapshot(), &id);
+        let sent = before.iter().map(|f| (f.key, f.clone())).collect();
+        let mut after = before.clone();
+        for frame in &mut after {
+            frame.page_id = "another-page".into();
+            frame.binding_id = Some("another-binding".into());
+        }
+        assert!(next_frame(&after, &sent, 0).is_none());
+        after[4].visual.value = "changed".into();
+        assert_eq!(next_frame(&after, &sent, 0).unwrap().key, 5);
+        after[10].regions[0].visual.value = "changed".into();
+        assert_eq!(next_frame(&after, &sent, 5).unwrap().key, 11);
+    }
+    #[test]
+    fn prepared_cache_reuses_cross_page_pixels_and_keeps_memory_and_entry_bounds() {
+        let mut core = Core::memory().unwrap();
+        let id = core
+            .register_n4(&format!("n4pro-{}", "a".repeat(64)))
+            .unwrap();
+        let renderer = Renderer::new().unwrap();
+        let mut frames = desired(&core.snapshot(), &id);
+        let mut cache = FrameCache::default();
+        let (first, hit) = cache.prepare(&frames[0], &renderer).unwrap();
+        assert!(!hit);
+        frames[0].page_id = "another-page".into();
+        frames[0].binding_id = None;
+        let (second, hit) = cache.prepare(&frames[0], &renderer).unwrap();
+        assert!(hit);
+        assert!(Arc::ptr_eq(&first, &second));
+        for n in 0..80 {
+            frames[0].visual.value = n.to_string();
+            cache.prepare(&frames[0], &renderer).unwrap();
+        }
+        assert_eq!(cache.frames.len(), FrameCache::ENTRIES);
+        assert!(cache.bytes <= FrameCache::LIMIT);
+        let oversized = PreparedFrame {
+            source: frames[0].clone(),
+            jpeg: vec![0; FrameCache::LIMIT + 1],
+            data_url: String::new(),
+        };
+        cache.insert(oversized);
+        assert_eq!(cache.frames.len(), FrameCache::ENTRIES);
+        assert!(cache.bytes <= FrameCache::LIMIT);
+    }
+    #[test]
+    #[ignore = "manual CPU-only performance sample; does not open hardware"]
+    fn output_render_benchmark() {
+        let mut core = Core::memory().unwrap();
+        let id = core
+            .register_n4(&format!("n4pro-{}", "a".repeat(64)))
+            .unwrap();
+        let frames = desired(&core.snapshot(), &id);
+        let renderer = Renderer::new().unwrap();
+        let iterations = 20;
+        let cold_started = Instant::now();
+        for _ in 0..iterations {
+            for frame in &frames {
+                let mut cold_cache = FrameCache::default();
+                cold_cache.prepare(frame, &renderer).unwrap();
+            }
+        }
+        let cold_us = cold_started.elapsed().as_micros();
+        let mut warm_cache = FrameCache::default();
+        for frame in &frames {
+            warm_cache.prepare(frame, &renderer).unwrap();
+        }
+        let warm_started = Instant::now();
+        for _ in 0..iterations {
+            for frame in &frames {
+                assert!(warm_cache.prepare(frame, &renderer).unwrap().1);
+            }
+        }
+        println!(
+            "{{\"scope\":\"cpu-only-no-usb\",\"pages\":{iterations},\"frames_per_page\":{},\"cold_render_us\":{cold_us},\"warm_cache_us\":{},\"cache_bytes\":{},\"previous_idle_read_floor_us_per_page\":275000,\"pending_idle_read_floor_us_per_page\":0}}",
+            frames.len(),
+            warm_started.elapsed().as_micros(),
+            warm_cache.bytes
+        );
     }
 }

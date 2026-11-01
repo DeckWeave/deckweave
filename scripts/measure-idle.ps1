@@ -40,6 +40,13 @@ $deckweaveSample = [ordered]@{
     cpuSeconds = [Math]::Round($deckweaveCpuSeconds, 4)
     processTreeChanged = $deckweaveChanged
     sampleSeconds = [Math]::Round($deckweaveClock.Elapsed.TotalSeconds, 3)
+    processBreakdown = @($deckweaveAfter | Group-Object ProcessName | ForEach-Object {
+        [ordered]@{
+            name = $_.Name
+            count = $_.Count
+            privateCommitMiB = [Math]::Round((($_.Group | Measure-Object PrivateMemorySize64 -Sum).Sum / 1MB), 1)
+        }
+    })
     notes = 'Includes all descendants, including Node and Edge. CPU covers processes alive at both observations; process churn makes it a lower bound. Short observation, not a resource budget or endurance test. Summed working sets may count shared pages repeatedly.'
 } | ConvertTo-Json
 Set-Content -LiteralPath $Output -Value $deckweaveSample -Encoding utf8

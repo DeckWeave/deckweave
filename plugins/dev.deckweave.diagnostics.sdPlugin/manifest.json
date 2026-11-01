@@ -8,7 +8,13 @@
     {
       "UUID": "dev.deckweave.diagnostics.counter",
       "Name": "Plugin counter",
-      "Controllers": ["Keypad", "Encoder"]
+      "Controllers": [
+        "Keypad",
+        "Encoder"
+      ]
     }
-  ]
+  ],
+  "DeckWeave": {
+    "DevelopmentOnly": true
+  }
 }

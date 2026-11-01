@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" /><title>DeckWeave Audio</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font:
+        13px 'Segoe UI',
+        sans-serif;
+      background: #27292f;
+      color: #e4eaf5;
+      margin: 0;
+      padding: 24px;
+    }
+    h1 {
+      font-size: 20px;
+      margin: 0 0 16px;
+    }
+    label {
+      display: grid;
+      gap: 7px;
+      margin: 18px 0;
+    }
+    input,
+    select {
+      font: inherit;
+      color: inherit;
+      background: #20242b;
+      border: 1px solid #465169;
+      border-radius: 6px;
+      padding: 10px;
+    }
+    p {
+      color: #a5b3c9;
+      line-height: 1.6;
+    }
+  </style>
+  <h1 id="heading">System volume</h1>
+  <label
+    ><span id="stepLabel">Volume change per dial step</span
+    ><select id="step">
+      <option value="1">1%</option>
+      <option value="2">2%</option>
+      <option value="5">5%</option>
+      <option value="10">10%</option>
+    </select></label
+  >
+  <label><span id="labelLabel">Label (optional)</span><input id="label" maxlength="24" /></label>
+  <p id="help">
+    Press a key or dial to mute. Turn a dial to change volume. Touch or drag across a Panel to set
+    volume. Controls follow the current Windows default output.
+  </p>
+  <p id="status"></p>
+  <script>
+    let socket,
+      context,
+      saved = {},
+      language = 'en';
+    const $ = (id) => document.getElementById(id);
+    function paint() {
+      const ru = language.startsWith('ru');
+      document.documentElement.lang = ru ? 'ru' : 'en';
+      $('heading').textContent = ru ? 'Громкость системы' : 'System volume';
+      $('stepLabel').textContent = ru ? 'Изменение за шаг крутилки' : 'Volume change per dial step';
+      $('labelLabel').textContent = ru ? 'Подпись (необязательно)' : 'Label (optional)';
+      $('help').textContent = ru
+        ? 'Нажатие кнопки или крутилки выключает и включает звук. Вращение меняет громкость. Касание или движение по панели задаёт громкость. Используется текущий выход Windows по умолчанию.'
+        : 'Press a key or dial to mute. Turn a dial to change volume. Touch or drag across a Panel to set volume. Controls follow the current Windows default output.';
+      $('step').value = String(saved.step ?? 2);
+      $('label').value = saved.label ?? '';
+    }
+    window.connectElgatoStreamDeckSocket = (port, uuid, event, info, actionInfo) => {
+      const app = JSON.parse(info);
+      const action = JSON.parse(actionInfo);
+      language = app.application?.language ?? 'en';
+      context = uuid;
+      saved = action.payload?.settings ?? {};
+      paint();
+      socket = new WebSocket('ws://127.0.0.1:' + port);
+      socket.onopen = () => socket.send(JSON.stringify({ event, uuid }));
+      socket.onmessage = ({ data }) => {
+        const message = JSON.parse(data);
+        if (message.event === 'didReceiveSettings') {
+          saved = message.payload.settings ?? {};
+          paint();
+        }
+      };
+    };
+    function save() {
+      saved = {
+        ...saved,
+        step: Number($('step').value),
+        label: $('label').value,
+        language: language.startsWith('ru') ? 'ru' : 'en',
+      };
+      if (socket?.readyState === 1)
+        socket.send(JSON.stringify({ event: 'setSettings', context, payload: saved }));
+    }
+    $('step').addEventListener('change', save);
+    $('label').addEventListener('change', save);
+  </script>
+</html>

@@ -1,0 +1,11 @@
+{
+  "measuredAtUtc": "2026-11-01T22:47:54.0069026Z",
+  "scenario": "Release, only Mirabox Tools editor open, same seven native/Node widgets; settings and PI closed",
+  "processCount": 16,
+  "privateCommitMiB": 509.1,
+  "summedWorkingSetMiB": 834.2,
+  "cpuSeconds": 1.0469,
+  "processTreeChanged": false,
+  "sampleSeconds": 10.159,
+  "notes": "Includes all descendants, including Node and Edge. CPU covers processes alive at both observations; process churn makes it a lower bound. Short observation, not a resource budget or endurance test. Summed working sets may count shared pages repeatedly."
+}

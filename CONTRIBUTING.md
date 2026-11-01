@@ -27,3 +27,7 @@ npm run dev
 Сохранять границы Core, hardware transport, desktop lifecycle и UI. USB/JPEG/внешние plugin процессы не выполняются под Core lock. Выбор элемента не исполняет действие; draft/apply не возвращается. Не объявлять тестовую touch-раскладку готовым panel SDK.
 
 Лицензия приложения — GPL-3.0-or-later. Происхождение включённых материалов — в [THIRD_PARTY](THIRD_PARTY.md); лицензирование будущих SDK/шаблонов описано в [DECISIONS](docs/DECISIONS.md).
+
+## Плагины действий
+
+[Руководство расширения](docs/EXTENSIONS.md) связывает action SDK, генератор, реестр и исходники полезных starter bundles. Начинайте с генератора; готовый пакет не требует соседних репозиториев или Rust. В каждом новом bundle доступны `npm run validate` и `npm run pack`; Audio требует `./scripts/build-audio.ps1` из корня приложения перед упаковкой. Локальные `.env.*`, native binaries и dist не коммитятся. Метаданные реестра не разрешают автоматическое выполнение стороннего кода.
