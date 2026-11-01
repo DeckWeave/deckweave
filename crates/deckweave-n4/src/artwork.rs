@@ -54,7 +54,7 @@ impl Renderer {
         let image = reader
             .decode()
             .map_err(|e| e.to_string())?
-            .resize(width, height, image::imageops::FilterType::Triangle)
+            .resize(width, height, image::imageops::FilterType::Lanczos3)
             .to_rgba8();
         let mut canvas = RgbaImage::new(width, height);
         image::imageops::overlay(

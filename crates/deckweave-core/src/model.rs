@@ -339,22 +339,22 @@ pub fn virtual_geometry() -> Geometry {
             pointer: false,
             id: format!("touch-{}", i + 1),
             kind: ControlKind::Touch,
-            rect: [32.0 + i as f64 * 140.0, 264.0, 136.0, 64.0],
+            rect: [32.0 + i as f64 * 136.0, 264.0, 136.0, 87.04],
             number: i + 1,
         });
         controls.push(Control {
             pointer: false,
             id: format!("dial-{}", i + 1),
             kind: ControlKind::Dial,
-            rect: [64.0 + i as f64 * 140.0, 350.0, 72.0, 72.0],
+            rect: [64.0 + i as f64 * 136.0, 370.0, 72.0, 72.0],
             number: i + 1,
         });
     }
     Geometry {
         surface_pixels: [800, 128],
         width: 608.0,
-        height: 448.0,
-        surface: [32.0, 264.0, 556.0, 64.0],
+        height: 464.0,
+        surface: [32.0, 264.0, 544.0, 87.04],
         controls,
     }
 }
@@ -379,7 +379,7 @@ pub fn geometry_for(provider: &str) -> Geometry {
                 pointer: false,
                 id: format!("touch-{}", i + 1),
                 kind: ControlKind::Touch,
-                rect: [32.0 + i as f64 * 112.0, 264.0, 108.0, strip_height],
+                rect: [32.0 + i as f64 * 108.8, 264.0, 108.8, strip_height],
                 number: i + 1,
             });
         }

@@ -15,6 +15,28 @@ fn event(core: &mut Core, id: &str, generation: u64, control: &str, event: Input
 }
 
 #[test]
+fn strip_and_key_row_have_identical_edges_and_native_aspect() {
+    for provider in ["deckweave.n4", "virtual"] {
+        let g = geometry_for(provider);
+        let keys: Vec<_> = g
+            .controls
+            .iter()
+            .filter(|c| c.kind == ControlKind::Key && c.number <= 5)
+            .collect();
+        assert_eq!(g.surface[0], keys[0].rect[0]);
+        assert_eq!(
+            g.surface[0] + g.surface[2],
+            keys[4].rect[0] + keys[4].rect[2]
+        );
+        assert!((g.surface[2] / g.surface[3] - 800.0 / 128.0).abs() < 0.000001);
+        for c in g.controls.iter().filter(|c| c.kind == ControlKind::Touch) {
+            assert!(c.rect[0] >= g.surface[0]);
+            assert!(c.rect[0] + c.rect[2] <= g.surface[0] + g.surface[2] + 0.000001);
+        }
+    }
+}
+
+#[test]
 fn reconnect_and_restart_reuse_persisted_instance_and_assignments() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("state.sqlite3");

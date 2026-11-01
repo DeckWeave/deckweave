@@ -35,6 +35,63 @@ fn input(core: &mut Core, device: &str, control: &str, event: InputEvent) -> Sna
 }
 
 #[test]
+fn folders_do_not_consume_root_page_numbers_or_disappear_after_restart() {
+    let temp = tempfile::tempdir().unwrap();
+    let path = temp.path().join("pages.sqlite3");
+    let mut core = Core::open(&path).unwrap();
+    let device = core.snapshot().configuration.devices[0].clone();
+    let revision = core.revision();
+    run(
+        &mut core,
+        Command::AddFolder {
+            device_id: device.id.clone(),
+            control_id: "key-1".into(),
+            name: "Folder".into(),
+            expected_revision: revision,
+        },
+    );
+    let revision = core.revision();
+    let s = run(
+        &mut core,
+        Command::AddPage {
+            device_id: device.id.clone(),
+            expected_revision: revision,
+        },
+    );
+    let profile = &s.configuration.devices[0].profile;
+    assert_eq!(
+        profile
+            .pages
+            .iter()
+            .filter(|p| p.parent.is_none())
+            .map(|p| p.name.as_str())
+            .collect::<Vec<_>>(),
+        ["1", "2"]
+    );
+    let folder = profile
+        .pages
+        .iter()
+        .find(|p| p.parent.is_some())
+        .unwrap()
+        .id
+        .clone();
+    let revision = core.revision();
+    let s = run(
+        &mut core,
+        Command::SelectPage {
+            device_id: device.id,
+            page_id: folder.clone(),
+            expected_revision: revision,
+        },
+    );
+    assert_eq!(s.configuration.devices[0].profile.active_page_id, folder);
+    drop(core);
+    let s = Core::open(&path).unwrap().snapshot();
+    assert_eq!(s.configuration.devices[0].profile.pages.len(), 3);
+    assert_eq!(s.configuration.devices[0].profile.active_page_id, folder);
+}
+
+#[test]
 fn configuration_and_navigation_survive_restart_but_pressed_does_not() {
     let temp = tempfile::tempdir().unwrap();
     let path = temp.path().join("state.sqlite3");

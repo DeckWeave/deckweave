@@ -9,7 +9,19 @@ function draw(context, state) {
   const [w, h] = state.canvas;
   const fill = state.active ? '#57c9a5' : '#759aea';
   const y = state.y === null ? 'Y: unknown' : `Y: ${state.y.toFixed(2)}`;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 800 128"><rect width="800" height="128" fill="#151c29"/><rect x="16" y="72" width="768" height="38" rx="8" fill="#30394b"/><rect x="16" y="72" width="${(768 * state.value) / 100}" height="38" rx="8" fill="${fill}"/><text x="20" y="48" fill="#ffffff" font-size="30" font-family="IBM Plex Sans">Panel ${state.value}%</text><text x="470" y="45" fill="#b6c7df" font-size="21" font-family="IBM Plex Sans">${state.event} · ${y}</text></svg>`;
+  const padding = Math.min(16, w * 0.04, h * 0.1);
+  const wide = w / h >= 4;
+  const detail = `${state.event} · ${y}`;
+  const detailWidth = wide ? w * 0.4 - padding : w - 2 * padding;
+  const detailSize = Math.min(wide ? 21 : 14, h * 0.16, detailWidth / (detail.length * 0.62));
+  const barWidth = w - 2 * padding;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+    <rect width="${w}" height="${h}" fill="#151c29"/>
+    <rect x="${padding}" y="${h * 0.59}" width="${barWidth}" height="${h * 0.29}" rx="${Math.min(8, h * 0.06)}" fill="#30394b"/>
+    <rect x="${padding}" y="${h * 0.59}" width="${(barWidth * state.value) / 100}" height="${h * 0.29}" rx="${Math.min(8, h * 0.06)}" fill="${fill}"/>
+    <text x="${padding}" y="${h * 0.35}" fill="#ffffff" font-size="${Math.min(30, h * 0.28, w * 0.13)}" font-family="IBM Plex Sans">Panel ${state.value}%</text>
+    <text x="${wide ? w * 0.59 : padding}" y="${h * (wide ? 0.35 : 0.52)}" fill="#b6c7df" font-size="${detailSize}" font-family="IBM Plex Sans">${detail}</text>
+  </svg>`;
   send('setImage', context, {
     image: `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`,
     target: 0,

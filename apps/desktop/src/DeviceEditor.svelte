@@ -6,6 +6,8 @@
   import PlanEditor from './PlanEditor.svelte';
   import PanelEditor from './PanelEditor.svelte';
   import TouchTest from './TouchTest.svelte';
+  import PaneSplitter from './PaneSplitter.svelte';
+  import { pageLabel } from './page-label';
   let { client, device }: { client: Client; device: Device } = $props();
   let selectedId = $state<string | null>(null);
   let search = $state('');
@@ -13,6 +15,158 @@
   let testing = $state(false);
   let profileSettings = $state(false);
   let newProfile = $state('');
+  function preference(key: string, fallback: number) {
+    try {
+      const v = Number(localStorage.getItem(key));
+      return Number.isFinite(v) && v > 0 ? v : fallback;
+    } catch {
+      return fallback;
+    }
+  }
+  function saveSize(key: string, value: number) {
+    try {
+      localStorage.setItem(key, String(value));
+    } catch {
+      /* Layout remains usable without storage. */
+    }
+  }
+  let viewportWidth = $state(1000);
+  let viewportHeight = $state(800);
+  let inspectorHeight = $state(preference('deckweave.inspectorHeight', 230));
+  let libraryWidth = $state(preference('deckweave.libraryWidth', 280));
+  const inspectorMax = $derived(Math.max(180, viewportHeight - 360));
+  const libraryMax = $derived(Math.max(220, Math.min(600, viewportWidth - 420)));
+  type LibraryAction =
+    | { type: 'builtin'; kind: 'counter' | 'toggle' }
+    | { type: 'plan'; plan: Plan['type'] }
+    | { type: 'folder' }
+    | { type: 'plugin'; package: string; action: string; label: string; controllers: string[] };
+  let dragging = $state<LibraryAction | null>(null);
+  let dropTarget = $state<string | null>(null);
+  let dragSession = $state<{ id: number; x: number; y: number; item: LibraryAction } | null>(null);
+  let dragX = $state(0);
+  let dragY = $state(0);
+  let suppressClick = false;
+  function regionFor(control: Control) {
+    return page.panel?.regions.find((r) =>
+      control.kind === 'dial' ? r.dials.includes(control.id) : 'panel-' + r.id === control.id,
+    );
+  }
+  function accepts(item: LibraryAction, control: Control): boolean {
+    const region = regionFor(control);
+    if (
+      region &&
+      region.dials.length > 1 &&
+      (item.type !== 'plugin' || !item.controllers.includes('Panel'))
+    )
+      return false;
+    if (item.type === 'folder') return control.kind === 'key';
+    if (item.type === 'plan' && ['dial_stack', 'action_wheel', 'dial_bindings'].includes(item.plan))
+      return control.kind !== 'key';
+    return (
+      item.type !== 'plugin' ||
+      item.controllers.some((c) =>
+        control.kind === 'touch'
+          ? ['Panel', 'Encoder', 'Keypad'].includes(c)
+          : c === (control.kind === 'dial' ? 'Encoder' : 'Keypad') ||
+            (control.kind === 'dial' && !!region && c === 'Panel'),
+      )
+    );
+  }
+  function source(item: LibraryAction) {
+    return {
+      onpointerdown: (e: PointerEvent) => {
+        if (e.button !== 0) return;
+        suppressClick = false;
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+        dragSession = { id: e.pointerId, x: e.clientX, y: e.clientY, item };
+      },
+      onpointermove: (e: PointerEvent) => {
+        if (dragSession?.id !== e.pointerId) return;
+        if (!dragging && Math.hypot(e.clientX - dragSession.x, e.clientY - dragSession.y) < 6)
+          return;
+        e.preventDefault();
+        dragging = dragSession.item;
+        dragX = e.clientX;
+        dragY = e.clientY;
+        const id = document
+          .elementFromPoint(e.clientX, e.clientY)
+          ?.closest<HTMLElement>('[data-control-id]')?.dataset.controlId;
+        const control = geometry.controls.find((c) => c.id === id);
+        dropTarget = control && accepts(dragSession.item, control) ? control.id : null;
+      },
+      onpointerup: (e: PointerEvent) => {
+        if (dragSession?.id !== e.pointerId) return;
+        if (dragging) {
+          e.preventDefault();
+          suppressClick = true;
+          const target = document
+            .elementFromPoint(e.clientX, e.clientY)
+            ?.closest<HTMLElement>('[data-control-id]')?.dataset.controlId;
+          applyLibrary(
+            dragSession.item,
+            geometry.controls.find((c) => c.id === target),
+          );
+        }
+        endDrag();
+      },
+      onpointercancel: endDrag,
+      onlostpointercapture: endDrag,
+      onclick: (e: MouseEvent) => {
+        // A captured pointer produces a click on the source after releasing the drag.
+        // Keep suppression until that click, rather than relying on timer ordering.
+        if (suppressClick && e.detail > 0) {
+          suppressClick = false;
+          return;
+        }
+        suppressClick = false;
+        applyLibrary(item, selected);
+      },
+    };
+  }
+  function endDrag() {
+    dragSession = null;
+    dragging = null;
+    dropTarget = null;
+  }
+  function applyLibrary(item: LibraryAction, control: Control | undefined) {
+    if (!control || !accepts(item, control)) return;
+    select(control);
+    if (item.type === 'builtin') assign(item.kind);
+    else if (item.type === 'plan') assignPlan(createPlan(item.plan, device), t(item.plan));
+    else if (item.type === 'folder')
+      void client.send((revision) => ({
+        type: 'add_folder',
+        device_id: device.id,
+        control_id: control.id,
+        name: t('folder'),
+        expected_revision: revision,
+      }));
+    else
+      assignPlugin(
+        {
+          package: item.package,
+          action: item.action,
+          settings: {},
+          controller: pluginController(item, control),
+        },
+        item.label,
+      );
+  }
+  function pluginController(
+    item: Extract<LibraryAction, { type: 'plugin' }>,
+    control: Control,
+  ): NonNullable<PluginAction['controller']> {
+    if (control.kind === 'key') return 'Keypad';
+    const region = regionFor(control);
+    if (
+      item.controllers.includes('Panel') &&
+      (control.kind === 'touch' ||
+        (region && (region.dials.length > 1 || !item.controllers.includes('Encoder'))))
+    )
+      return 'Panel';
+    return control.kind === 'dial' || item.controllers.includes('Encoder') ? 'Encoder' : 'Keypad';
+  }
   const snapshot = $derived(client.snapshot!);
   const geometry = $derived(snapshot.geometries[device.id]);
   const connection = $derived(snapshot.connections[device.id]);
@@ -161,7 +315,36 @@
   }
 </script>
 
-<div class="editor-layout">
+<svelte:window
+  bind:innerWidth={viewportWidth}
+  bind:innerHeight={viewportHeight}
+  onkeydown={(e) => {
+    if (e.key === 'Escape' && dragging) {
+      e.preventDefault();
+      suppressClick = true;
+      endDrag();
+    }
+  }}
+  onblur={endDrag}
+/>
+{#if dragging}
+  <div class="action-drag-preview" style:left={dragX + 14 + 'px'} style:top={dragY + 14 + 'px'}>
+    ＋ {dragging.type === 'plugin'
+      ? dragging.label
+      : t(
+          dragging.type === 'builtin'
+            ? dragging.kind
+            : dragging.type === 'plan'
+              ? dragging.plan
+              : 'folder',
+        )}
+  </div>
+{/if}
+<div
+  class="editor-layout"
+  style:--library-width={Math.max(220, Math.min(libraryMax, libraryWidth)) + 'px'}
+  style:--inspector-height={Math.max(150, Math.min(inspectorMax, inspectorHeight)) + 'px'}
+>
   <section class="device-workspace">
     <div class="device-toolbar">
       <div>
@@ -279,6 +462,7 @@
           {@const frame = snapshot.key_images[device.id]?.[control.id]}
           <button
             class="control"
+            data-control-id={control.id}
             class:key-control={control.kind === 'key'}
             class:dial-control={control.kind === 'dial'}
             class:touch-control={control.kind === 'touch'}
@@ -286,6 +470,7 @@
             class:selected={selectedId === control.id}
             class:pressed
             class:active={feedback?.active}
+            class:drop-target={dropTarget === control.id}
             style:left={`${(control.rect[0] / geometry.width) * 100}%`}
             style:top={`${(control.rect[1] / geometry.height) * 100}%`}
             style:width={`${(control.rect[2] / geometry.width) * 100}%`}
@@ -295,7 +480,11 @@
             aria-pressed={selectedId === control.id}
             onclick={() => select(control)}
           >
-            {#if control.kind === 'touch' && stripVisible}
+            {#if control.kind === 'dial'}
+              <span class="dial-marker" aria-hidden="true"></span>
+              <span class="dial-number">{control.number}</span>
+              <span class="sr-only">{assignment?.label || t('unassigned')}</span>
+            {:else if control.kind === 'touch' && stripVisible}
               <span class="sr-only">{assignment?.label || t('unassigned')}</span>
             {:else if frame && frame.page_id === page.id && frame.binding_id === (assignment?.id ?? null)}
               <img class="hardware-key-image" src={frame.data_url} alt="" />
@@ -334,8 +523,8 @@
         ><span>{page.name}</span>{/if}
       {#each device.profile.pages.filter((p) => p.parent === null) as p (p.id)}<button
           class:current={p.id === page.id}
-          title={`${t('page')} ${p.name}`}
-          aria-label={`${t('page')} ${p.name}`}
+          title={`${t('page')} ${pageLabel(device.profile, p)}`}
+          aria-label={`${t('page')} ${pageLabel(device.profile, p)}`}
           aria-current={p.id === page.id ? 'page' : undefined}
           onclick={() =>
             void client.send((revision) => ({
@@ -343,7 +532,7 @@
               device_id: device.id,
               page_id: p.id,
               expected_revision: revision,
-            }))}>{p.name}</button
+            }))}>{pageLabel(device.profile, p)}</button
         >{/each}
       <button
         class="add-page"
@@ -372,12 +561,25 @@
         }));
       }}
     />
-    <div class="inspector" class:composite={!!binding?.plan}>
+    <PaneSplitter
+      orientation="horizontal"
+      label={t('resizeInspector')}
+      value={Math.max(150, Math.min(inspectorMax, inspectorHeight))}
+      min={150}
+      max={inspectorMax}
+      onchange={(v) => {
+        inspectorHeight = v;
+        saveSize('deckweave.inspectorHeight', v);
+      }}
+    />
+    <div class="inspector">
       {#if selected}
         <div class="inspector-heading">
           <div>
-            <span class="eyebrow">{t(selected.kind)} {selected.number}</span>
-            <h2>{binding ? t(binding.plan?.type ?? binding.kind) : t('unassigned')}</h2>
+            <h2>
+              {binding?.label ||
+                (binding ? t(binding.plan?.type ?? binding.kind) : t('unassigned'))}
+            </h2>
           </div>
           <button
             class="primary test-button"
@@ -386,155 +588,164 @@
           >
         </div>
         {#if binding}
-          {#if result?.error}<p class="connection-error">{result.error}</p>{/if}
-          {#if selected.kind === 'key'}<label class="pin-field"
-              ><input
-                type="checkbox"
-                checked={!!device.pinned[selectedId!]}
+          <div class="inspector-fields">
+            {#if result?.error}<p class="connection-error">{result.error}</p>{/if}
+            {#if selected.kind === 'key'}<label class="pin-field"
+                ><input
+                  type="checkbox"
+                  checked={!!device.pinned[selectedId!]}
+                  onchange={(e) => {
+                    const pinned = e.currentTarget.checked;
+                    void client.send((revision) => ({
+                      type: 'set_pinned',
+                      device_id: device.id,
+                      control_id: selectedId!,
+                      pinned,
+                      expected_revision: revision,
+                    }));
+                  }}
+                />{t('pinned')}</label
+              >{/if}
+            {#if binding.plugin}
+              {#if selected.kind === 'touch'}
+                <label class="form-row"
+                  ><span>{t('controller')}</span><select
+                    value={binding.plugin.controller ?? 'Keypad'}
+                    onchange={(e) =>
+                      assignPlugin(
+                        {
+                          ...binding!.plugin!,
+                          controller: e.currentTarget.value as 'Keypad' | 'Encoder' | 'Panel',
+                        },
+                        binding!.label,
+                      )}
+                  >
+                    {#each client.plugins
+                      .find((p) => p.id === binding!.plugin!.package)
+                      ?.actions.find((a) => a.id === binding!.plugin!.action)?.controllers ?? ['Keypad'] as c}<option
+                        value={c}>{c}</option
+                      >{/each}</select
+                  ></label
+                >
+              {/if}
+              {#if hasInspector}<div class="dial-tests">
+                  <button onclick={() => void client.openInspector(binding!.id)}
+                    >{t('pluginSettings')}</button
+                  >
+                </div>{/if}
+              <details class="plugin-options">
+                <summary>{t('advancedSettings')}</summary>
+                <button
+                  class="quiet"
+                  onclick={() => void client.restartPlugin(binding!.plugin!.package)}
+                  >{t('restartPlugin')}</button
+                >
+                {#if !hasInspector}<label class="form-row"
+                    ><span>{t('settingsJson')}</span><textarea
+                      rows="3"
+                      value={JSON.stringify(binding.plugin.settings, null, 2)}
+                      onchange={(e) => {
+                        try {
+                          const settings = JSON.parse(e.currentTarget.value);
+                          void client.send((revision) => ({
+                            type: 'plugin_settings',
+                            device_id: device.id,
+                            binding_id: binding!.id,
+                            settings,
+                            expected_revision: revision,
+                          }));
+                        } catch {
+                          client.error = 'Invalid JSON';
+                        }
+                      }}></textarea></label
+                  >{/if}
+              </details>
+            {/if}
+            {#if selected.kind === 'touch'}{#key selected.id}<details class="touch-test-disclosure">
+                  <summary>{t('touchTest')}</summary><TouchTest
+                    {client}
+                    deviceId={device.id}
+                    control={selected}
+                    {geometry}
+                    locale={snapshot.configuration.locale}
+                  />
+                </details>{/key}{/if}
+            <label class="form-row"
+              ><span>{t('title')}</span><input
+                maxlength="80"
+                value={binding.label}
                 onchange={(e) => {
-                  const pinned = e.currentTarget.checked;
+                  const label = e.currentTarget.value;
                   void client.send((revision) => ({
-                    type: 'set_pinned',
+                    type: 'rename_binding',
                     device_id: device.id,
-                    control_id: selectedId!,
-                    pinned,
+                    binding_id: binding!.id,
+                    label,
                     expected_revision: revision,
                   }));
                 }}
-              />{t('pinned')}</label
-            >{/if}
-          {#if binding.plugin}
-            {#if selected.kind === 'touch'}
-              <label class="form-row"
-                ><span>{t('controller')}</span><select
-                  value={binding.plugin.controller ?? 'Keypad'}
-                  onchange={(e) =>
-                    assignPlugin(
-                      {
-                        ...binding!.plugin!,
-                        controller: e.currentTarget.value as 'Keypad' | 'Encoder' | 'Panel',
-                      },
-                      binding!.label,
-                    )}
-                >
-                  {#each client.plugins
-                    .find((p) => p.id === binding!.plugin!.package)
-                    ?.actions.find((a) => a.id === binding!.plugin!.action)?.controllers ?? ['Keypad'] as c}<option
-                      value={c}>{c}</option
-                    >{/each}</select
-                ></label
+              /></label
+            >
+            {#if binding.plan}<PlanEditor
+                feedback={snapshot.feedback}
+                openInspector={(context) => void client.openInspector(context)}
+                value={binding.plan}
+                {device}
+                plugins={client.plugins}
+                locale={snapshot.configuration.locale}
+                onchange={(next) => assignPlan(next)}
+              />
+              {#if binding.plan.type === 'key_logic'}<div class="dial-tests">
+                  <button disabled={testing} onclick={() => void gesture('double')}
+                    >{t('testDouble')}</button
+                  ><button disabled={testing} onclick={() => void gesture('hold')}
+                    >{t('testHold')}</button
+                  >
+                </div>{/if}
+              <button
+                class="quiet"
+                onclick={() =>
+                  void client.send(() => ({ type: 'cancel_actions', device_id: device.id }))}
+                >{t('cancelActions')}</button
               >
             {/if}
-            <div class="dial-tests">
-              <button
-                disabled={!hasInspector}
-                onclick={() => void client.openInspector(binding!.id)}>{t('pluginSettings')}</button
-              ><button onclick={() => void client.restartPlugin(binding!.plugin!.package)}
-                >{t('restartPlugin')}</button
-              >
+            <div class="form-row">
+              <span>{t('actionResult')}</span>
+              <div class="result-value" aria-live="polite">
+                {result
+                  ? result.running
+                    ? t('running')
+                    : binding.plan?.type === 'switch'
+                      ? `${t('nextAction')}: ${result.title ?? ''}`
+                      : binding.plan?.type === 'dial_stack' || binding.plan?.type === 'action_wheel'
+                        ? `${t('selectedAction')}: ${result.title ?? ''} ${result.display ?? ''}`
+                        : binding.kind === 'program'
+                          ? (result.display ?? t('noActionYet'))
+                          : binding.kind === 'plugin'
+                            ? (result.title ?? (result.error || t('connected')))
+                            : binding.kind === 'counter'
+                              ? result.value
+                              : result.active
+                                ? t('on')
+                                : t('off')
+                  : t('noActionYet')}
+              </div>
             </div>
-            {#if !hasInspector}<label class="form-row"
-                ><span>{t('settingsJson')}</span><textarea
-                  rows="3"
-                  value={JSON.stringify(binding.plugin.settings, null, 2)}
-                  onchange={(e) => {
-                    try {
-                      const settings = JSON.parse(e.currentTarget.value);
-                      void client.send((revision) => ({
-                        type: 'plugin_settings',
-                        device_id: device.id,
-                        binding_id: binding!.id,
-                        settings,
-                        expected_revision: revision,
-                      }));
-                    } catch {
-                      client.error = 'Invalid JSON';
-                    }
-                  }}></textarea></label
-              >{/if}
-          {/if}
-          {#if selected.kind === 'touch'}{#key selected.id}<TouchTest
-                {client}
-                deviceId={device.id}
-                control={selected}
-                {geometry}
-                locale={snapshot.configuration.locale}
-              />{/key}{/if}
-          <label class="form-row"
-            ><span>{t('title')}</span><input
-              maxlength="80"
-              value={binding.label}
-              onchange={(e) => {
-                const label = e.currentTarget.value;
-                void client.send((revision) => ({
-                  type: 'rename_binding',
-                  device_id: device.id,
-                  binding_id: binding!.id,
-                  label,
-                  expected_revision: revision,
-                }));
-              }}
-            /></label
-          >
-          {#if binding.plan}<PlanEditor
-              feedback={snapshot.feedback}
-              openInspector={(context) => void client.openInspector(context)}
-              value={binding.plan}
-              {device}
-              plugins={client.plugins}
-              locale={snapshot.configuration.locale}
-              onchange={(next) => assignPlan(next)}
-            />
-            {#if binding.plan.type === 'key_logic'}<div class="dial-tests">
-                <button disabled={testing} onclick={() => void gesture('double')}
-                  >{t('testDouble')}</button
-                ><button disabled={testing} onclick={() => void gesture('hold')}
-                  >{t('testHold')}</button
+            {#if selected.kind === 'dial'}<div class="dial-tests">
+                <button
+                  onclick={() =>
+                    void client.input(device.id, selectedId!, { type: 'rotate', ticks: -1 })}
+                  >↶ {t('rotateLeft')}</button
+                ><button
+                  onclick={() =>
+                    void client.input(device.id, selectedId!, { type: 'rotate', ticks: 1 })}
+                  >↷ {t('rotateRight')}</button
                 >
               </div>{/if}
-            <button
-              class="quiet"
-              onclick={() =>
-                void client.send(() => ({ type: 'cancel_actions', device_id: device.id }))}
-              >{t('cancelActions')}</button
-            >
-          {/if}
-          <div class="form-row">
-            <span>{t('actionResult')}</span>
-            <div class="result-value" aria-live="polite">
-              {result
-                ? result.running
-                  ? t('running')
-                  : binding.plan?.type === 'switch'
-                    ? `${t('nextAction')}: ${result.title ?? ''}`
-                    : binding.plan?.type === 'dial_stack' || binding.plan?.type === 'action_wheel'
-                      ? `${t('selectedAction')}: ${result.title ?? ''} ${result.display ?? ''}`
-                      : binding.kind === 'program'
-                        ? (result.display ?? t('noActionYet'))
-                        : binding.kind === 'plugin'
-                          ? (result.title ?? (result.error || t('connected')))
-                          : binding.kind === 'counter'
-                            ? result.value
-                            : result.active
-                              ? t('on')
-                              : t('off')
-                : t('noActionYet')}
+            <div class="inspector-bottom">
+              <p>{t(binding.plugin ? 'pluginTest' : binding.plan ? 'systemTest' : 'safeTest')}</p>
+              <button class="text-button" onclick={() => assign(null)}>{t('remove')}</button>
             </div>
-          </div>
-          {#if selected.kind === 'dial'}<div class="dial-tests">
-              <button
-                onclick={() =>
-                  void client.input(device.id, selectedId!, { type: 'rotate', ticks: -1 })}
-                >↶ {t('rotateLeft')}</button
-              ><button
-                onclick={() =>
-                  void client.input(device.id, selectedId!, { type: 'rotate', ticks: 1 })}
-                >↷ {t('rotateRight')}</button
-              >
-            </div>{/if}
-          <div class="inspector-bottom">
-            <p>{t(binding.plugin ? 'pluginTest' : binding.plan ? 'systemTest' : 'safeTest')}</p>
-            <button class="text-button" onclick={() => assign(null)}>{t('remove')}</button>
           </div>
         {:else}<p class="inspector-hint">{t('assignHint')}</p>{/if}
       {:else}<div class="inspector-empty">
@@ -556,6 +767,17 @@
         {t('n4Limit')}
       </p>{/if}
   </section>
+  <PaneSplitter
+    orientation="vertical"
+    label={t('resizeLibrary')}
+    value={Math.max(220, Math.min(libraryMax, libraryWidth))}
+    min={220}
+    max={libraryMax}
+    onchange={(v) => {
+      libraryWidth = v;
+      saveSize('deckweave.libraryWidth', v);
+    }}
+  />
   <aside class="action-library">
     <div class="library-header">
       <h2>{t('actions')}</h2>
@@ -580,28 +802,23 @@
           <div class="action-list">
             {#each pack.actions as action}<button
                 class="action-item"
-                disabled={!selected ||
-                  !action.controllers.some((c) =>
-                    selected.kind === 'touch'
-                      ? ['Keypad', 'Encoder', 'Panel'].includes(c)
-                      : c === (selected.kind === 'dial' ? 'Encoder' : 'Keypad'),
-                  )}
-                onclick={() =>
-                  assignPlugin(
+                {...source({
+                  type: 'plugin',
+                  package: pack.id,
+                  action: action.id,
+                  label: action.name,
+                  controllers: action.controllers,
+                })}
+                aria-disabled={!selected ||
+                  !accepts(
                     {
+                      type: 'plugin',
                       package: pack.id,
                       action: action.id,
-                      settings: {},
-                      controller:
-                        selected?.kind === 'dial'
-                          ? 'Encoder'
-                          : selected?.kind === 'touch' && action.controllers.includes('Panel')
-                            ? 'Panel'
-                            : selected?.kind === 'touch' && action.controllers.includes('Encoder')
-                              ? 'Encoder'
-                              : 'Keypad',
+                      label: action.name,
+                      controllers: action.controllers,
                     },
-                    action.name,
+                    selected,
                   )}
                 ><span class="action-icon purple">◈</span><span
                   ><strong>{action.name}</strong><small>{action.controllers.join(' · ')}</small
@@ -618,8 +835,7 @@
       <div class="action-list">
         {#each matchingPlans as type}<button
             class="action-item"
-            disabled={!selectedId}
-            onclick={() => assignPlan(createPlan(type, device), t(type))}
+            {...source({ type: 'plan', plan: type })}
             ><span class="action-icon purple"
               >{type === 'sequence'
                 ? '☷'
@@ -630,25 +846,15 @@
                     : '◇'}</span
             ><strong>{t(type)}</strong></button
           >{/each}
-        {#if folderVisible}<button
-            class="action-item"
-            disabled={!selectedId}
-            onclick={() =>
-              void client.send((revision) => ({
-                type: 'add_folder',
-                device_id: device.id,
-                control_id: selectedId!,
-                name: t('folder'),
-                expected_revision: revision,
-              }))}><span class="action-icon">▱</span><strong>{t('folder')}</strong></button
+        {#if folderVisible}<button class="action-item" {...source({ type: 'folder' })}
+            ><span class="action-icon">▱</span><strong>{t('folder')}</strong></button
           >{/if}
         {#each items as kind}<button
             class="action-item"
-            disabled={!selectedId}
+            {...source({ type: 'builtin', kind })}
             title={selectedId
               ? t(kind === 'counter' ? 'counterHint' : 'toggleHint')
               : t('chooseFirst')}
-            onclick={() => assign(kind)}
             ><span class="action-icon" class:purple={kind === 'toggle'}
               >{kind === 'counter' ? '＋' : '◉'}</span
             ><span

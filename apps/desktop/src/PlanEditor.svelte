@@ -3,6 +3,7 @@
   import { action } from './action-factory';
   import ActionEditor from './ActionEditor.svelte';
   import { text } from './i18n';
+  import { pageLabel } from './page-label';
   let {
     value,
     device,
@@ -73,7 +74,9 @@
       >{t('page')}<select
         value={value.page_id}
         onchange={(e) => onchange({ type: 'page', page_id: e.currentTarget.value })}
-        >{#each device.profile.pages as p}<option value={p.id}>{p.name}</option>{/each}</select
+        >{#each device.profile.pages as p}<option value={p.id}
+            >{pageLabel(device.profile, p)}</option
+          >{/each}</select
       ></label
     >
   {:else if value.type === 'profile'}<label

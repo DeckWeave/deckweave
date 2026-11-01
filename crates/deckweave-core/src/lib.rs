@@ -475,7 +475,14 @@ impl Core {
                     panel: Some(PanelLayout::dial_slots(&device.provider_id)),
                     parent: None,
                     id: new_id(),
-                    name: (device.profile.pages.len() + 1).to_string(),
+                    name: (device
+                        .profile
+                        .pages
+                        .iter()
+                        .filter(|p| p.parent.is_none())
+                        .count()
+                        + 1)
+                    .to_string(),
                     bindings: BTreeMap::new(),
                 };
                 device.profile.active_page_id.clone_from(&page.id);

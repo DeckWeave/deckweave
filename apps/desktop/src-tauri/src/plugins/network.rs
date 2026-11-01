@@ -564,6 +564,20 @@ mod tests {
                 .1,
                 "Panel 77%"
             );
+            let (image, _) = roundtrip(
+                "dialRotate",
+                json!({"ticks":0,"control":"dial-2","canvas":[200,128]}),
+            );
+            let svg = String::from_utf8(STANDARD.decode(image.split_once(',').unwrap().1).unwrap())
+                .unwrap();
+            assert!(svg.contains("viewBox=\"0 0 200 128\""));
+            assert!(!svg.contains("viewBox=\"0 0 800 128\""));
+            assert!(
+                deckweave_n4::Renderer::new()
+                    .unwrap()
+                    .image_data_png(&image, [200, 128])
+                    .is_ok()
+            );
         }));
         let _ = child.kill();
         let _ = child.wait();

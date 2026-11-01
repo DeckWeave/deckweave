@@ -1,0 +1,87 @@
+{
+  "date": "2026-11-02",
+  "method": "Windows native UI via @oai/sky; SQLite revision from redacted runtime diagnostics",
+  "release": {
+    "path": "target/release/deckweave-desktop.exe",
+    "bytes": 19137536,
+    "sha256": "009E51DDBC5A67D0654BFACDC3A59805A634EE0150D1594DDA746AD4220D0F0F"
+  },
+  "checks": [
+    {
+      "case": "drag Counter from library onto unselected K3",
+      "result": "selected and assigned; result remains Not executed"
+    },
+    {
+      "case": "drag Create folder onto K4",
+      "revision_before": 90,
+      "revision_after": 91,
+      "pages_after": 2,
+      "folders_after": 1,
+      "result": "one folder, one save; no execution"
+    },
+    {
+      "case": "add root page after folder",
+      "revision_after": 92,
+      "root_names": ["1", "2"],
+      "folders": 1
+    },
+    {
+      "case": "drag Counter onto D2",
+      "revision_after": 93,
+      "result": "same binding visible on D2 and its associated region; value 0"
+    },
+    {
+      "case": "drag Panel Slider onto touch region 3",
+      "revision_after": 94,
+      "result": "Panel controller, settings selected"
+    },
+    {
+      "case": "drop outside device; drop Panel-only action onto key",
+      "revision_before": 94,
+      "revision_after": 94,
+      "result": "existing assignments retained"
+    },
+    {
+      "case": "resize inspector and library",
+      "inspector_before": 349,
+      "inspector_after": 250,
+      "library_before": 280,
+      "library_after": 348,
+      "result": "pointer resize and persistence verified after restart; library subsequently restored to 280"
+    },
+    {
+      "case": "drag Panel-only widget directly onto linked D4",
+      "revision_after": 95,
+      "result": "Panel binding assigned to associated region 4; dial has no bitmap"
+    },
+    {
+      "case": "restart own Panel plugin with responsive canvas",
+      "result": "200x128 slots show value and bar at useful size, native preview observed"
+    },
+    {
+      "case": "N4 shared fullscreen region rejects Counter drop onto D1",
+      "revision_before": 96,
+      "revision_after": 96,
+      "result": "Panel Lab retained, no error"
+    },
+    {
+      "case": "final compact settings",
+      "result": "title/result visible, JSON and restart collapsed, touch test collapsed, original OnAirClock PI button available"
+    }
+  ],
+  "n4": {
+    "state": "connected",
+    "error": null,
+    "profile": "Acceptance 2026-11-01",
+    "visible_root_pages": ["1", "2", "3"],
+    "surface": [32, 264, 544, 87.04],
+    "left_open": "page 1, OnAirClock selected",
+    "physical_acceptance": "Owner confirmed D2-D4, pointer/drag/Y and reconnect before these UI changes",
+    "remaining_observation": "Physical LCD readability after new JPEG sampling/quality has not been observed by the agent"
+  },
+  "validation": {
+    "npm_run_check": "passed, 63 Rust tests, Svelte zero errors/warnings, format, web build, clippy, docs",
+    "responsive_panel_after_plugin_edit": "real Node/WebSocket test passed for 800x128 and 200x128; clippy passed",
+    "installed_elgato_plugin_files": "unchanged"
+  }
+}

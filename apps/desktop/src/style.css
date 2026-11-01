@@ -307,7 +307,7 @@ p {
 }
 .editor-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 280px;
+  grid-template-columns: minmax(0, 1fr) 7px var(--library-width, 280px);
   height: calc(100vh - 60px);
   min-height: 0;
 }
@@ -322,7 +322,7 @@ p {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24px 28px 12px;
+  padding: 12px 20px 8px;
   gap: 16px;
   flex-shrink: 0;
 }
@@ -358,8 +358,8 @@ p {
   display: flex;
   justify-content: center;
   align-items: center;
-  flex: 1 0 280px;
-  min-height: 280px;
+  flex: 1 0 220px;
+  min-height: 220px;
   container-type: size;
 }
 .device-panel {
@@ -530,6 +530,49 @@ p {
 .dial-control.pressed {
   background: #496a9d;
 }
+.dial-marker {
+  position: absolute;
+  top: 8%;
+  width: 3px;
+  height: 17%;
+  border-radius: 2px;
+  background: #b4bfd0;
+}
+.dial-number {
+  font-size: 2.5cqw;
+  color: #c1cbdb;
+}
+.control.drop-target {
+  border-color: #a1efc0;
+  box-shadow: 0 0 0 3px #56c88588;
+}
+.pane-splitter {
+  flex: 0 0 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: row-resize;
+  touch-action: none;
+  background: #202329;
+}
+.pane-splitter.vertical {
+  cursor: col-resize;
+}
+.pane-splitter span {
+  height: 2px;
+  width: 36px;
+  background: #596476;
+  border-radius: 2px;
+}
+.pane-splitter.vertical span {
+  height: 36px;
+  width: 2px;
+}
+.pane-splitter:hover,
+.pane-splitter:focus-visible {
+  background: #3d567d;
+  outline: none;
+}
 .page-row {
   display: flex;
   justify-content: center;
@@ -645,8 +688,8 @@ textarea {
 }
 .inspector {
   border-top: 1px solid #383d47;
-  padding: 16px 28px 12px;
-  height: 242px;
+  padding: 12px 20px;
+  height: var(--inspector-height, 230px);
   min-height: 0;
   overflow: auto;
   background: #24272d;
@@ -656,28 +699,52 @@ textarea {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
-}
-.inspector.composite {
-  height: 42vh;
-  min-height: 260px;
+  margin-bottom: 10px;
 }
 .action-library {
   overflow: auto;
 }
 .inspector-heading h2 {
-  margin-top: 6px;
+  margin: 0;
+  font-size: 15px;
 }
 .test-button {
   min-width: 122px;
+}
+.inspector-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 8px 16px;
+  align-items: start;
+}
+.inspector-fields > .plan-fields,
+.inspector-fields > .touch-test-tools,
+.inspector-fields > .inspector-bottom,
+.inspector-fields > .connection-error {
+  grid-column: 1 / -1;
+}
+.plugin-options[open],
+.touch-test-disclosure[open] {
+  grid-column: 1 / -1;
+}
+.plugin-options > summary,
+.touch-test-disclosure > summary {
+  cursor: pointer;
+  padding: 6px 0;
+  font-size: 12px;
+  color: #b8cbe7;
+}
+.inspector-fields > .form-row,
+.inspector-fields > .dial-tests,
+.inspector-fields > .pin-field {
+  margin: 0;
 }
 .form-row {
   display: grid;
   grid-template-columns: 110px minmax(0, 1fr);
   align-items: center;
-  gap: 16px;
-  margin-bottom: 15px;
-  max-width: 560px;
+  gap: 10px;
+  margin-bottom: 8px;
 }
 .form-row > span {
   font-size: 12px;
@@ -695,7 +762,7 @@ textarea {
   justify-content: space-between;
   align-items: center;
   gap: 15px;
-  margin-top: 20px;
+  margin-top: 10px;
 }
 .inspector-bottom p {
   font-size: 11px;
@@ -735,11 +802,11 @@ textarea {
   background: #25282e;
 }
 .library-header {
-  padding: 25px 17px 18px;
+  padding: 14px 12px 10px;
 }
 .library-header h2 {
   font-size: 14px;
-  margin-bottom: 17px;
+  margin-bottom: 10px;
 }
 .library-tabs {
   display: flex;
@@ -778,13 +845,16 @@ textarea {
   padding: 8px;
 }
 .action-item {
+  touch-action: none;
+  user-select: none;
   display: flex;
   align-items: flex-start;
   gap: 10px;
   text-align: left;
   border-color: transparent;
   background: none;
-  padding: 12px 9px;
+  padding: 8px 7px;
+  cursor: grab;
   width: 100%;
   border-radius: 5px;
 }
@@ -793,6 +863,18 @@ textarea {
   font-size: 12px;
   font-weight: 500;
   margin: 2px 0 5px;
+}
+.action-drag-preview {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+  max-width: 260px;
+  padding: 8px 12px;
+  border: 1px solid #9ec6ff;
+  background: #293d5a;
+  box-shadow: 0 4px 16px #0008;
+  border-radius: 6px;
+  font-size: 12px;
 }
 .action-item small {
   display: block;
@@ -824,15 +906,13 @@ textarea {
 .dial-tests {
   display: flex;
   gap: 10px;
-  margin: 15px 0;
+  flex-wrap: wrap;
+  margin: 8px 0;
 }
 .dial-tests button {
   font-size: 12px;
 }
 @media (max-width: 1000px) {
-  .editor-layout {
-    grid-template-columns: minmax(0, 1fr) 250px;
-  }
   .panel-stage {
     padding-left: 24px;
     padding-right: 24px;

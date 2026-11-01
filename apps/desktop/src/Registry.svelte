@@ -45,7 +45,9 @@
           </div>
           <p>{t('independent')}</p>
           <span class="subtle"
-            >{t('profile')}: {device.profile.name} · {device.profile.pages.length}
+            >{t('profile')}: {device.profile.name} · {device.profile.pages.filter(
+              (p) => p.parent === null,
+            ).length}
             {t('page').toLocaleLowerCase()}</span
           >
           {#if connection.state !== 'virtual'}

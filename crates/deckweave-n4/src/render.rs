@@ -2,7 +2,7 @@ use fontdue::{
     Font, FontSettings,
     layout::{CoordinateSystem, HorizontalAlign, Layout, LayoutSettings, TextStyle, VerticalAlign},
 };
-use jpeg_encoder::{ColorType, Encoder};
+use jpeg_encoder::{ColorType, Encoder, SamplingFactor};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct KeyVisual {
@@ -38,7 +38,7 @@ impl Renderer {
         let image = reader
             .decode()
             .map_err(|e| e.to_string())?
-            .resize_exact(112, 112, image::imageops::FilterType::Triangle)
+            .resize_exact(112, 112, image::imageops::FilterType::Lanczos3)
             .to_rgba8();
         let rgb: Vec<u8> = image
             .pixels()
@@ -203,9 +203,13 @@ pub(crate) fn encode(rgb: &[u8], width: u16, height: u16, limit: usize) -> Resul
         .flatten()
         .copied()
         .collect();
-    for quality in [85, 65, 45] {
+    for quality in [95, 90, 85, 75, 65, 45, 30] {
         let mut bytes = vec![];
-        Encoder::new(&mut bytes, quality)
+        let mut encoder = Encoder::new(&mut bytes, quality);
+        // Small coloured text needs full-resolution chroma, even at fallback quality.
+        encoder.set_sampling_factor(SamplingFactor::F_1_1);
+        encoder.set_optimized_huffman_tables(true);
+        encoder
             .encode(&rotated, width, height, ColorType::Rgb)
             .map_err(|e| e.to_string())?;
         if bytes.len() <= limit {
@@ -218,6 +222,29 @@ pub(crate) fn encode(rgb: &[u8], width: u16, height: u16, limit: usize) -> Resul
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn coloured_one_pixel_strokes_survive_transport_without_chroma_bleed() {
+        let mut rgb = vec![0; 112 * 112 * 3];
+        for y in 0..112 {
+            rgb[(y * 112 + 55) * 3] = 255;
+        }
+        let jpeg = encode(&rgb, 112, 112, 10240).unwrap();
+        let decoded = image::load_from_memory(&jpeg).unwrap().to_rgb8();
+        let stroke = decoded.get_pixel(56, 56).0;
+        let neighbour = decoded.get_pixel(55, 56).0;
+        assert!(
+            stroke[0] > 220 && stroke[1] < 25 && stroke[2] < 25,
+            "{stroke:?}"
+        );
+        assert!(neighbour[0] < 25, "{neighbour:?}");
+        // The encoder must still fit a busy image inside the hardware packet budget.
+        let mut seed = 1u32;
+        for byte in &mut rgb {
+            seed = seed.wrapping_mul(1664525).wrapping_add(1013904223);
+            *byte = (seed >> 24) as u8;
+        }
+        assert!(encode(&rgb, 112, 112, 10240).unwrap().len() <= 10240);
+    }
     #[test]
     fn strip_is_bounded_and_invalid_regions_are_rejected() {
         let renderer = Renderer::new().unwrap();

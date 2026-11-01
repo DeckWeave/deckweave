@@ -35,6 +35,6 @@
 
 Окончательная release-сборка запущена на прежнем N4 instance, Connected, без ошибок плагинов. [Build/hash](evidence/2026-11-01/runtime-release-build.json), [software session](evidence/2026-11-01/n4-runtime-release-session.json), [общий кадр Panel Lab](evidence/2026-11-01/n4-runtime-panel-release.png), [страница Encoder/Stack/Wheel](evidence/2026-11-01/n4-runtime-dials-release.png). Это preview переданных JPEG, не замена физической приёмки. Резервная копия проверена через Core на отдельной локальной копии.
 
-Остаётся физически подтвердить только новую неопределённость: D2–D4, pointer Y/drag/swipe и reconnect. Исходные K1–K10, T1/T5, D1 и ориентация уже подтверждены владельцем. Общий provider contract описан, N4 всё ещё встроен; внешний hardware SDK не объявлен готовым.
+Владелец подтвердил D2–D4, pointer Y/drag и reconnect 2026-11-02: [результат](ACCEPTANCE-NEXT.md). Исходные K1–K10, T1/T5, D1 и ориентация были подтверждены ранее. Общий provider contract описан, N4 всё ещё встроен; внешний hardware SDK не объявлен готовым. Следующие замечания к редактору и изображениям разобраны [отдельно](EDITOR-REFINEMENT.md).
 
 Runtime selection Switch/Stack/Wheel сбрасывается при restart, конфигурация сохраняется. Повтор Multi Action заменяет его отложенные шаги. Вложенный Multi Action запрещён; Sequence в состоянии Switch разрешён. Нет profile import. Незавершённые v1/packaging/UX задачи перечислены в STATUS и PLAN.

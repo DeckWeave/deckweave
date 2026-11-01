@@ -222,6 +222,7 @@ async fn open_device(
         builder = builder.data_directory(directory.join("web-editor"));
     }
     let built = builder
+        .disable_drag_drop_handler()
         .title(format!("DeckWeave — {name}"))
         .inner_size(1180.0, 860.0)
         .min_inner_size(920.0, 720.0)
