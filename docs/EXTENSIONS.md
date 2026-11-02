@@ -40,8 +40,12 @@ DeckWeave; assigned contexts of an updated package restart. Settings and action
 assignments remain outside the bundle, in the host data directory.
 
 **OpenDeck catalogue** reads the public [OpenAction catalogue](https://github.com/OpenActionAPI/plugins).
-Search for a plugin, open Release files, select an author-provided archive for
-your OS, then Download and inspect → Install. The latest stable GitHub release
+Search for a plugin and choose Install… (or Update…). A modal opens immediately at any
+catalogue scroll position; loading, release selection, download review, errors
+and installation stay in this same modal. Select an author-provided archive for
+your OS, then Download and inspect → Install. Closing returns focus to the
+original row without resetting search, loaded entries or scroll position. Search
+and catalogue controls remain visible while scrolling. [Native UI verification](evidence/2026-11-02/plugin-manager-usability.json). The latest stable GitHub release
 is used; source code is not built automatically. Missing releases, API limits,
 protected manifests, unsupported platforms and incomplete bundles show errors.
 Catalogue inclusion alone is not proof of full DeckWeave compatibility. Hardware

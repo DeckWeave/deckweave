@@ -1,6 +1,7 @@
 import type { Locale } from './types';
 
 const ru = {
+  close: 'Закрыть',
   installFromFile: 'Установить из файла…',
   openDeckCatalogue: 'Каталог OpenDeck',
   installedPlugins: 'Установленные',
@@ -208,6 +209,7 @@ const ru = {
   currentPage: 'Текущая страница',
 } as const;
 const en: Record<keyof typeof ru, string> = {
+  close: 'Close',
   installFromFile: 'Install from file…',
   openDeckCatalogue: 'OpenDeck catalogue',
   installedPlugins: 'Installed',

@@ -1285,8 +1285,9 @@ textarea {
   color: #a0aaba;
 }
 .settings-content {
+  --settings-padding: 30px;
   overflow: auto;
-  padding: 30px;
+  padding: var(--settings-padding);
 }
 .settings-content h2 {
   font-size: 20px;
@@ -1503,7 +1504,7 @@ textarea {
 }
 @media (max-width: 900px) {
   .settings-content {
-    padding: 22px;
+    --settings-padding: 22px;
   }
   .settings-layout {
     grid-template-columns: 155px minmax(0, 1fr);

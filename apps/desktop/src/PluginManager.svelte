@@ -34,6 +34,19 @@
     error = $state(''),
     notice = $state('');
   let disposed = false;
+  let operation = 0;
+  let returnFocus: HTMLButtonElement | undefined;
+  let flowOpen = $state(false),
+    installing = $state(false);
+  let dialog = $state<HTMLDialogElement>();
+  $effect(() => {
+    if (flowOpen && dialog && !dialog.open) dialog.showModal();
+    else if (!flowOpen && dialog?.open) {
+      dialog.close();
+      if (returnFocus?.isConnected) returnFocus.focus({ preventScroll: true });
+      returnFocus = undefined;
+    }
+  });
   const config = $derived(client.snapshot!.configuration);
   const t = $derived((key: Parameters<typeof text>[1]) => text(config.locale, key));
   const results = $derived(
@@ -43,17 +56,19 @@
         .includes(search.toLocaleLowerCase()),
     ),
   );
-  async function run(work: () => Promise<void>) {
+  async function run(work: (current: () => boolean) => Promise<void>) {
     if (busy) return;
+    const id = ++operation;
+    const current = () => !disposed && id === operation;
     busy = true;
     error = '';
     notice = '';
     try {
-      await work();
+      await work(current);
     } catch (e) {
-      error = String(e);
+      if (current()) error = String(e);
     } finally {
-      busy = false;
+      if (current()) busy = false;
     }
   }
   function enabled(id: string, checked: boolean) {
@@ -69,36 +84,50 @@
     }));
   }
   function browse() {
-    void run(async () => {
-      catalogue = await invoke<Entry[]>('plugin_catalogue');
+    void run(async (current) => {
+      const entries = await invoke<Entry[]>('plugin_catalogue');
+      if (!current()) return;
+      catalogue = entries;
       browsing = true;
       selected = null;
       assets = [];
       limit = 30;
     });
   }
-  function choose(entry: Entry) {
-    void run(async () => {
-      selected = entry;
-      assets = [];
-      assetId = '';
-      assets = await invoke<Asset[]>('plugin_release_assets', { id: entry.id });
+  function choose(entry: Entry, invoker?: HTMLButtonElement) {
+    if (busy) return;
+    if (invoker) returnFocus = invoker;
+    selected = entry;
+    assets = [];
+    assetId = '';
+    flowOpen = true;
+    void run(async (current) => {
+      const files = await invoke<Asset[]>('plugin_release_assets', { id: entry.id });
+      if (!current()) return;
+      assets = files;
       if (assets.length === 1) assetId = String(assets[0].id);
     });
   }
-  function pick() {
-    void run(async () => {
-      await discard();
-      await adoptPreview(await invoke<Preview | null>('plugin_pick_archive'));
+  function pick(invoker: HTMLButtonElement) {
+    if (busy) return;
+    returnFocus = invoker;
+    flowOpen = true;
+    void run(async (current) => {
+      const value = await invoke<Preview | null>('plugin_pick_archive');
+      await adoptPreview(value, current);
+      if (!value && current()) closeFlow();
     });
   }
   function prepare() {
     if (!selected || !assetId) return;
     const id = selected.id,
       chosen = Number(assetId);
-    void run(async () => {
+    void run(async (current) => {
       await discard();
-      await adoptPreview(await invoke<Preview>('plugin_prepare_asset', { id, assetId: chosen }));
+      await adoptPreview(
+        await invoke<Preview>('plugin_prepare_asset', { id, assetId: chosen }),
+        current,
+      );
     });
   }
   async function discard() {
@@ -108,92 +137,90 @@
       await invoke('plugin_discard', { token });
     }
   }
-  async function adoptPreview(value: Preview | null) {
-    if (disposed) {
+  async function adoptPreview(value: Preview | null, current: () => boolean) {
+    if (!current()) {
       if (value) await invoke('plugin_discard', { token: value.token });
     } else preview = value;
+  }
+  function closeFlow() {
+    if (installing) return;
+    // Invalidate pending release/download results without moving the catalogue.
+    operation++;
+    busy = false;
+    flowOpen = false;
+    selected = null;
+    assets = [];
+    error = '';
+    notice = '';
+    if (preview) void discard().catch(() => {});
   }
   function install() {
     if (!preview) return;
     const token = preview.token;
-    void run(async () => {
-      await invoke('plugin_commit', { token });
-      preview = null;
-      await client.reloadPlugins();
-      notice = t('installSuccess');
+    void run(async (current) => {
+      installing = true;
+      try {
+        await invoke('plugin_commit', { token });
+        if (!current()) return;
+        preview = null;
+        await client.reloadPlugins();
+        if (current()) notice = t('installSuccess');
+      } finally {
+        installing = false;
+      }
     });
   }
   onDestroy(() => {
     disposed = true;
-    if (preview) void invoke('plugin_discard', { token: preview.token });
+    operation++;
+    if (preview) void invoke('plugin_discard', { token: preview.token }).catch(() => {});
   });
 </script>
 
-<h2>{t('plugins')}</h2>
-<div class="plugin-toolbar">
-  <button disabled={busy} onclick={pick}>{t('installFromFile')}</button>
-  <button disabled={busy} class:current={browsing} onclick={browse}>{t('openDeckCatalogue')}</button
-  >
-  {#if browsing}<button
-      disabled={busy}
-      class="quiet"
-      onclick={() => {
-        browsing = false;
-        selected = null;
-      }}>{t('installedPlugins')}</button
-    >{/if}
+<div class="catalogue-tools">
+  <h2>{t('plugins')}</h2>
+  <div class="plugin-toolbar">
+    <button disabled={busy} onclick={(e) => pick(e.currentTarget)}>{t('installFromFile')}</button>
+    <button disabled={busy} class:current={browsing} onclick={browse}
+      >{t('openDeckCatalogue')}</button
+    >
+    {#if browsing}<button
+        disabled={busy}
+        class="quiet"
+        onclick={() => {
+          browsing = false;
+          selected = null;
+        }}>{t('installedPlugins')}</button
+      >{/if}
+  </div>
+  {#if browsing}<input
+      class="plugin-search"
+      placeholder={t('searchPlugins')}
+      aria-label={t('searchPlugins')}
+      bind:value={search}
+      oninput={() => (limit = 30)}
+    />{/if}
 </div>
-{#if busy}<p role="status">{t('pluginLoading')}</p>{/if}
-{#if error}<p class="connection-error" role="alert">{error}</p>{/if}
-{#if notice}<p role="status">{notice}</p>{/if}
-{#if preview}
-  <section class="install-preview" aria-label={t('installReview')}>
-    <h3>{t('installReview')}: {preview.name}</h3>
-    <p>{preview.version} · {t('actions')}: {preview.actions}</p>
-    <p><code>{preview.id}</code></p>
-    {#if preview.installed_version}<p>
-        {t('installedVersion')}: {preview.installed_version} → {preview.version}
-      </p>{/if}
-    <p class="plugin-source">{preview.source}</p>
-    <details><summary>SHA-256</summary><code class="plugin-source">{preview.sha256}</code></details>
-    <div class="plugin-toolbar">
-      <button class="primary" disabled={busy} onclick={install}
-        >{t(preview.installed_version ? 'updatePlugin' : 'installPlugin')}</button
-      ><button disabled={busy} onclick={() => void run(discard)}>{t('cancelInstall')}</button>
-    </div>
-  </section>
-{/if}
+{#if busy && !flowOpen}<p role="status">{t('pluginLoading')}</p>{/if}
+{#if error && !flowOpen}<p class="connection-error" role="alert">{error}</p>{/if}
 {#if browsing}
   <p class="settings-intro">{t('catalogueHint')}</p>
-  <input
-    class="plugin-search"
-    placeholder={t('searchPlugins')}
-    aria-label={t('searchPlugins')}
-    bind:value={search}
-    oninput={() => (limit = 30)}
-  />
-  {#if selected}<section class="plugin-release">
-      <h3>{selected.name}</h3>
-      <p class="plugin-source">{selected.repository}</p>
-      {#if assets.length}<label
-          >{t('releaseFiles')}<select bind:value={assetId}
-            ><option value="">{t('chooseReleaseFile')}</option>{#each assets as asset}<option
-                value={String(asset.id)}
-                >{asset.version} · {asset.name} · {(asset.size / 1048576).toFixed(1)} MiB</option
-              >{/each}</select
-          ></label
-        >
-        <button disabled={busy || !assetId} onclick={prepare}>{t('prepareInstall')}</button>
-      {:else if !busy}<p>{t('noReleaseFiles')}</p>{/if}
-    </section>{/if}
   <div class="installed-plugins">
-    {#each results.slice(0, limit) as entry (entry.id)}<article>
+    {#each results.slice(0, limit) as entry (entry.id)}
+      {@const installLabel = t(
+        client.plugins.some((pack) => pack.id === entry.id) ? 'updatePlugin' : 'installPlugin',
+      )}
+      <article>
         <div>
           <h3>{entry.name}</h3>
           <p>{entry.author} · <code>{entry.id}</code></p>
           <p>{entry.description}</p>
         </div>
-        <button disabled={busy} onclick={() => choose(entry)}>{t('releaseFiles')}</button>
+        <button
+          disabled={busy}
+          aria-label={`${installLabel}: ${entry.name}`}
+          onclick={(e) => choose(entry, e.currentTarget)}>{installLabel}…</button
+        >
       </article>{/each}
   </div>
   {#if results.length > limit}<button onclick={() => (limit += 30)}
@@ -236,6 +263,69 @@
   </div>
 {/if}
 
+<dialog
+  class="install-dialog"
+  bind:this={dialog}
+  aria-labelledby="plugin-flow-title"
+  oncancel={(e) => {
+    e.preventDefault();
+    closeFlow();
+  }}
+>
+  <header>
+    <div>
+      <p>{t(preview || !selected ? 'installReview' : 'releaseFiles')}</p>
+      <h2 id="plugin-flow-title">{preview?.name ?? selected?.name ?? t('installReview')}</h2>
+    </div>
+    <button class="quiet" disabled={installing} aria-label={t('close')} onclick={closeFlow}
+      >✕</button
+    >
+  </header>
+  <div class="dialog-body" aria-busy={busy}>
+    {#if busy}<p role="status">{t('pluginLoading')}</p>{/if}
+    {#if error}<p class="connection-error" role="alert">{error}</p>{/if}
+    {#if notice}<p role="status">{notice}</p>
+    {:else if preview}
+      <p>{preview.version} · {t('actions')}: {preview.actions}</p>
+      <p><code>{preview.id}</code></p>
+      {#if preview.installed_version}<p>
+          {t('installedVersion')}: {preview.installed_version} → {preview.version}
+        </p>{/if}
+      <p class="plugin-source">{preview.source}</p>
+      <details>
+        <summary>SHA-256</summary><code class="plugin-source">{preview.sha256}</code>
+      </details>
+    {:else if selected}
+      <p class="plugin-source">{selected.repository}</p>
+      {#if assets.length}<label
+          >{t('releaseFiles')}<select bind:value={assetId} disabled={busy}
+            ><option value="">{t('chooseReleaseFile')}</option>{#each assets as asset}<option
+                value={String(asset.id)}
+                >{asset.version} · {asset.name} · {(asset.size / 1048576).toFixed(1)} MiB</option
+              >{/each}</select
+          ></label
+        >
+      {:else if !busy && !error}<p>{t('noReleaseFiles')}</p>{/if}
+    {/if}
+  </div>
+  <footer>
+    {#if notice}<button class="primary" onclick={closeFlow}>{t('done')}</button>
+    {:else}
+      <button disabled={installing} onclick={closeFlow}>{t('cancelInstall')}</button>
+      {#if preview}<button class="primary" disabled={busy} onclick={install}
+          >{t(preview.installed_version ? 'updatePlugin' : 'installPlugin')}</button
+        >
+      {:else if assets.length}<button class="primary" disabled={busy || !assetId} onclick={prepare}
+          >{t('prepareInstall')}</button
+        >
+      {:else if selected && error}<button
+          disabled={busy}
+          onclick={() => selected && choose(selected)}>{t('retry')}</button
+        >{/if}
+    {/if}
+  </footer>
+</dialog>
+
 <style>
   .plugin-toolbar {
     display: flex;
@@ -250,18 +340,67 @@
     width: 100%;
     margin: 0 0 14px;
   }
-  .install-preview,
-  .plugin-release {
-    padding: 16px;
-    border: 1px solid #515b78;
-    border-radius: 9px;
-    background: #292e3a;
-    margin: 16px 0;
+  .catalogue-tools {
+    position: sticky;
+    top: calc(-1 * var(--settings-padding));
+    z-index: 1;
+    background: #1c1e22;
+    padding: 16px 0 1px;
   }
-  .plugin-release label {
+  .install-dialog {
+    width: min(640px, calc(100vw - 48px));
+    max-height: calc(100dvh - 64px);
+    padding: 0;
+    margin: auto;
+    border: 1px solid #515b78;
+    border-radius: 12px;
+    background: #25282f;
+    color: inherit;
+    overflow: hidden;
+    box-shadow: 0 20px 80px #0008;
+  }
+  .install-dialog[open] {
+    display: flex;
+    flex-direction: column;
+  }
+  .install-dialog::backdrop {
+    background: #080b12b3;
+  }
+  .install-dialog header {
+    flex-shrink: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    gap: 20px;
+    padding: 20px;
+    border-bottom: 1px solid #3b3e47;
+  }
+  .install-dialog header p {
+    font-size: 12px;
+    margin-bottom: 5px;
+  }
+  .install-dialog h2 {
+    overflow-wrap: anywhere;
+  }
+  .dialog-body {
+    min-height: 0;
+    overflow: auto;
+    padding: 20px;
+    display: grid;
+    gap: 14px;
+  }
+  .dialog-body label {
     display: grid;
     gap: 8px;
-    margin: 14px 0;
+  }
+  .install-dialog footer {
+    flex-shrink: 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 16px 20px;
+    border-top: 1px solid #3b3e47;
   }
   .plugin-source,
   .package-id {

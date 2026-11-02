@@ -1,0 +1,36 @@
+{
+  "date": "2026-11-02",
+  "base_commit": "bd1beee",
+  "problem": "Selecting a deep catalogue row exposed release selection and archive review above the viewport",
+  "change": "One native HTML dialog for loading, release files, archive inspection, errors and install result; sticky catalogue controls; explicit Install/Update row labels; focus returned with preventScroll; stale async results ignored after dismissal",
+  "checks": {
+    "svelte": "0 errors, 0 warnings",
+    "format": "passed",
+    "web_production": "passed",
+    "native_release": "passed"
+  },
+  "native_ui": [
+    {
+      "plugin": "Audio Switcher",
+      "position": "middle of the first 30 unfiltered catalogue entries",
+      "observed": "Immediate centered loading dialog, followed by release chooser; Escape returned to the same visible rows"
+    },
+    {
+      "plugin": "Color Picker",
+      "position": "last row of the first 30 unfiltered catalogue entries",
+      "observed": "Immediate dialog, auto-selected the only release archive, downloaded and inspected 2.0.1 in the same dialog; Install and Cancel stayed visible; cancelled without installation"
+    },
+    {
+      "plugin": "Color Picker",
+      "build": "final",
+      "position": "scrolled to the bottom using the scrollbar",
+      "observed": "Sticky search and catalogue controls visible without rows leaking above; Escape preserved position and focused the original Install button; Return reopened Color Picker directly"
+    }
+  ],
+  "third_party_backends_executed": false,
+  "owner_device_assignments_changed": false,
+  "release": {
+    "sha256": "B16256DAC935ADB01F8F7EDEBEB0287BD2EEACF424BB0059A88CFD99387B1C97",
+    "bytes": 21548032
+  }
+}
