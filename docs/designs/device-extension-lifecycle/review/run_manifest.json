@@ -1,0 +1,27 @@
+{
+  "mode": "BRAINSTORM",
+  "date": "2026-11-02",
+  "target": "G:/APPS/DW/deckweave/docs/designs/device-extension-lifecycle/concepts_brief.md",
+  "reviewed_snapshot": "reviewed_target.txt",
+  "target_lines": 110,
+  "target_sha256": "46F53C2B85164233DC5C6A54181BED18671969518DF9FE655B8968733B00C574",
+  "synthesizer_agent_id": "/root/egm_device_review",
+  "fresh_context": "fork_turns:none for every reviewer",
+  "max_concurrent_reviewers": 2,
+  "concurrency_reason": "4 total slots including root and synthesizer",
+  "required_read_evidence": "Each verbatim returned report contains a complete required-read manifest. Nested reviewer tool transcripts are not exposed to synthesizer; read completion is reviewer-attested.",
+  "standard": "C:/Users/Wismut/.codex/plugins/cache/egm/egm/0.1.0/resources/document_standards/zoom-out-standard.md",
+  "reviewers": [
+    {"lens":"egm-design","agent_id":"/root/egm_device_review/design","persona":"C:/Users/Wismut/.codex/plugins/cache/egm/egm/0.1.0/agents/design_critic.md","report":"design.md","status":"completed","required_reads":"all complete, attested","attempts":1},
+    {"lens":"egm-codebase-details","agent_id":"/root/egm_device_review/codebase_details","persona":"C:/Users/Wismut/.codex/plugins/cache/egm/egm/0.1.0/agents/codebase_details.md","report":"codebase_details.md","status":"completed","required_reads":"all complete, attested","attempts":1},
+    {"lens":"egm-zoom-out","agent_id":"/root/egm_device_review/zoom_out","persona":"C:/Users/Wismut/.codex/plugins/cache/egm/egm/0.1.0/agents/zoom_out.md","report":"zoom_out.md","status":"completed","required_reads":"all complete, attested","attempts":1},
+    {"lens":"egm-comprehension","agent_id":"/root/egm_device_review/comprehension","persona":"C:/Users/Wismut/.codex/plugins/cache/egm/egm/0.1.0/agents/comprehension.md","report":"comprehension.md","status":"completed","required_reads":"all complete, attested","attempts":1},
+    {"lens":"egm-implementation-readiness","agent_id":"/root/egm_device_review/implementation_readiness","persona":"C:/Users/Wismut/.codex/plugins/cache/egm/egm/0.1.0/agents/implementation_readiness.md","report":"implementation_readiness.md","status":"completed","required_reads":"all complete, attested","attempts":1},
+    {"lens":"egm-structural","agent_id":"/root/egm_device_review/structural","persona":"C:/Users/Wismut/.codex/plugins/cache/egm/egm/0.1.0/agents/structural.md","report":"structural.md","status":"completed","required_reads":"all complete, attested","attempts":1}
+  ],
+  "deduplicated_findings":{"Blocker":0,"Major":12,"Nit":4},
+  "revision":"concepts_brief.md",
+  "revision_status":"proposed; not independently reviewed; ready for owner alignment",
+  "writes_scope":"review directory only",
+  "source_changes":"none by synthesizer or reviewers; root reported NEXT/DECISIONS updates after all reviews completed"
+}
