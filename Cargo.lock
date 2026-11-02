@@ -762,6 +762,7 @@ dependencies = [
  "deckweave-core",
  "deckweave-n4",
  "deckweave-platform",
+ "deckweave-services",
  "reqwest",
  "rfd",
  "serde",
@@ -799,6 +800,18 @@ dependencies = [
  "serde_json",
  "windows",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "deckweave-services"
+version = "0.1.0"
+dependencies = [
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "uuid",
 ]
 
 [[package]]

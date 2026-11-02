@@ -1,5 +1,8 @@
 // One stroke vocabulary for commands. Plugins without artwork use semantic glyphs.
 export const icons: Record<string, string> = {
+  volume: 'M4 9h4l5-4v14l-5-4H4ZM16 8a6 6 0 0 1 0 8M19 5a10 10 0 0 1 0 14',
+  reset: 'M4 10a8 8 0 1 1 0 5M4 4v6h6',
+  pause: 'M8 5v14M16 5v14',
   settings:
     'M9 3h6l1 3 3 1 2 5-2 5-3 1-1 3H9l-1-3-3-1-2-5 2-5 3-1 1-3ZM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z',
   sliders: 'M4 6h5m4 0h7M4 12h9m4 0h3M4 18h2m4 0h10M9 3v6m4 0v6m-7 0v6',
@@ -66,6 +69,8 @@ export function actionIcon(id: string, label = ''): string {
   if (/forecast|weather/i.test(id)) return 'weather';
   if (/color|palette/i.test(id)) return 'color';
   if (/countdown|stopwatch|timer/i.test(id)) return 'timer';
+  if (/desktop\.note/i.test(id)) return 'page';
+  if (/desktop\.sound/i.test(id)) return 'volume';
   if (/clock|uptime/i.test(id)) return 'clock';
   if (/mute/i.test(id)) return 'mute';
   if (/volume|audio/i.test(id)) return 'audio';

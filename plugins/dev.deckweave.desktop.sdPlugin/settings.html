@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" /><title>Desktop Tools</title>
+  <link rel="stylesheet" href="inspector.css" />
+  <style>
+    .fields {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+    }
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      margin: 0 0 7px;
+    }
+    .wide {
+      grid-column: 1/-1;
+    }
+    textarea {
+      resize: vertical;
+      min-height: 70px;
+    }
+    input,
+    select,
+    textarea {
+      width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
+    }
+    input[type='checkbox'] {
+      width: auto;
+    }
+    #clickRow {
+      flex-direction: row;
+      align-items: center;
+    }
+  </style>
+  <div class="fields">
+    <label class="wide"
+      ><span data-en="Title" data-ru="Название">Title</span><input id="title" maxlength="120"
+    /></label>
+    <label class="wide" data-kind="note"
+      ><span data-en="Note" data-ru="Заметка">Note</span
+      ><textarea id="text" maxlength="8192"></textarea>
+    </label>
+    <label data-kind="timer"
+      ><span data-en="Seconds" data-ru="Секунды">Seconds</span
+      ><input id="seconds" type="number" min="1" max="86400" value="300"
+    /></label>
+    <label data-kind="timer sound"
+      ><span data-en="Sound" data-ru="Звук">Sound</span
+      ><select id="sound">
+        <option value="complete" data-en="Complete" data-ru="Завершение">Complete</option>
+        <option value="notice" data-en="Notice" data-ru="Уведомление">Notice</option>
+        <option value="warning" data-en="Warning" data-ru="Внимание">Warning</option>
+        <option value="silent" data-kind="timer" data-en="Silent" data-ru="Без звука">
+          Silent
+        </option>
+      </select></label
+    >
+    <label data-kind="timer sound"
+      ><span data-en="Volume, %" data-ru="Громкость, %">Volume, %</span
+      ><input id="volume" type="number" min="0" max="100" value="35"
+    /></label>
+    <label data-kind="note timer"
+      ><span data-en="Position" data-ru="Положение">Position</span
+      ><select id="anchor">
+        <option value="top_right" data-en="Top right" data-ru="Справа сверху">Top right</option>
+        <option value="top_left" data-en="Top left" data-ru="Слева сверху">Top left</option>
+        <option value="bottom_right" data-en="Bottom right" data-ru="Справа снизу">
+          Bottom right
+        </option>
+        <option value="bottom_left" data-en="Bottom left" data-ru="Слева снизу">Bottom left</option>
+      </select></label
+    >
+    <label data-kind="note timer"
+      ><span data-en="Width" data-ru="Ширина">Width</span
+      ><input id="width" type="number" min="160" max="1280" value="320" /></label
+    ><label data-kind="note timer"
+      ><span data-en="Height" data-ru="Высота">Height</span
+      ><input id="height" type="number" min="80" max="960" value="160"
+    /></label>
+    <label data-kind="note timer"
+      ><span data-en="Background" data-ru="Фон">Background</span
+      ><input id="background" type="color" value="#252525" /></label
+    ><label data-kind="note timer"
+      ><span data-en="Text color" data-ru="Цвет текста">Text color</span
+      ><input id="foreground" type="color" value="#ededed"
+    /></label>
+    <label id="clickRow" class="wide" data-kind="note timer"
+      ><input type="checkbox" id="clickThrough" /><span
+        data-en="Pass mouse clicks through"
+        data-ru="Пропускать клики мыши"
+        >Pass mouse clicks through</span
+      ></label
+    >
+  </div>
+  <details class="inspector-help">
+    <summary data-en="Help" data-ru="Справка">Help</summary>
+    <p id="hint"></p>
+  </details>
+  <p id="status" role="status"></p>
+  <script src="inspector-theme.js"></script>
+  <script>
+    let socket,
+      context,
+      settings = {},
+      ready = false,
+      ru = false;
+    const fields = [
+      'title',
+      'text',
+      'seconds',
+      'sound',
+      'volume',
+      'anchor',
+      'width',
+      'height',
+      'background',
+      'foreground',
+      'clickThrough',
+    ];
+    const defaults = {
+      title: '',
+      text: '',
+      seconds: 300,
+      sound: 'complete',
+      volume: 35,
+      anchor: 'top_right',
+      width: 320,
+      height: 160,
+      background: '#252525',
+      foreground: '#ededed',
+      clickThrough: false,
+    };
+    const el = (id) => document.getElementById(id);
+    function show() {
+      for (const id of fields) {
+        if (document.activeElement === el(id)) continue;
+        if (el(id).type === 'checkbox') el(id).checked = !!settings[id];
+        else el(id).value = settings[id] ?? defaults[id];
+      }
+    }
+    window.connectElgatoStreamDeckSocket = (port, uuid, event, info, actionInfo) => {
+      const host = JSON.parse(info),
+        action = JSON.parse(actionInfo);
+      DeckWeaveAppearance.apply(host.deckweave);
+      context = uuid;
+      ru = host.application?.language?.startsWith('ru');
+      document.documentElement.lang = ru ? 'ru' : 'en';
+      for (const node of document.querySelectorAll('[data-en]'))
+        node.textContent = node.dataset[ru ? 'ru' : 'en'];
+      const kind = action.action.split('.').at(-1);
+      for (const node of document.querySelectorAll('[data-kind]'))
+        node.hidden = !node.dataset.kind.split(' ').includes(kind);
+      el('hint').textContent = ru
+        ? 'Нажатие открывает панель или воспроизводит звук. Панель остаётся при смене профиля. Её положение, размер и цвет также доступны в Настройки → Панели. Закрытие не останавливает таймер.'
+        : 'Press to open the panel or play the sound. Panels survive profile changes. Position, size and color are also in Settings → Panels. Closing keeps a timer running.';
+      settings = action.payload?.settings ?? {};
+      show();
+      socket = new WebSocket(`ws://127.0.0.1:${port}`);
+      DeckWeaveAppearance.subscribe(socket, uuid);
+      socket.onopen = () => {
+        socket.send(JSON.stringify({ event, uuid }));
+        ready = true;
+      };
+      socket.onmessage = ({ data }) => {
+        try {
+          const m = JSON.parse(data);
+          DeckWeaveAppearance.receive(m);
+          if (m.event === 'didReceiveSettings') {
+            settings = m.payload.settings ?? {};
+            show();
+          }
+          if (m.event === 'sendToPropertyInspector')
+            el('status').textContent = m.payload?.error ?? '';
+        } catch {}
+      };
+      socket.onclose = () => {
+        ready = false;
+        el('status').textContent = ru ? 'Нет связи' : 'Disconnected';
+      };
+    };
+    for (const id of fields)
+      el(id).onchange = () => {
+        if (!ready) return;
+        const field = el(id);
+        settings = {
+          ...settings,
+          [id]:
+            field.type === 'checkbox'
+              ? field.checked
+              : field.type === 'number'
+                ? Number(field.value)
+                : field.value,
+        };
+        socket.send(JSON.stringify({ event: 'setSettings', context, payload: settings }));
+      };
+  </script>
+</html>

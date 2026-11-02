@@ -5,6 +5,9 @@ mod device_providers;
 mod engine;
 mod extension_management;
 mod hardware;
+mod host_services;
+#[cfg(debug_assertions)]
+mod host_services_smoke;
 mod key_lighting;
 mod keyboard_assignments;
 mod plugin_lifecycle;
@@ -169,6 +172,9 @@ fn dispatch_blocking(
     }
     if let Some(shell) = app.try_state::<shell::Shell>() {
         shell.locale(snapshot.configuration.locale);
+    }
+    if let Some(services) = app.try_state::<host_services::Runtime>() {
+        services.locale(snapshot.configuration.locale);
     }
     if let Application::Ready { hardware, .. } = state {
         hardware.changed();
@@ -761,6 +767,10 @@ fn application_theme(app: &tauri::AppHandle) -> tauri::Theme {
 fn main() {
     startup("builder");
     let mut context = tauri::generate_context!();
+    #[cfg(debug_assertions)]
+    if host_services_smoke::directory().is_some() {
+        context.config_mut().identifier = "app.deckweave.services-smoke".into();
+    }
     if let Some(directory) = directory_override() {
         for window in &mut context.config_mut().app.windows {
             window.data_directory = Some(std::path::PathBuf::from(&directory).join("web-editor"));
@@ -785,6 +795,10 @@ fn main() {
             });
             app.manage(match core {
                 Ok((core, directory)) => {
+                    app.manage(host_services::Runtime::start(
+                        app.handle().clone(),
+                        directory.clone(),
+                    ));
                     app.manage(plugin_manager::Manager::new(directory.clone()));
                     startup("core");
                     let core = Arc::new(Mutex::new(core));
@@ -826,8 +840,14 @@ fn main() {
             if let Ok(core) = locked(&app.state::<Application>()) {
                 app.state::<shell::Shell>()
                     .locale(core.snapshot().configuration.locale);
+                if let Some(services) = app.try_state::<host_services::Runtime>() {
+                    services.locale(core.snapshot().configuration.locale);
+                }
             }
             shell::show_editor(app.handle());
+            if let Some(services) = app.try_state::<host_services::Runtime>() {
+                services.ready();
+            }
             startup("ready");
             #[cfg(debug_assertions)]
             smoke::start(app.handle());
@@ -857,6 +877,9 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             get_snapshot,
+            host_services::host_service_inventory,
+            host_services::host_panel_view,
+            host_services::host_service_command,
             dispatch,
             open_device,
             open_settings,
@@ -917,6 +940,9 @@ fn main() {
                     runtime.stop();
                 }
                 if let Some(runtime) = app.try_state::<key_lighting::Runtime>() {
+                    runtime.stop();
+                }
+                if let Some(runtime) = app.try_state::<host_services::Runtime>() {
                     runtime.stop();
                 }
                 device_providers.stop();

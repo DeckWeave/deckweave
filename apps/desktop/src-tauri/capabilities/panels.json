@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "host-panels",
+  "description": "Host-rendered panels can subscribe to their scoped view; no editor or window management permissions.",
+  "windows": ["overlay-*"],
+  "permissions": ["core:event:default"]
+}

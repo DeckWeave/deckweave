@@ -1,0 +1,18 @@
+{
+  "Name": "Desktop Tools",
+  "Version": "0.1.0",
+  "SDKVersion": 2,
+  "UUID": "dev.deckweave.desktop",
+  "Author": "DeckWeave contributors",
+  "CodePath": "plugin.mjs",
+  "PropertyInspectorPath": "settings.html",
+  "Actions": [
+    { "UUID": "dev.deckweave.desktop.note", "Name": "Desktop Note", "Controllers": ["Keypad"] },
+    { "UUID": "dev.deckweave.desktop.timer", "Name": "Desktop Timer", "Controllers": ["Keypad"] },
+    {
+      "UUID": "dev.deckweave.desktop.sound",
+      "Name": "Notification Sound",
+      "Controllers": ["Keypad"]
+    }
+  ]
+}

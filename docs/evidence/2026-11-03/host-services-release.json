@@ -1,0 +1,18 @@
+{
+  "date": "2026-11-03",
+  "binary": "target/release/deckweave-desktop.exe",
+  "sha256": "64120BC0F85491AC8DBCE9491D14F12133FAF2A04FAD3D5E7BB1AC03FAA1B9FB",
+  "checks": {
+    "main": "npm run check passed",
+    "sdk": 27,
+    "template": 3,
+    "registry": 10,
+    "nativeIntegration": "host-services-integration.json"
+  },
+  "finalLaunch": "Computer Use reported Escape interruption; final launch and visual state are unconfirmed",
+  "relatedCommits": {
+    "sdk": "fc239f5",
+    "template": "6ed0ecb",
+    "registry": "7479427"
+  }
+}

@@ -1,0 +1,538 @@
+{
+  "build": "debug; production web assets; coarse process-tree sample, not a release budget",
+  "logicalProcessors": 24,
+  "authenticated_monitor_panel": true,
+  "closed_timer_finished": true,
+  "monitor_survived_profile_change": true,
+  "open_windows": 0,
+  "saved_panels": 10,
+  "silent_windows_playback_finished": true,
+  "samples": [
+    {
+      "stage": "0",
+      "processes": 8,
+      "privateMiB": 197.26171875,
+      "workingSetMiB": 404.90234375,
+      "cpuOneCorePercent": 0.8711742140461385,
+      "cpuMachinePercent": 0.03629892558525577,
+      "details": [
+        {
+          "pid": 27364,
+          "name": "deckweave-desktop",
+          "privateBytes": 8265728,
+          "workingSetBytes": 42729472,
+          "cpuSeconds": 0.15625
+        },
+        {
+          "pid": 24788,
+          "name": "conhost",
+          "privateBytes": 2420736,
+          "workingSetBytes": 14258176,
+          "cpuSeconds": 0.03125
+        },
+        {
+          "pid": 25500,
+          "name": "msedgewebview2",
+          "privateBytes": 45162496,
+          "workingSetBytes": 132165632,
+          "cpuSeconds": 0.734375
+        },
+        {
+          "pid": 38536,
+          "name": "msedgewebview2",
+          "privateBytes": 3117056,
+          "workingSetBytes": 12853248,
+          "cpuSeconds": 0.03125
+        },
+        {
+          "pid": 17384,
+          "name": "msedgewebview2",
+          "privateBytes": 88170496,
+          "workingSetBytes": 85766144,
+          "cpuSeconds": 0.609375
+        },
+        {
+          "pid": 51004,
+          "name": "msedgewebview2",
+          "privateBytes": 15179776,
+          "workingSetBytes": 41689088,
+          "cpuSeconds": 0.171875
+        },
+        {
+          "pid": 42176,
+          "name": "msedgewebview2",
+          "privateBytes": 9424896,
+          "workingSetBytes": 20324352,
+          "cpuSeconds": 0.046875
+        },
+        {
+          "pid": 41404,
+          "name": "msedgewebview2",
+          "privateBytes": 35102720,
+          "workingSetBytes": 74784768,
+          "cpuSeconds": 0.1875
+        }
+      ]
+    },
+    {
+      "stage": "1",
+      "processes": 14,
+      "privateMiB": 362.24609375,
+      "workingSetMiB": 725.56640625,
+      "cpuOneCorePercent": 0.8591424537641839,
+      "cpuMachinePercent": 0.03579760224017433,
+      "details": [
+        {
+          "pid": 27364,
+          "name": "deckweave-desktop",
+          "privateBytes": 8912896,
+          "workingSetBytes": 45105152,
+          "cpuSeconds": 0.234375
+        },
+        {
+          "pid": 24788,
+          "name": "conhost",
+          "privateBytes": 2420736,
+          "workingSetBytes": 14258176,
+          "cpuSeconds": 0.03125
+        },
+        {
+          "pid": 25500,
+          "name": "msedgewebview2",
+          "privateBytes": 42196992,
+          "workingSetBytes": 129232896,
+          "cpuSeconds": 0.765625
+        },
+        {
+          "pid": 38536,
+          "name": "msedgewebview2",
+          "privateBytes": 3117056,
+          "workingSetBytes": 12853248,
+          "cpuSeconds": 0.03125
+        },
+        {
+          "pid": 17384,
+          "name": "msedgewebview2",
+          "privateBytes": 87597056,
+          "workingSetBytes": 85258240,
+          "cpuSeconds": 0.609375
+        },
+        {
+          "pid": 51004,
+          "name": "msedgewebview2",
+          "privateBytes": 14548992,
+          "workingSetBytes": 41201664,
+          "cpuSeconds": 0.1875
+        },
+        {
+          "pid": 42176,
+          "name": "msedgewebview2",
+          "privateBytes": 9338880,
+          "workingSetBytes": 20279296,
+          "cpuSeconds": 0.046875
+        },
+        {
+          "pid": 41404,
+          "name": "msedgewebview2",
+          "privateBytes": 35115008,
+          "workingSetBytes": 74907648,
+          "cpuSeconds": 0.203125
+        },
+        {
+          "pid": 19836,
+          "name": "msedgewebview2",
+          "privateBytes": 43757568,
+          "workingSetBytes": 130260992,
+          "cpuSeconds": 0.953125
+        },
+        {
+          "pid": 45700,
+          "name": "msedgewebview2",
+          "privateBytes": 3121152,
+          "workingSetBytes": 12840960,
+          "cpuSeconds": 0.015625
+        },
+        {
+          "pid": 54620,
+          "name": "msedgewebview2",
+          "privateBytes": 79069184,
+          "workingSetBytes": 72335360,
+          "cpuSeconds": 0.34375
+        },
+        {
+          "pid": 14484,
+          "name": "msedgewebview2",
+          "privateBytes": 15323136,
+          "workingSetBytes": 41730048,
+          "cpuSeconds": 0.171875
+        },
+        {
+          "pid": 41644,
+          "name": "msedgewebview2",
+          "privateBytes": 9400320,
+          "workingSetBytes": 20221952,
+          "cpuSeconds": 0.046875
+        },
+        {
+          "pid": 51244,
+          "name": "msedgewebview2",
+          "privateBytes": 25923584,
+          "workingSetBytes": 60325888,
+          "cpuSeconds": 0.109375
+        }
+      ]
+    },
+    {
+      "stage": "4",
+      "processes": 17,
+      "privateMiB": 467.9375,
+      "workingSetMiB": 917.08203125,
+      "cpuOneCorePercent": 2.106833857091106,
+      "cpuMachinePercent": 0.08778474404546276,
+      "details": [
+        {
+          "pid": 27364,
+          "name": "deckweave-desktop",
+          "privateBytes": 9879552,
+          "workingSetBytes": 46272512,
+          "cpuSeconds": 0.453125
+        },
+        {
+          "pid": 24788,
+          "name": "conhost",
+          "privateBytes": 2420736,
+          "workingSetBytes": 14258176,
+          "cpuSeconds": 0.03125
+        },
+        {
+          "pid": 25500,
+          "name": "msedgewebview2",
+          "privateBytes": 42233856,
+          "workingSetBytes": 129441792,
+          "cpuSeconds": 0.796875
+        },
+        {
+          "pid": 38536,
+          "name": "msedgewebview2",
+          "privateBytes": 3117056,
+          "workingSetBytes": 12853248,
+          "cpuSeconds": 0.03125
+        },
+        {
+          "pid": 17384,
+          "name": "msedgewebview2",
+          "privateBytes": 87605248,
+          "workingSetBytes": 85274624,
+          "cpuSeconds": 0.609375
+        },
+        {
+          "pid": 51004,
+          "name": "msedgewebview2",
+          "privateBytes": 14594048,
+          "workingSetBytes": 41279488,
+          "cpuSeconds": 0.1875
+        },
+        {
+          "pid": 42176,
+          "name": "msedgewebview2",
+          "privateBytes": 9338880,
+          "workingSetBytes": 20279296,
+          "cpuSeconds": 0.046875
+        },
+        {
+          "pid": 41404,
+          "name": "msedgewebview2",
+          "privateBytes": 35115008,
+          "workingSetBytes": 74907648,
+          "cpuSeconds": 0.203125
+        },
+        {
+          "pid": 19836,
+          "name": "msedgewebview2",
+          "privateBytes": 56160256,
+          "workingSetBytes": 143142912,
+          "cpuSeconds": 1.34375
+        },
+        {
+          "pid": 45700,
+          "name": "msedgewebview2",
+          "privateBytes": 3129344,
+          "workingSetBytes": 12849152,
+          "cpuSeconds": 0.015625
+        },
+        {
+          "pid": 54620,
+          "name": "msedgewebview2",
+          "privateBytes": 98557952,
+          "workingSetBytes": 78114816,
+          "cpuSeconds": 0.515625
+        },
+        {
+          "pid": 14484,
+          "name": "msedgewebview2",
+          "privateBytes": 14929920,
+          "workingSetBytes": 41582592,
+          "cpuSeconds": 0.234375
+        },
+        {
+          "pid": 41644,
+          "name": "msedgewebview2",
+          "privateBytes": 9400320,
+          "workingSetBytes": 20307968,
+          "cpuSeconds": 0.046875
+        },
+        {
+          "pid": 51244,
+          "name": "msedgewebview2",
+          "privateBytes": 24854528,
+          "workingSetBytes": 59596800,
+          "cpuSeconds": 0.109375
+        },
+        {
+          "pid": 38380,
+          "name": "msedgewebview2",
+          "privateBytes": 26378240,
+          "workingSetBytes": 60760064,
+          "cpuSeconds": 0.109375
+        },
+        {
+          "pid": 51548,
+          "name": "msedgewebview2",
+          "privateBytes": 25939968,
+          "workingSetBytes": 60366848,
+          "cpuSeconds": 0.109375
+        },
+        {
+          "pid": 38972,
+          "name": "msedgewebview2",
+          "privateBytes": 27013120,
+          "workingSetBytes": 60342272,
+          "cpuSeconds": 0.0625
+        }
+      ]
+    },
+    {
+      "stage": "8",
+      "processes": 21,
+      "privateMiB": 587.96875,
+      "workingSetMiB": 1169.72265625,
+      "cpuOneCorePercent": 1.2697833601954027,
+      "cpuMachinePercent": 0.05290764000814178,
+      "details": [
+        {
+          "pid": 27364,
+          "name": "deckweave-desktop",
+          "privateBytes": 11071488,
+          "workingSetBytes": 46993408,
+          "cpuSeconds": 0.609375
+        },
+        {
+          "pid": 24788,
+          "name": "conhost",
+          "privateBytes": 2420736,
+          "workingSetBytes": 14258176,
+          "cpuSeconds": 0.03125
+        },
+        {
+          "pid": 25500,
+          "name": "msedgewebview2",
+          "privateBytes": 42274816,
+          "workingSetBytes": 130019328,
+          "cpuSeconds": 0.796875
+        },
+        {
+          "pid": 38536,
+          "name": "msedgewebview2",
+          "privateBytes": 3117056,
+          "workingSetBytes": 12853248,
+          "cpuSeconds": 0.03125
+        },
+        {
+          "pid": 17384,
+          "name": "msedgewebview2",
+          "privateBytes": 87605248,
+          "workingSetBytes": 85274624,
+          "cpuSeconds": 0.609375
+        },
+        {
+          "pid": 51004,
+          "name": "msedgewebview2",
+          "privateBytes": 14594048,
+          "workingSetBytes": 41279488,
+          "cpuSeconds": 0.1875
+        },
+        {
+          "pid": 42176,
+          "name": "msedgewebview2",
+          "privateBytes": 9338880,
+          "workingSetBytes": 20279296,
+          "cpuSeconds": 0.046875
+        },
+        {
+          "pid": 41404,
+          "name": "msedgewebview2",
+          "privateBytes": 35115008,
+          "workingSetBytes": 74907648,
+          "cpuSeconds": 0.203125
+        },
+        {
+          "pid": 19836,
+          "name": "msedgewebview2",
+          "privateBytes": 74657792,
+          "workingSetBytes": 163213312,
+          "cpuSeconds": 1.8125
+        },
+        {
+          "pid": 45700,
+          "name": "msedgewebview2",
+          "privateBytes": 3133440,
+          "workingSetBytes": 12853248,
+          "cpuSeconds": 0.015625
+        },
+        {
+          "pid": 54620,
+          "name": "msedgewebview2",
+          "privateBytes": 103124992,
+          "workingSetBytes": 80912384,
+          "cpuSeconds": 0.75
+        },
+        {
+          "pid": 14484,
+          "name": "msedgewebview2",
+          "privateBytes": 15245312,
+          "workingSetBytes": 41934848,
+          "cpuSeconds": 0.265625
+        },
+        {
+          "pid": 41644,
+          "name": "msedgewebview2",
+          "privateBytes": 9506816,
+          "workingSetBytes": 20447232,
+          "cpuSeconds": 0.046875
+        },
+        {
+          "pid": 51244,
+          "name": "msedgewebview2",
+          "privateBytes": 25190400,
+          "workingSetBytes": 59924480,
+          "cpuSeconds": 0.109375
+        },
+        {
+          "pid": 38380,
+          "name": "msedgewebview2",
+          "privateBytes": 25288704,
+          "workingSetBytes": 60174336,
+          "cpuSeconds": 0.109375
+        },
+        {
+          "pid": 51548,
+          "name": "msedgewebview2",
+          "privateBytes": 25018368,
+          "workingSetBytes": 59875328,
+          "cpuSeconds": 0.109375
+        },
+        {
+          "pid": 38972,
+          "name": "msedgewebview2",
+          "privateBytes": 26116096,
+          "workingSetBytes": 59924480,
+          "cpuSeconds": 0.0625
+        },
+        {
+          "pid": 28452,
+          "name": "msedgewebview2",
+          "privateBytes": 25923584,
+          "workingSetBytes": 60346368,
+          "cpuSeconds": 0.0625
+        },
+        {
+          "pid": 48332,
+          "name": "msedgewebview2",
+          "privateBytes": 25944064,
+          "workingSetBytes": 60411904,
+          "cpuSeconds": 0.125
+        },
+        {
+          "pid": 11024,
+          "name": "msedgewebview2",
+          "privateBytes": 25927680,
+          "workingSetBytes": 60313600,
+          "cpuSeconds": 0.03125
+        },
+        {
+          "pid": 29272,
+          "name": "msedgewebview2",
+          "privateBytes": 25915392,
+          "workingSetBytes": 60346368,
+          "cpuSeconds": 0.140625
+        }
+      ]
+    },
+    {
+      "stage": "closed",
+      "processes": 8,
+      "privateMiB": 194.9453125,
+      "workingSetMiB": 414.5234375,
+      "cpuOneCorePercent": 0.4374534392057441,
+      "cpuMachinePercent": 0.01822722663357267,
+      "details": [
+        {
+          "pid": 27364,
+          "name": "deckweave-desktop",
+          "privateBytes": 10092544,
+          "workingSetBytes": 46379008,
+          "cpuSeconds": 0.734375
+        },
+        {
+          "pid": 24788,
+          "name": "conhost",
+          "privateBytes": 2420736,
+          "workingSetBytes": 14258176,
+          "cpuSeconds": 0.03125
+        },
+        {
+          "pid": 25500,
+          "name": "msedgewebview2",
+          "privateBytes": 42389504,
+          "workingSetBytes": 130330624,
+          "cpuSeconds": 0.796875
+        },
+        {
+          "pid": 38536,
+          "name": "msedgewebview2",
+          "privateBytes": 4001792,
+          "workingSetBytes": 21565440,
+          "cpuSeconds": 0.03125
+        },
+        {
+          "pid": 17384,
+          "name": "msedgewebview2",
+          "privateBytes": 87621632,
+          "workingSetBytes": 85323776,
+          "cpuSeconds": 0.609375
+        },
+        {
+          "pid": 51004,
+          "name": "msedgewebview2",
+          "privateBytes": 14467072,
+          "workingSetBytes": 41148416,
+          "cpuSeconds": 0.1875
+        },
+        {
+          "pid": 42176,
+          "name": "msedgewebview2",
+          "privateBytes": 9338880,
+          "workingSetBytes": 20279296,
+          "cpuSeconds": 0.046875
+        },
+        {
+          "pid": 41404,
+          "name": "msedgewebview2",
+          "privateBytes": 34082816,
+          "workingSetBytes": 75374592,
+          "cpuSeconds": 0.234375
+        }
+      ]
+    }
+  ]
+}

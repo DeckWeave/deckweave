@@ -216,6 +216,11 @@ impl RetiredContexts {
     }
 }
 struct Session {
+    services_enabled: bool,
+    service_generation: String,
+    service_contexts: BTreeMap<String, i64>,
+    service_replies: Receiver<Value>,
+    service_sender: mpsc::SyncSender<Value>,
     package: Package,
     token: String,
     nonce: String,
@@ -245,6 +250,9 @@ impl Session {
         }
     }
     fn close(mut self, app: &tauri::AppHandle, net: &Network, wait: bool) -> Result<(), String> {
+        if let Some(runtime) = app.try_state::<crate::host_services::Runtime>() {
+            runtime.connection(&self.package.id, None);
+        }
         net.remove(&self.token);
         let contexts: BTreeSet<_> = self
             .slots
@@ -526,7 +534,9 @@ fn appearance(snapshot: &Snapshot) -> Value {
     json!({"theme":snapshot.configuration.preferences.theme,"accentColor":snapshot.configuration.preferences.accent_color})
 }
 fn info(snapshot: &Snapshot, package: &Package) -> Value {
-    json!({"deckweave":appearance(snapshot),"application":{"language":if snapshot.configuration.locale==deckweave_core::Locale::Ru{"ru"}else{"en"},"platform":if cfg!(windows){"windows"}else{"mac"},"platformVersion":if cfg!(windows){"11"}else{"0"},"version":"7.6.0","font":"Arial"},"plugin":{"uuid":package.id,"version":package.version},"devicePixelRatio":1,"colors":{"buttonPressedBackgroundColor":"#303030","buttonPressedBorderColor":"#808080","buttonPressedTextColor":"#ffffff","disabledColor":"#777777","highlightColor":"#5b85ff","mouseDownColor":"#4455aa"},"devices":snapshot.configuration.devices.iter().map(|d|json!({"id":d.id,"name":d.name,"type":0,"size":{"columns":5,"rows":2}})).collect::<Vec<_>>()})
+    let mut info = json!({"deckweave":appearance(snapshot),"application":{"language":if snapshot.configuration.locale==deckweave_core::Locale::Ru{"ru"}else{"en"},"platform":if cfg!(windows){"windows"}else{"mac"},"platformVersion":if cfg!(windows){"11"}else{"0"},"version":"7.6.0","font":"Arial"},"plugin":{"uuid":package.id,"version":package.version},"devicePixelRatio":1,"colors":{"buttonPressedBackgroundColor":"#303030","buttonPressedBorderColor":"#808080","buttonPressedTextColor":"#ffffff","disabledColor":"#777777","highlightColor":"#5b85ff","mouseDownColor":"#4455aa"},"devices":snapshot.configuration.devices.iter().map(|d|json!({"id":d.id,"name":d.name,"type":0,"size":{"columns":5,"rows":2}})).collect::<Vec<_>>()});
+    info["deckweave"]["services"] = crate::host_services::capabilities();
+    info
 }
 fn start(
     package: Package,
@@ -538,7 +548,13 @@ fn start(
     let (token, nonce) = (deckweave_core::new_id(), deckweave_core::new_id());
     let (sender, receiver) = Network::channel();
     let (error_sender, errors) = mpsc::sync_channel(8);
+    let (service_sender, service_replies) = mpsc::sync_channel(64);
     let mut s = Session {
+        services_enabled: false,
+        service_generation: deckweave_core::new_id(),
+        service_contexts: BTreeMap::new(),
+        service_sender,
+        service_replies,
         package,
         token,
         nonce,
@@ -792,10 +808,39 @@ fn run(
             snapshot.retained_actions = retained;
             active = slots(&snapshot);
         }
-        let needed: BTreeSet<String> = active
+        let services = app
+            .try_state::<crate::host_services::Runtime>()
+            .map(|r| r.plugin_demand())
+            .unwrap_or_default();
+        let service_needed: BTreeSet<String> = services
+            .panels
+            .iter()
+            .filter(|v| {
+                v.panel.open
+                    && matches!(
+                        v.panel.spec.content,
+                        deckweave_services::Content::Metric { .. }
+                    )
+            })
+            .map(|v| v.panel.owner.clone())
+            .filter(|p| p != "deckweave.host")
+            .collect();
+        if let Some(runtime) = app.try_state::<crate::host_services::Runtime>() {
+            let mut blocked: BTreeSet<String> = disabled_plugins.iter().cloned().collect();
+            blocked.extend(
+                services
+                    .owners
+                    .iter()
+                    .filter(|p| *p != "deckweave.host" && !lifecycle.allows(p))
+                    .cloned(),
+            );
+            runtime.blocked(blocked);
+        }
+        let mut needed: BTreeSet<String> = active
             .values()
             .filter_map(|s| s.binding.plugin.as_ref().map(|p| p.package.clone()))
             .collect();
+        needed.extend(service_needed.iter().cloned());
         let removed: BTreeSet<_> = needed
             .iter()
             .filter(|id| !lifecycle.allows(id))
@@ -846,7 +891,7 @@ fn run(
             }
             let unused: Vec<_> = sessions
                 .keys()
-                .filter(|p| !assigned.contains(*p))
+                .filter(|p| !assigned.contains(*p) && !service_needed.contains(*p))
                 .cloned()
                 .collect();
             for id in unused {
@@ -1012,6 +1057,46 @@ fn run(
                     session.inspectors.remove(&ctx);
                     if let Some(slot) = session.slots.get(&ctx).cloned() {
                         session.send(slot.event("propertyInspectorDidDisappear"));
+                    }
+                }
+                if session.socket.is_none()
+                    && let Some(runtime) = app.try_state::<crate::host_services::Runtime>()
+                {
+                    runtime.connection(id, None);
+                }
+                while let Ok(reply) = session.service_replies.try_recv() {
+                    session.send(reply);
+                }
+                if session.services_enabled && session.socket.is_some() {
+                    let wanted: BTreeMap<_, _> = services
+                        .panels
+                        .iter()
+                        .filter(|v| {
+                            v.panel.owner == *id
+                                && v.panel.open
+                                && matches!(
+                                    v.panel.spec.content,
+                                    deckweave_services::Content::Metric { .. }
+                                )
+                        })
+                        .map(|v| (v.panel.service_id.clone(), v.clone()))
+                        .collect();
+                    for context in session.service_contexts.keys().cloned().collect::<Vec<_>>() {
+                        if !wanted.contains_key(&context) {
+                            session.send(
+                                json!({"event":"deckweaveServiceDidDisappear","context":context}),
+                            );
+                            session.service_contexts.remove(&context);
+                        }
+                    }
+                    for (context, view) in wanted {
+                        let old = session.service_contexts.get(&context).copied();
+                        if old != Some(view.panel.revision) {
+                            session.send(json!({"event":if old.is_some(){"deckweaveServiceDidChange"}else{"deckweaveServiceDidAppear"},"context":context,"payload":{"panel":view.panel,"generation":session.service_generation}}));
+                            session
+                                .service_contexts
+                                .insert(context, view.panel.revision);
+                        }
                     }
                 }
                 for (pi, message) in incoming {
@@ -1208,6 +1293,43 @@ fn handle(
     }
     let slot = session.slots.get(context).cloned();
     match event {
+        "deckweaveServiceRegister" if pi.is_none() => {
+            if payload["version"] == 1 {
+                session.services_enabled = true;
+                if let Some(runtime) = app.try_state::<crate::host_services::Runtime>() {
+                    runtime.connection(&session.package.id, Some(&session.service_generation));
+                }
+            }
+        }
+        "deckweaveService" if pi.is_none() => {
+            let request_id = message["requestId"].as_str().unwrap_or("");
+            let allowed = session.services_enabled
+                && (slot.is_some() || session.service_contexts.contains_key(context));
+            let result = if !allowed {
+                Err(deckweave_services::ServiceError::new(
+                    "owner",
+                    "No active action or service context",
+                ))
+            } else if let Some(runtime) = app.try_state::<crate::host_services::Runtime>() {
+                runtime.submit(crate::host_services::Request {
+                    owner: session.package.id.clone(),
+                    origin: context.into(),
+                    generation: session.service_generation.clone(),
+                    operation: message["operation"].as_str().unwrap_or("").into(),
+                    payload: payload.clone(),
+                    request_id: request_id.into(),
+                    reply: session.service_sender.clone(),
+                })
+            } else {
+                Err(deckweave_services::ServiceError::new(
+                    "unsupported",
+                    "Host services are unavailable",
+                ))
+            };
+            if let Err(error) = result {
+                session.send(json!({"event":"deckweaveServiceResult","requestId":request_id,"ok":false,"error":error}));
+            }
+        }
         "deckweaveSubscribeAppearance" if pi.is_some() => {
             if let Some(socket) = session.inspectors.get_mut(context)
                 && let Ok(core) = core.lock()

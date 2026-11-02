@@ -3,6 +3,7 @@
   import type { Locale, Preferences } from './types';
   import { text } from './i18n';
   import Registry from './Registry.svelte';
+  import PanelManager from './PanelManager.svelte';
   import PluginManager from './PluginManager.svelte';
   import Icon from './Icon.svelte';
   import appIcon from '../../../assets/branding/icon.png';
@@ -26,9 +27,13 @@
 
 <main class="settings-layout">
   <nav class="settings-nav" aria-label={t('settings')}>
-    {#each [['general', 'sliders'], ['devices', 'device'], ['plugins', 'plugin'], ['about', 'info']] as [name, icon]}
+    {#each [['general', 'sliders'], ['devices', 'device'], ['panels', 'pages'], ['plugins', 'plugin'], ['about', 'info']] as [name, icon]}
       <button class:current={tab === name} onclick={() => (tab = name)}
-        ><Icon name={icon} />{t(name as 'general' | 'devices' | 'plugins' | 'about')}</button
+        ><Icon name={icon} />{name === 'panels'
+          ? config.locale === 'ru'
+            ? 'Панели'
+            : 'Panels'
+          : t(name as 'general' | 'devices' | 'plugins' | 'about')}</button
       >
     {/each}
     <button class="settings-quit" onclick={() => void client.quit()}
@@ -38,6 +43,8 @@
   <section class="settings-content">
     {#if tab === 'devices'}
       <Registry {client} />
+    {:else if tab === 'panels'}
+      <PanelManager ru={config.locale === 'ru'} />
     {:else if tab === 'general'}
       <h2>{t('general')}</h2>
       <div class="settings-group">

@@ -40,6 +40,10 @@ pub fn configuration() -> Option<&'static Configuration> {
         .as_ref()
 }
 pub fn start(app: &tauri::AppHandle) {
+    if crate::host_services_smoke::directory().is_some() {
+        crate::host_services_smoke::start(app);
+        return;
+    }
     if let Some(fixtures) = std::env::var_os("DECKWEAVE_SMOKE_INSTALLER") {
         installer(app, PathBuf::from(fixtures));
         return;
