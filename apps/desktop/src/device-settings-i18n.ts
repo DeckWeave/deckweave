@@ -20,12 +20,12 @@ const ru = {
   on: 'Включена',
   off: 'Выключена',
   unknown: 'Не задано',
-  unchanged: 'Текущее значение устройства неизвестно. Изменение здесь отправит новое значение.',
+  unchanged: 'Текущее значение неизвестно',
   offline: 'Сохранено. Будет отправлено при подключении.',
   pending: 'Отправляется…',
-  sent_no_readback: 'Отправлено устройству · обратное чтение недоступно',
+  sent_no_readback: 'Отправлено · без обратного чтения',
   error: 'Не удалось отправить',
-  hint: 'Изменения сохраняются сразу. Яркость отправляется после завершения перетаскивания. Устройство не сообщает фактические значения этих настроек.',
+  hint: 'Устройство не сообщает текущие значения. Яркость отправляется после отпускания ползунка.',
 };
 const en: Record<keyof typeof ru, string> = {
   title: 'Displays and feedback',
@@ -35,12 +35,12 @@ const en: Record<keyof typeof ru, string> = {
   on: 'On',
   off: 'Off',
   unknown: 'Not set',
-  unchanged: 'The current device value is unknown. Changing this control sends a new value.',
+  unchanged: 'Current device value unknown',
   offline: 'Saved. Will be sent when connected.',
   pending: 'Sending…',
-  sent_no_readback: 'Sent to device · readback unavailable',
+  sent_no_readback: 'Sent · no readback',
   error: 'Could not send',
-  hint: 'Changes save immediately. Brightness is sent when dragging ends. The device does not report the actual values of these settings.',
+  hint: 'The device does not report current values. Brightness is sent when the slider is released.',
 };
 export function deviceSettingsText(locale: Locale, key: keyof typeof ru): string {
   return (locale === 'ru' ? ru : en)[key];

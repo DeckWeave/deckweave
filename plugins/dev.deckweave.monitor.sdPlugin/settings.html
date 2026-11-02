@@ -29,6 +29,7 @@
       color: #b8c6d8;
     }
   </style>
+  <link rel="stylesheet" href="inspector.css" />
   <h2>System Monitor</h2>
   <label><span id="labelText">Label</span><input id="label" maxlength="24" /></label
   ><label
@@ -38,12 +39,16 @@
       <option value="ru">Русский</option>
     </select></label
   >
-  <p id="hint">
-    Read-only whole-system CPU, used physical memory and OS uptime. Shared sample every 2 seconds;
-    no network requests. Changes save automatically.
-  </p>
+  <details class="inspector-help">
+    <summary><span class="help-ru">Справка</span><span class="help-en">Help</span></summary>
+    <p id="hint">
+      Read-only whole-system CPU, used physical memory and OS uptime. Shared sample every 2 seconds;
+      no network requests. Changes save automatically.
+    </p>
+  </details>
   <p id="status" role="status"></p>
-  <script>
+  <script src="inspector-theme.js"></script>
+<script>
     let socket,
       context,
       settings = {},
@@ -57,6 +62,7 @@
           el(id).value = settings[id] ?? (id === 'language' ? (ru ? 'ru' : 'en') : '');
     }
     window.connectElgatoStreamDeckSocket = (port, uuid, event, info, actionInfo) => {
+      DeckWeaveAppearance.apply(JSON.parse(info).deckweave);
       context = uuid;
       ru = JSON.parse(info).application?.language?.startsWith('ru') ?? false;
       document.documentElement.lang = ru ? 'ru' : 'en';
@@ -69,6 +75,7 @@
       settings = JSON.parse(actionInfo).payload?.settings ?? {};
       show();
       socket = new WebSocket(`ws://127.0.0.1:${port}`);
+      DeckWeaveAppearance.subscribe(socket, uuid);
       socket.onopen = () => {
         socket.send(JSON.stringify({ event, uuid }));
         ready = true;
@@ -77,6 +84,7 @@
       socket.onmessage = ({ data }) => {
         try {
           const m = JSON.parse(data);
+        DeckWeaveAppearance.receive(m);
           if (m.event === 'didReceiveSettings') {
             settings = m.payload.settings ?? {};
             show();

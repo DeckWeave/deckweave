@@ -82,6 +82,39 @@ fn sequence(action: Binding, delay_ms: u64) -> Binding {
 }
 
 #[test]
+fn empty_compositions_can_be_saved_and_executed_without_placeholder_effects() {
+    let mut core = Core::memory().unwrap();
+    program(&mut core, "key-1", Plan::Sequence { steps: vec![] });
+    input(&mut core, "key-1", InputEvent::Click);
+    let mut empty = Binding::new(ActionKind::Program, "Empty state");
+    empty.plan = Some(Plan::Sequence { steps: vec![] });
+    let counter = count("Second state");
+    program(
+        &mut core,
+        "key-2",
+        Plan::Switch {
+            states: vec![empty, counter.clone()],
+        },
+    );
+    input(&mut core, "key-2", InputEvent::Click);
+    input(&mut core, "key-2", InputEvent::Click);
+    assert_eq!(value(&core, &counter), 1);
+    program(
+        &mut core,
+        "key-3",
+        Plan::KeyLogic {
+            single: None,
+            double: None,
+            hold: None,
+            double_ms: 350,
+            hold_ms: 650,
+        },
+    );
+    input(&mut core, "key-3", InputEvent::Click);
+    assert!(core.take_effects().is_empty());
+}
+
+#[test]
 fn switch_alternates_sequences_and_changes_the_same_button() {
     let mut c = Core::memory().unwrap();
     let a = count("A");

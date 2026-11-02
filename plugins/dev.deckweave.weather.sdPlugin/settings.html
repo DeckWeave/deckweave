@@ -88,6 +88,7 @@
       color: #a4c7ff;
     }
   </style>
+  <link rel="stylesheet" href="inspector.css" />
   <h1 id="heading">Weather</h1>
   <p id="intro"></p>
   <form id="searchForm">
@@ -131,7 +132,8 @@
     >
     · <a href="https://www.geonames.org/" target="_blank" rel="noreferrer">GeoNames</a>
   </p>
-  <script>
+  <script src="inspector-theme.js"></script>
+<script>
     let socket,
       context,
       settings = {},
@@ -199,12 +201,14 @@
         );
     }
     function connectElgatoStreamDeckSocket(port, uuid, event, info, actionInfo) {
+      DeckWeaveAppearance.apply(JSON.parse(info).deckweave);
       context = uuid;
       const host = JSON.parse(info);
       language = host.application?.language?.startsWith('ru') ? 'ru' : 'en';
       settings = JSON.parse(actionInfo).payload.settings || {};
       show();
       socket = new WebSocket(`ws://127.0.0.1:${port}`);
+      DeckWeaveAppearance.subscribe(socket, uuid);
       socket.onopen = () => {
         socket.send(JSON.stringify({ event, uuid }));
         ready = true;
@@ -212,6 +216,7 @@
       };
       socket.onmessage = ({ data }) => {
         const m = JSON.parse(data);
+        DeckWeaveAppearance.receive(m);
         if (m.event === 'didReceiveSettings') {
           settings = m.payload.settings || {};
           show();

@@ -54,10 +54,10 @@
     stroke-width: 3.5;
   }
   .track {
-    stroke: #ffffff24;
+    stroke: color-mix(in srgb, var(--text) 25%, transparent);
   }
   .fill {
-    stroke: #77e2ff;
+    stroke: var(--depth);
     stroke-linecap: round;
     transform: rotate(-90deg);
     transform-origin: center;

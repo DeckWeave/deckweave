@@ -1,5 +1,12 @@
 <script lang="ts">
-  import { untrack } from 'svelte';
+  import { untrack, setContext } from 'svelte';
+  import {
+    actionDropContext,
+    findDrop,
+    clearDrop,
+    type LibraryAction,
+    type ActionLibraryBridge,
+  } from './action-drop';
   import { invoke } from '@tauri-apps/api/core';
   import type { Client } from './client.svelte';
   import { text } from './i18n';
@@ -28,6 +35,8 @@
   import ProviderSettings from './ProviderSettings.svelte';
   import DeviceDecorations from './DeviceDecorations.svelte';
   import DepthRing from './DepthRing.svelte';
+  import Icon from './Icon.svelte';
+  import { actionIcon } from './icons';
   let {
     client,
     device,
@@ -43,6 +52,15 @@
   let filter = $state<'keys' | 'dials' | 'plugins'>('keys');
   let testing = $state(false);
   let profileSettings = $state(false);
+  let panelEditing = $state(false);
+  let panelContext = $state('');
+  $effect(() => {
+    const context = device.id + ':' + device.profile.id + ':' + device.profile.active_page_id;
+    if (panelContext !== context) {
+      panelContext = context;
+      panelEditing = false;
+    }
+  });
   let actionLayer = $state<'main' | 'fn'>('main');
   let keyboardSession = $state<ProviderSessionState | null>(null);
   let keyboardRoutes = $state<
@@ -79,12 +97,36 @@
   let libraryWidth = $state(preference('deckweave.libraryWidth', 280));
   const inspectorMax = $derived(Math.max(180, viewportHeight - 360));
   const libraryMax = $derived(Math.max(220, Math.min(600, viewportWidth - 420)));
-  type LibraryAction =
-    | { type: 'builtin'; kind: 'counter' | 'toggle' }
-    | { type: 'plan'; plan: Plan['type'] }
-    | { type: 'folder' }
-    | { type: 'plugin'; package: string; action: string; label: string; controllers: string[] };
+  setContext<ActionLibraryBridge>(actionDropContext, {
+    selected: () => selectedLibrary?.item ?? null,
+    enabled: (item) =>
+      item.type !== 'plugin' ||
+      !snapshot.configuration.preferences.disabled_plugins.includes(item.package),
+    make: (item, controller) => {
+      if (item.type === 'folder') return null;
+      if (item.type === 'builtin') return createAction(item.kind, t(item.kind));
+      if (item.type === 'plan')
+        return { ...createAction('program', t(item.plan)), plan: createPlan(item.plan, device) };
+      return {
+        ...createAction('plugin', item.label),
+        plugin: { package: item.package, action: item.action, settings: {}, controller },
+      };
+    },
+  });
+  let nestedTarget: ReturnType<typeof findDrop>;
+  let nestedIdentity = '';
+  const dragContext = () =>
+    [
+      device.id,
+      device.profile.id,
+      device.profile.active_page_id,
+      selectedId,
+      actionLayer,
+      workspace,
+    ].join(':');
+  let dragStartedIn = '';
   let dragging = $state<LibraryAction | null>(null);
+  let selectedLibrary = $state<{ item: LibraryAction; name: string; id: string } | null>(null);
   let dropTarget = $state<string | null>(null);
   let dragSession = $state<{ id: number; x: number; y: number; item: LibraryAction } | null>(null);
   let dragX = $state(0);
@@ -123,11 +165,12 @@
       )
     );
   }
-  function source(item: LibraryAction) {
+  function source(item: LibraryAction, name: string, id: string) {
     return {
       onpointerdown: (e: PointerEvent) => {
         if (e.button !== 0) return;
         suppressClick = false;
+        dragStartedIn = dragContext();
         (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
         dragSession = { id: e.pointerId, x: e.clientX, y: e.clientY, item };
       },
@@ -139,6 +182,16 @@
         dragging = dragSession.item;
         dragX = e.clientX;
         dragY = e.clientY;
+        clearDrop(nestedTarget);
+        nestedTarget = findDrop(e.clientX, e.clientY);
+        nestedIdentity = nestedTarget?.identity() ?? '';
+        if (nestedTarget) {
+          const allowed = nestedTarget.accepts(dragSession.item);
+          nestedTarget.node.dataset.dropActive = String(allowed);
+          nestedTarget.node.dataset.dropRejected = String(!allowed);
+          dropTarget = null;
+          return;
+        }
         const id = document
           .elementFromPoint(e.clientX, e.clientY)
           ?.closest<HTMLElement>('[data-control-id]')?.dataset.controlId;
@@ -150,6 +203,21 @@
         if (dragging) {
           e.preventDefault();
           suppressClick = true;
+          if (dragStartedIn !== dragContext()) {
+            endDrag();
+            return;
+          }
+          const nested = findDrop(e.clientX, e.clientY);
+          if (nested) {
+            if (
+              nested === nestedTarget &&
+              nestedIdentity === nested.identity() &&
+              nested.accepts(dragSession.item)
+            )
+              nested.drop(dragSession.item);
+            endDrag();
+            return;
+          }
           const target = document
             .elementFromPoint(e.clientX, e.clientY)
             ?.closest<HTMLElement>('[data-control-id]')?.dataset.controlId;
@@ -170,11 +238,16 @@
           return;
         }
         suppressClick = false;
-        applyLibrary(item, selected);
+        // A library click selects a tool. Only a drop or the explicit Assign
+        // command may change a device assignment, including keyboard activation.
+        selectedLibrary = { item, name, id };
       },
     };
   }
   function endDrag() {
+    clearDrop(nestedTarget);
+    nestedTarget = undefined;
+    nestedIdentity = '';
     dragSession = null;
     dragging = null;
     dropTarget = null;
@@ -182,6 +255,7 @@
   function applyLibrary(item: LibraryAction, control: Control | undefined) {
     if (!control || !accepts(item, control)) return;
     select(control);
+    panelEditing = false;
     if (item.type === 'builtin') assign(item.kind);
     else if (item.type === 'plan') {
       const next = createPlan(item.plan, device);
@@ -592,8 +666,18 @@
       }))
       .filter((group) => group.actions.length),
   );
+  $effect(() => {
+    if (
+      selectedLibrary &&
+      !libraryGroups.some((group) =>
+        group.actions.some((action) => action.id === selectedLibrary!.id),
+      )
+    )
+      selectedLibrary = null;
+  });
 
   function select(control: Control) {
+    if (control.kind !== 'touch') panelEditing = false;
     selectedId = control.id;
     filter = control.kind === 'dial' ? 'dials' : 'keys';
   }
@@ -727,6 +811,8 @@
       selectedId &&
       binding &&
       !testing &&
+      e.target instanceof Element &&
+      !!e.target.closest('[data-control-id], .inspector') &&
       !(
         e.target instanceof Element &&
         e.target.closest('input,textarea,select,[contenteditable="true"],[role="dialog"],dialog')
@@ -815,7 +901,8 @@
             <button
               class="quiet"
               aria-label={t('profileSettings')}
-              onclick={() => (profileSettings = !profileSettings)}>⚙</button
+              title={t('profileSettings')}
+              onclick={() => (profileSettings = !profileSettings)}><Icon name="profile" /></button
             >
           </div>
         </div>
@@ -841,7 +928,6 @@
                   : 'Onboard layer is shared by every profile'}
                 onclick={() => (actionLayer = 'fn')}>Fn</button
               >
-              <span class="keyboard-scope">{ru ? 'Общий слой' : 'Shared layer'}</span>
             </div>{/if}
           {#if physicalKeyboard}<div
               class="preview-zoom"
@@ -869,14 +955,25 @@
                 disabled={client.busy || snapshot.configuration.preferences.preview_scale >= 150}
                 aria-label={ru ? 'Увеличить клавиатуру' : 'Zoom in keyboard'}
                 onclick={() => previewScale(snapshot.configuration.preferences.preview_scale + 25)}
-                >＋</button
+                ><Icon name="plus" /></button
               >
             </div>{/if}
+          {#if geometry.surface_pixels[0] > 0 && geometry.surface_pixels[1] > 0}<button
+              class:current={panelEditing}
+              aria-pressed={panelEditing}
+              onclick={() => {
+                if (!panelEditing && selected?.kind !== 'touch')
+                  selectedId = page.panel?.regions[0]
+                    ? 'panel-' + page.panel.regions[0].id
+                    : (geometry.controls.find((c) => c.kind === 'touch')?.id ?? null);
+                panelEditing = !panelEditing;
+              }}><Icon name="device" />{t('panelLayout')}</button
+            >{/if}
           <button
             class="quiet device-settings-link"
             aria-label={t('deviceSettings')}
             title={t('deviceSettings')}
-            onclick={() => (workspace = 'settings')}>⚙</button
+            onclick={() => (workspace = 'settings')}><Icon name="sliders" /></button
           >
         </div>
       </div>
@@ -916,7 +1013,9 @@
               maxlength="80"
               bind:value={newProfile}
               placeholder={t('profileName')}
-            /><button type="submit" disabled={!newProfile.trim()}>＋ {t('addProfile')}</button>
+            /><button type="submit" disabled={!newProfile.trim()}
+              ><Icon name="plus" />{t('addProfile')}</button
+            >
           </form>
         </div>{/if}
       <div class="panel-stage" class:keyboard-stage={physicalKeyboard}>
@@ -964,6 +1063,7 @@
               class:physical-key={physicalKeyboard && control.kind === 'key'}
               class:dial-control={control.kind === 'dial'}
               class:touch-control={control.kind === 'touch'}
+              class:panel-layout-control={panelEditing && control.kind === 'touch'}
               class:strip-overlay={control.kind === 'touch' && stripVisible}
               class:selected={selectedId === control.id}
               class:pressed
@@ -995,6 +1095,10 @@
                   openFolder(plan.page_id);
               }}
             >
+              {#if panelEditing && control.kind === 'touch'}<span class="panel-layout-overlay"
+                  >{page.panel?.regions.find((r) => 'panel-' + r.id === control.id)?.name ??
+                    'T' + control.number}</span
+                >{/if}
               <DepthRing reading={depth} />
               {#if control.kind === 'key' && !hasDisplay(control)}
                 <span class="physical-key-label">{controlLabel(control)}</span><span
@@ -1069,13 +1173,7 @@
                 type: 'add_page',
                 device_id: device.id,
                 expected_revision: revision,
-              }))}>＋</button
-          >
-        </div>{:else}<div class="page-row">
-          <span
-            >{ru
-              ? 'Назначения клавиатуры общие для всех профилей. Действия DeckWeave — в текущем профиле.'
-              : 'Keyboard assignments are shared by all profiles. DeckWeave actions belong to the current profile.'}</span
+              }))}><Icon name="plus" /></button
           >
         </div>{/if}
       {#if page.parent}<div class="folder-toolbar">
@@ -1087,22 +1185,6 @@
             />{t('closeFolderAfterAction')}</label
           >
         </div>{/if}
-      {#if geometry.surface_pixels[0] > 0 && geometry.surface_pixels[1] > 0}<PanelEditor
-          value={page.panel}
-          controls={geometry.controls}
-          locale={snapshot.configuration.locale}
-          onchange={(layout) => {
-            const pageId = page.id;
-            void client.send((revision) => ({
-              type: 'set_panel_layout',
-              device_id: device.id,
-              page_id: pageId,
-              layout,
-              expected_revision: revision,
-            }));
-          }}
-        />
-      {/if}
       <PaneSplitter
         orientation="horizontal"
         label={t('resizeInspector')}
@@ -1115,7 +1197,41 @@
         }}
       />
       <div class="inspector">
-        {#if selected}
+        {#if panelEditing}
+          <div class="inspector-heading">
+            <h2>{t('panelLayout')}</h2>
+            <button
+              class="quiet"
+              aria-label={ru ? 'Закрыть' : 'Close'}
+              title={ru ? 'Закрыть' : 'Close'}
+              onclick={() => (panelEditing = false)}><Icon name="close" /></button
+            >
+          </div>
+          <PanelEditor
+            context={device.id + ':' + device.profile.id + ':' + page.id}
+            value={page.panel}
+            controls={geometry.controls}
+            locale={snapshot.configuration.locale}
+            pixels={geometry.surface_pixels}
+            bindings={visibleBindings}
+            {selectedId}
+            onselect={(id) => (selectedId = id)}
+            onaction={(id) => {
+              selectedId = id;
+              panelEditing = false;
+            }}
+            onchange={(layout) => {
+              const pageId = page.id;
+              void client.send((revision) => ({
+                type: 'set_panel_layout',
+                device_id: device.id,
+                page_id: pageId,
+                layout,
+                expected_revision: revision,
+              }));
+            }}
+          />
+        {:else if selected}
           <div class="inspector-heading">
             <div class="selected-control-heading">
               <h2>
@@ -1133,17 +1249,33 @@
                   /><strong
                     >{selectedDepth ? (selectedDepth.um / 1000).toFixed(2) : '—'}
                     {ru ? 'мм' : 'mm'}</strong
-                  ><small>{ru ? 'текущий ход' : 'current travel'}</small>
+                  >
                 </div>{/if}
             </div>
+            {#if binding?.plugin && hasInspector && !pluginUnavailable}<button
+                onclick={() => void client.openInspector(binding!.id)}
+                ><Icon name="sliders" />{t('pluginSettings')}</button
+              >{/if}
             <button
               class="primary test-button"
               disabled={!binding ||
                 testing ||
                 pluginUnavailable ||
                 (binding.kind === 'plugin' && result?.running)}
-              onclick={() => void check()}>{testing ? t('checking') : `▷ ${t('check')}`}</button
+              title={physicalKeyboard
+                ? ru
+                  ? 'Программная проверка действия; физический ввод не проверяется'
+                  : 'Run action in software; physical input is not tested'
+                : t('check')}
+              onclick={() => void check()}
+              ><Icon name="play" />{testing ? t('checking') : t('check')}</button
             >
+            {#if binding}<button
+                class="quiet icon-button danger-text"
+                title={t('remove') + ' · Delete'}
+                aria-label={t('remove')}
+                onclick={() => assign(null)}><Icon name="trash" /></button
+              >{/if}
           </div>
           {#if physicalKeyboard}<KeyboardAssignmentSetup
               native={nativeFor(selected.id)}
@@ -1187,6 +1319,7 @@
               {#if result?.error}<p class="connection-error">{result.error}</p>{/if}
               {#if !physicalKeyboard && actionLayer !== 'fn' && (selected.kind === 'key' || (selected.kind === 'dial' && binding.plugin?.controller !== 'Panel'))}<label
                   class="pin-field"
+                  title={t('pinned')}
                   ><input
                     type="checkbox"
                     checked={!!device.pinned[selectedId!]}
@@ -1222,32 +1355,39 @@
                       >{ru ? 'Управление расширениями' : 'Manage extensions'} →</button
                     >
                   </div>{/if}
-                {#if selected.kind === 'touch'}
-                  <label class="form-row"
-                    ><span>{t('controller')}</span><select
-                      value={binding.plugin.controller ?? 'Keypad'}
-                      onchange={(e) =>
-                        assignPlugin(
-                          {
-                            ...binding!.plugin!,
-                            controller: e.currentTarget.value as 'Keypad' | 'Encoder' | 'Panel',
-                          },
-                          binding!.label,
-                        )}
-                    >
-                      {#each client.plugins
-                        .find((p) => p.id === binding!.plugin!.package)
-                        ?.actions.find((a) => a.id === binding!.plugin!.action)?.controllers ?? ['Keypad'] as c}<option
-                          value={c}>{c}</option
-                        >{/each}</select
-                    ></label
-                  >
+                {@const controllers =
+                  selectedPackage?.actions.find((a) => a.id === binding!.plugin!.action)
+                    ?.controllers ?? []}
+                {#if selected.kind === 'touch' && controllers.length > 1}
+                  <div class="direction-choice">
+                    <span>{t('controller')}</span>
+                    <div class="segmented" role="group" aria-label={t('controller')}>
+                      {#each controllers as controller}<button
+                          class:current={(binding.plugin.controller ?? 'Keypad') === controller}
+                          aria-pressed={(binding.plugin.controller ?? 'Keypad') === controller}
+                          onclick={() =>
+                            assignPlugin(
+                              {
+                                ...binding!.plugin!,
+                                controller: controller as 'Keypad' | 'Encoder' | 'Panel',
+                              },
+                              binding!.label,
+                            )}
+                          >{controller === 'Panel'
+                            ? ru
+                              ? 'Своя панель'
+                              : 'Custom panel'
+                            : controller === 'Encoder'
+                              ? ru
+                                ? 'Крутилка'
+                                : 'Dial'
+                              : ru
+                                ? 'Кнопка'
+                                : 'Key'}</button
+                        >{/each}
+                    </div>
+                  </div>
                 {/if}
-                {#if hasInspector && !pluginUnavailable}<div class="dial-tests">
-                    <button onclick={() => void client.openInspector(binding!.id)}
-                      >{t('pluginSettings')}</button
-                    >
-                  </div>{/if}
                 <details class="plugin-options">
                   <summary>{t('advancedSettings')}</summary>
                   <button
@@ -1305,14 +1445,15 @@
                 /></label
               >
               {#if folder}<div class="folder-controls">
-                  <button onclick={() => openFolder(folder!.id)}>▱ {t('openFolder')}</button><label
+                  <button onclick={() => openFolder(folder!.id)}
+                    ><Icon name="folder" />{t('openFolder')}</button
+                  ><label
                     ><input
                       type="checkbox"
                       checked={folder.close_after_action}
                       onchange={(e) => folderBehavior(folder!.id, e.currentTarget.checked)}
                     />{t('closeFolderAfterAction')}</label
                   >
-                  <p>{t('folderEditHint')}</p>
                 </div>{/if}
               {#if binding.plan && !folder}<PlanEditor
                   feedback={snapshot.feedback}
@@ -1334,66 +1475,49 @@
                   class="quiet"
                   onclick={() =>
                     void client.send(() => ({ type: 'cancel_actions', device_id: device.id }))}
-                  >{t('cancelActions')}</button
+                  ><Icon name="stop" />{t('cancelActions')}</button
                 >
               {/if}
-              <div class="form-row">
-                <span>{t('actionResult')}</span>
-                <div class="result-value" aria-live="polite">
-                  {result
-                    ? result.running
-                      ? t('running')
-                      : binding.plan?.type === 'switch'
-                        ? `${t('nextAction')}: ${result.title ?? ''}`
-                        : binding.plan?.type === 'dial_stack' ||
-                            binding.plan?.type === 'action_wheel'
-                          ? `${t('selectedAction')}: ${result.title ?? ''} ${result.display ?? ''}`
-                          : binding.kind === 'program'
-                            ? (result.display ?? t('noActionYet'))
-                            : binding.kind === 'plugin'
-                              ? (result.title ?? (result.error || t('connected')))
-                              : binding.kind === 'counter'
-                                ? result.value
-                                : result.active
-                                  ? t('on')
-                                  : t('off')
-                    : t('noActionYet')}
-                </div>
-              </div>
+              {#if result && (result.running || result.error || result.display || result.title || ['counter', 'toggle'].includes(binding.kind) || ['switch', 'dial_stack', 'action_wheel'].includes(binding.plan?.type ?? ''))}<div
+                  class="form-row"
+                >
+                  <span>{t('actionResult')}</span>
+                  <div class="result-value" aria-live="polite">
+                    {result
+                      ? result.running
+                        ? t('running')
+                        : binding.plan?.type === 'switch'
+                          ? `${t('nextAction')}: ${result.title ?? ''}`
+                          : binding.plan?.type === 'dial_stack' ||
+                              binding.plan?.type === 'action_wheel'
+                            ? `${t('selectedAction')}: ${result.title ?? ''} ${result.display ?? ''}`
+                            : binding.kind === 'program'
+                              ? (result.display ?? t('noActionYet'))
+                              : binding.kind === 'plugin'
+                                ? (result.title ?? (result.error || t('connected')))
+                                : binding.kind === 'counter'
+                                  ? result.value
+                                  : result.active
+                                    ? t('on')
+                                    : t('off')
+                      : t('noActionYet')}
+                  </div>
+                </div>{/if}
               {#if selected.kind === 'dial'}<div class="dial-tests">
                   <button
                     onclick={() =>
                       void client.input(device.id, selectedId!, { type: 'rotate', ticks: -1 })}
-                    >↶ {t('rotateLeft')}</button
+                    ><Icon name="rotate_left" />{t('rotateLeft')}</button
                   ><button
                     onclick={() =>
                       void client.input(device.id, selectedId!, { type: 'rotate', ticks: 1 })}
-                    >↷ {t('rotateRight')}</button
+                    ><Icon name="rotate_right" />{t('rotateRight')}</button
                   >
                 </div>{/if}
-              {#if device.provider_descriptor}<p class="inspector-hint">
-                  {ru
-                    ? '«Проверить» запускает назначенное действие в программе. Это не проверка считывания физической клавиатуры.'
-                    : 'Test runs the assigned action in software. It does not verify physical keyboard input.'}
-                </p>{/if}
-              <div class="inspector-bottom">
-                <p>{t(binding.plugin ? 'pluginTest' : binding.plan ? 'systemTest' : 'safeTest')}</p>
-                <button
-                  class="text-button"
-                  title={t('remove') + ' · Delete'}
-                  onclick={() => assign(null)}
-                  >{physicalKeyboard
-                    ? ru
-                      ? 'Удалить действие из профиля'
-                      : 'Remove profile action'
-                    : t('remove')} · Del</button
-                >
-              </div>
             </div>
           {:else}<p class="inspector-hint">{t('assignHint')}</p>{/if}
         {:else}<div class="inspector-empty">
-            <div class="select-icon">⌖</div>
-            <h2>{t('selectControl')}</h2>
+            <Icon name="device" size={24} />
             <p>{t('selectHint')}</p>
           </div>{/if}
       </div>
@@ -1420,7 +1544,6 @@
     />
     <aside class="action-library">
       <div class="library-header">
-        <h2>{t('actions')}</h2>
         <div class="library-tabs">
           {#each ['keys', 'dials', 'plugins'] as tab}<button
               class:current={filter === tab}
@@ -1443,37 +1566,55 @@
             aria-pressed={editingLibrary}
             onclick={() => (editingLibrary = !editingLibrary)}
           >
-            {editingLibrary ? t('done') : '☷'}
+            <Icon name={editingLibrary ? 'check' : 'sliders'} />
           </button>
         </div>
       </div>
       {#if editingLibrary}
-        <LibraryOptions {client} groups={libraryGroups} />
+        <LibraryOptions {client} groups={libraryGroups} {search} />
       {:else}
-        {#each visibleGroups as group (group.id)}
-          <details class="library-group" open>
-            <summary>{group.name}</summary>
-            <div class="action-list">
-              {#each group.actions as action (action.id)}
-                <button class="action-item" {...source(action.item)}>
-                  <span class="action-icon" aria-hidden="true"
-                    >{action.item.type === 'plugin'
-                      ? '◈'
-                      : action.item.type === 'folder'
-                        ? '▱'
-                        : action.id === 'plan:sequence'
-                          ? '☷'
-                          : action.id === 'plan:switch'
-                            ? '⇄'
-                            : '◇'}</span
+        <div class="library-scroll">
+          {#each visibleGroups as group (group.id)}
+            <details class="library-group" open>
+              <summary>{group.name}</summary>
+              <div class="action-list">
+                {#each group.actions as action (action.id)}
+                  <button
+                    class="action-item"
+                    class:library-selected={selectedLibrary?.id === action.id}
+                    aria-pressed={selectedLibrary?.id === action.id}
+                    title={ru
+                      ? 'Перетащите на элемент устройства. Клик только выбирает действие.'
+                      : 'Drag onto a device control. Clicking only selects the action.'}
+                    {...source(action.item, action.name, action.id)}
                   >
-                  <strong>{action.name}</strong>
-                </button>
-              {/each}
-            </div>
-          </details>
-        {/each}
-        {#if !visibleGroups.length}<p class="library-empty">{t('noResults')}</p>{/if}
+                    <span class="action-icon" aria-hidden="true"
+                      ><Icon name={actionIcon(action.id, action.name)} size={18} /></span
+                    >
+                    <strong>{action.name}</strong>
+                  </button>
+                {/each}
+              </div>
+            </details>
+          {/each}
+          {#if !visibleGroups.length}<p class="library-empty">{t('noResults')}</p>{/if}
+        </div>
+        <div class="library-assignment-bar">
+          {#if selectedLibrary}<span
+              ><Icon name={actionIcon(selectedLibrary.id)} /><strong>{selectedLibrary.name}</strong
+              ></span
+            ><button
+              class="primary"
+              disabled={!selected || client.busy || !accepts(selectedLibrary.item, selected)}
+              onclick={() => applyLibrary(selectedLibrary!.item, selected)}
+              >{binding ? (ru ? 'Заменить' : 'Replace') : ru ? 'Назначить' : 'Assign'}{selected
+                ? ' · ' + controlLabel(selected)
+                : ''}</button
+            >
+          {:else}<span class="subtle"
+              >{ru ? 'Перетащите действие на устройство' : 'Drag an action onto the device'}</span
+            >{/if}
+        </div>
       {/if}
     </aside>
   </div>
@@ -1490,14 +1631,14 @@
       onclick={() => {
         void check();
         contextMenu = null;
-      }}>▷ {t('check')}</button
+      }}><Icon name="play" />{t('check')}</button
     ><button
       role="menuitem"
       disabled={!binding}
       onclick={() => {
         assign(null);
         contextMenu = null;
-      }}>{t('remove')} · Del</button
+      }}><Icon name="trash" />{t('remove')} · Del</button
     >
   </div>{/if}
 
@@ -1522,7 +1663,7 @@
   .preview-zoom {
     display: flex;
     gap: 1px;
-    border: 1px solid #464d5a;
+    border: 1px solid var(--line);
     border-radius: 6px;
     overflow: hidden;
   }
@@ -1531,7 +1672,7 @@
     border-radius: 0;
     padding: 4px 7px;
     font-size: 12px;
-    background: #292d35;
+    background: var(--panel);
   }
   .preview-zoom .zoom-fit {
     min-width: 76px;
@@ -1540,7 +1681,7 @@
     align-self: center;
     padding: 0 7px;
     font-size: 11px;
-    color: #b4bdcb;
+    color: var(--muted);
     white-space: nowrap;
   }
   .selected-control-heading {
@@ -1555,7 +1696,7 @@
     align-items: center;
     gap: 8px;
     white-space: nowrap;
-    color: #c9f0ff;
+    color: var(--depth);
   }
   .selected-key-depth > span {
     font-size: 12px;
@@ -1564,10 +1705,6 @@
   .selected-key-depth strong {
     font-size: 16px;
     font-variant-numeric: tabular-nums;
-  }
-  .selected-key-depth small {
-    font-size: 11px;
-    color: #a4b1bf;
   }
   .physical-key-binding {
     font-size: 10px;
@@ -1578,7 +1715,7 @@
     white-space: nowrap;
   }
   .physical-key-binding.host-assignment {
-    color: #bce6ff;
+    color: var(--depth);
   }
   .device-mode-content {
     height: calc(100vh - 44px);
@@ -1598,8 +1735,8 @@
     position: fixed;
     z-index: 1000;
     padding: 6px;
-    background: #282b33;
-    border: 1px solid #666;
+    background: var(--panel);
+    border: 1px solid var(--line);
     border-radius: 8px;
     box-shadow: 0 8px 30px #0008;
     display: grid;

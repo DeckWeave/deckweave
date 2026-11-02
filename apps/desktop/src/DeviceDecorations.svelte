@@ -48,10 +48,10 @@
   .device-light-strip {
     position: absolute;
     box-sizing: border-box;
-    border: 1px solid #748094;
+    border: 1px solid var(--line);
     border-radius: 4px;
     padding: 2px;
-    background: #121922;
+    background: var(--inset);
     box-shadow: inset 0 0 3px #0008;
     display: flex;
     align-items: center;
@@ -63,7 +63,7 @@
     height: 38%;
     min-height: 2px;
     border-radius: 2px;
-    background: repeating-linear-gradient(90deg, #8492a8 0 4%, #2e3949 4% 7%);
+    background: repeating-linear-gradient(90deg, var(--text) 0 4%, var(--raised) 4% 7%);
     opacity: 0.7;
   }
 </style>

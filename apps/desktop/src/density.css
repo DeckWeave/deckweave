@@ -1,0 +1,830 @@
+/* Desktop operating surface: one density, shared across editors and settings. */
+:root {
+  --toolbar-height: 40px;
+  font-family: 'Segoe UI', sans-serif;
+  font-size: 12px;
+}
+button {
+  min-height: 28px;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+.control,
+.keyboard-selection button,
+.lighting-preview button {
+  min-height: 0;
+}
+button svg {
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+button:has(svg) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+input,
+select,
+textarea {
+  padding: 4px 7px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+input:not([type='checkbox']):not([type='range']):not([type='color']),
+select {
+  min-height: 28px;
+}
+input[type='checkbox'] {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--focus);
+  flex-shrink: 0;
+}
+input[type='range'] {
+  accent-color: var(--focus);
+}
+textarea {
+  line-height: 1.4;
+}
+p {
+  line-height: 1.45;
+  color: var(--muted);
+}
+h1,
+h2 {
+  font-size: 14px;
+  letter-spacing: 0;
+}
+::selection {
+  background: var(--selection);
+  color: var(--text);
+}
+input,
+textarea {
+  caret-color: var(--accent);
+}
+.app-shell button:focus-visible,
+.app-shell input:focus-visible,
+.app-shell select:focus-visible,
+.app-shell summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.app-shell .app-bar,
+.app-shell .app-bar.device-header {
+  height: var(--toolbar-height);
+  padding: 0 12px;
+  gap: 12px;
+}
+.app-shell .brand {
+  gap: 7px;
+}
+.app-shell .brand strong {
+  font-size: 13px;
+}
+.app-shell .brand-mark {
+  width: 25px;
+  height: 25px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  object-fit: contain;
+}
+.app-shell .app-tools {
+  gap: 8px;
+}
+.app-shell .editor-workspace-tabs {
+  justify-self: start;
+}
+.app-shell .editor-workspace-tabs button {
+  height: 28px;
+  padding: 0 9px;
+  font-size: 12px;
+}
+.app-shell .editor-layout,
+.app-shell .settings-layout,
+.app-shell .device-mode-content {
+  height: calc(100dvh - var(--toolbar-height));
+}
+.app-shell .device-toolbar {
+  padding: 6px 12px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.app-shell .device-toolbar > div:first-child {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+.app-shell .device-selector {
+  max-width: 255px;
+  font-size: 13px;
+  padding: 3px 5px;
+}
+.app-shell .toolbar-meta {
+  margin: 0;
+  gap: 5px;
+}
+.app-shell .toolbar-meta select {
+  font-size: 12px;
+  padding: 3px 5px;
+}
+.app-shell .meta-divider {
+  margin: 0 1px;
+}
+.app-shell .device-preview-tools {
+  gap: 6px;
+}
+.app-shell .panel-stage {
+  padding: 8px 12px;
+}
+.app-shell .page-row {
+  gap: 4px;
+  padding: 4px 12px;
+}
+.app-shell .page-row button {
+  min-width: 26px;
+  height: 26px;
+}
+.app-shell .inspector {
+  padding: 8px 12px;
+  height: auto;
+  max-height: var(--inspector-height, 230px);
+}
+.app-shell .inspector-heading {
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.app-shell .selected-control-heading {
+  margin-right: auto;
+}
+.app-shell .inspector-heading h2 {
+  font-size: 13px;
+}
+.app-shell .test-button {
+  min-width: 96px;
+}
+.app-shell .inspector-fields {
+  gap: 6px 12px;
+}
+.app-shell .plan-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 245px), 1fr));
+  gap: 6px 12px;
+}
+.app-shell .plan-fields > label {
+  display: grid;
+  grid-template-columns: minmax(90px, 30%) minmax(0, 1fr);
+  gap: 6px;
+  align-items: center;
+  font-size: 12px;
+}
+.app-shell .direction-choice {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  grid-column: 1/-1;
+}
+.app-shell .plan-fields > .action-step,
+.app-shell .plan-fields > .sequence-actions,
+.app-shell .plan-fields > .gesture-thresholds,
+.app-shell .plan-fields > p {
+  grid-column: 1/-1;
+}
+.app-shell .nested-action {
+  gap: 6px 8px;
+}
+.app-shell .nested-action-choice {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.app-shell .nested-action-choice select {
+  flex: 1;
+  min-width: 0;
+}
+.app-shell .action-replacement {
+  grid-column: 1/-1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding: 6px;
+  background: var(--raised);
+}
+.app-shell .action-replacement > span {
+  margin-right: auto;
+}
+.app-shell .action-step {
+  padding: 7px;
+  border-radius: 4px;
+}
+.app-shell .step-toolbar {
+  margin-bottom: 5px;
+}
+.app-shell .form-row {
+  grid-template-columns: 90px minmax(0, 1fr);
+  gap: 6px;
+}
+.app-shell .form-row > span {
+  color: var(--muted);
+}
+.app-shell .editor-footer {
+  min-height: 23px;
+  padding: 4px 12px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.app-shell .inspector-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+}
+.app-shell .inspector:has(.inspector-empty) {
+  height: 54px;
+}
+.app-shell .pane-splitter:has(+ .inspector > .inspector-empty) {
+  display: none;
+}
+.app-shell .action-library {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.app-shell .library-header {
+  position: static;
+  padding: 8px;
+  flex-shrink: 0;
+}
+.app-shell .library-tabs {
+  margin: 0 0 6px;
+}
+.app-shell .library-tabs button {
+  height: 27px;
+}
+.app-shell .library-search-row {
+  gap: 5px;
+}
+.app-shell .library-display-button {
+  padding: 4px 6px;
+  min-width: 30px;
+}
+.app-shell .library-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.app-shell .library-group {
+  margin: 0;
+}
+.app-shell .library-group > summary {
+  min-height: 27px;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.app-shell .action-list {
+  padding: 0 5px 3px;
+}
+.app-shell .action-item {
+  min-height: 29px;
+  padding: 4px 7px;
+  gap: 8px;
+  border-radius: 4px;
+  justify-content: flex-start;
+}
+.app-shell .action-item strong {
+  font-size: 12px;
+  font-weight: 400;
+}
+.app-shell .action-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.app-shell .action-item.library-selected {
+  border-color: var(--focus);
+  background: var(--raised);
+}
+.app-shell .library-assignment-bar {
+  border-top: 1px solid var(--line);
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+  flex-shrink: 0;
+  background: var(--panel);
+}
+.app-shell .library-assignment-bar > span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+.app-shell .library-assignment-bar strong {
+  font-size: 12px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.app-shell .library-options {
+  padding: 0 8px 8px;
+  overflow: auto;
+  min-height: 0;
+}
+.app-shell .library-options-help {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--muted);
+  padding-bottom: 6px;
+}
+.app-shell .library-options-help > span {
+  flex: 1;
+}
+.app-shell .library-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  margin: 4px 0 8px;
+}
+.app-shell .library-option-group {
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+.app-shell .library-option-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 32px;
+  padding: 2px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid transparent;
+}
+.app-shell .library-option-row > span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.app-shell .library-option-row .reorder-handle {
+  padding: 2px;
+  width: 24px;
+  min-width: 24px;
+  height: 28px;
+  cursor: grab;
+  touch-action: none;
+  color: var(--muted);
+}
+.app-shell .library-expand {
+  flex: 1;
+  min-width: 0;
+  justify-content: start;
+  padding: 2px 0;
+  text-align: left;
+}
+.app-shell .library-expand strong {
+  flex: 1;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  font-weight: 500;
+}
+.app-shell .library-expand small {
+  color: var(--muted);
+  font-size: 10px;
+}
+.app-shell .library-expand > span {
+  display: flex;
+}
+.app-shell .library-expand > span.expanded {
+  transform: rotate(90deg);
+}
+.app-shell .library-option-action {
+  padding-left: 12px;
+  font-size: 11px;
+}
+.app-shell .visibility-toggle {
+  appearance: none;
+  width: 28px;
+  height: 16px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--raised);
+  position: relative;
+  cursor: pointer;
+  padding: 0;
+}
+.app-shell .visibility-toggle::after {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text);
+}
+.app-shell .visibility-toggle:checked {
+  background: var(--selection);
+  border-color: var(--focus);
+}
+.app-shell .visibility-toggle:checked::after {
+  left: 14px;
+}
+.app-shell .option-hidden .library-expand {
+  color: var(--muted);
+}
+.app-shell .order-before {
+  border-top-color: var(--accent);
+}
+.app-shell .order-after {
+  border-bottom-color: var(--accent);
+}
+.app-shell .order-dragging {
+  background: var(--raised);
+}
+.app-shell .icon-button {
+  min-width: 28px;
+  width: 28px;
+  height: 28px;
+  padding: 4px;
+  flex-shrink: 0;
+}
+.app-shell .danger-text {
+  color: var(--danger);
+}
+.app-shell .segmented {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  align-items: center;
+}
+.app-shell .segmented button {
+  min-height: 27px;
+  padding: 3px 8px;
+  font-size: 12px;
+  background: transparent;
+  border-color: transparent;
+}
+.app-shell .segmented button.current {
+  background: var(--selection);
+  border-color: var(--focus);
+  color: var(--text);
+}
+.app-shell .settings-layout {
+  grid-template-columns: 142px minmax(0, 1fr);
+}
+.app-shell .settings-nav {
+  padding: 10px 7px;
+  gap: 3px;
+}
+.app-shell .settings-nav button {
+  padding: 6px 8px;
+  font-size: 12px;
+  border-radius: 4px;
+  justify-content: start;
+}
+.app-shell .settings-content {
+  --settings-padding: 14px;
+  padding: var(--settings-padding);
+}
+.app-shell .settings-content h2 {
+  font-size: 14px;
+}
+.app-shell .settings-intro {
+  margin: 5px 0 10px;
+  font-size: 11px;
+}
+.app-shell .settings-group {
+  margin: 10px 0;
+  border-radius: 4px;
+}
+.app-shell .settings-row {
+  min-height: 36px;
+  padding: 6px 9px;
+  gap: 10px;
+  grid-template-columns: minmax(125px, 35%) minmax(0, 1fr);
+}
+.app-shell .settings-row small {
+  margin-top: 2px;
+  line-height: 1.35;
+}
+.app-shell .settings-row input,
+.app-shell .settings-row select {
+  padding: 4px 7px;
+}
+.app-shell .settings-devices {
+  grid-template-columns: 185px minmax(0, 1fr);
+  gap: 12px;
+}
+.app-shell .settings-device-list button {
+  padding: 6px;
+  min-height: 42px;
+  gap: 7px;
+  border-radius: 4px;
+}
+.app-shell .settings-device-list small {
+  margin-top: 3px;
+}
+.app-shell .device-list-icon {
+  font-size: 20px;
+}
+.app-shell .settings-device-heading {
+  gap: 8px;
+}
+.app-shell .device-hero {
+  width: 32px;
+  height: 32px;
+  font-size: 22px;
+  border-radius: 4px;
+}
+.app-shell .device-preferences .settings-row {
+  grid-template-columns: minmax(110px, 30%) minmax(0, 1fr);
+  gap: 8px;
+}
+.app-shell .device-lifecycle-toolbar {
+  gap: 6px;
+  margin: 8px 0;
+}
+.app-shell .device-lifecycle-tabs button {
+  padding: 5px 8px;
+}
+.app-shell .saved-device-card {
+  padding: 10px;
+  gap: 10px;
+  border-radius: 4px;
+}
+.app-shell .hardware-settings {
+  padding-top: 8px;
+  margin-top: 8px;
+}
+.app-shell .hardware-settings h4 {
+  font-size: 12px;
+  margin: 0 0 4px;
+}
+.app-shell .hardware-settings > p {
+  font-size: 11px;
+  margin: 0 0 10px;
+}
+.app-shell .hardware-setting {
+  grid-template-columns: minmax(120px, 25%) minmax(100px, 1fr) 70px;
+  gap: 4px 8px;
+  margin: 8px 0;
+  align-items: center;
+}
+.app-shell .hardware-setting label,
+.app-shell .hardware-setting > span {
+  grid-column: 1;
+  grid-row: 1;
+  font-size: 12px;
+}
+.app-shell .hardware-setting input[type='range'] {
+  grid-column: 2;
+  grid-row: 1;
+}
+.app-shell .hardware-setting output {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
+}
+.app-shell .hardware-setting small {
+  grid-column: 2/-1;
+  font-size: 11px;
+}
+.app-shell .hardware-setting .vibration-options {
+  grid-column: 2/-1;
+  grid-row: 1;
+}
+.app-shell .device-diagnostics {
+  margin-top: 12px;
+}
+.app-shell .catalogue-tools {
+  padding: 0 0 4px;
+}
+.app-shell .plugin-toolbar {
+  margin: 6px 0;
+  gap: 5px;
+}
+.app-shell .plugin-search {
+  margin: 0 0 6px;
+}
+.app-shell .installed-plugins {
+  gap: 5px;
+}
+.app-shell .installed-plugins article {
+  padding: 9px;
+  gap: 9px;
+  border-radius: 4px;
+}
+.app-shell .installed-plugins details {
+  margin-top: 5px;
+}
+.app-shell .package-operations {
+  gap: 5px;
+}
+.app-shell .installed-plugins article > .package-operations {
+  flex: 0 0 auto;
+  flex-direction: row;
+  align-items: center;
+}
+.app-shell .package-details {
+  display: inline-block;
+}
+.app-shell .package-action-names {
+  color: var(--muted);
+  font-size: 11px;
+  display: flex;
+  gap: 4px 10px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.app-shell .package-action-names small {
+  display: none;
+}
+.app-shell .keyboard-settings {
+  margin-top: 10px;
+  padding-top: 10px;
+}
+.app-shell .keyboard-selection {
+  margin: 10px 0;
+}
+.app-shell .keyboard-setting-groups {
+  gap: 12px;
+  margin: 10px 0;
+}
+.app-shell .keyboard-setting-groups > div {
+  border: 0;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+}
+.app-shell .keyboard-setting-groups h4 {
+  margin: 0 0 5px;
+  font-size: 12px;
+}
+.app-shell .keyboard-setting-groups label {
+  margin: 5px 0;
+  gap: 8px;
+}
+.app-shell .color-control legend {
+  font-size: 12px;
+  margin-bottom: 5px;
+}
+.app-shell .swatches {
+  margin-top: 6px;
+}
+.app-shell .swatches button {
+  width: 24px;
+  height: 24px;
+}
+.app-shell .plugin-source,
+.app-shell .package-id {
+  font-size: 10px;
+}
+.app-shell .about-app {
+  padding: 12px;
+  gap: 9px;
+}
+.app-shell .about-app .brand-mark {
+  width: 64px;
+  height: 64px;
+}
+.app-shell .device-settings-workspace,
+.app-shell .provider-settings-workspace {
+  padding: 12px;
+}
+.app-shell .device-settings-workspace > header {
+  margin-bottom: 8px;
+}
+.app-shell .provider-settings-workspace header {
+  margin-bottom: 7px;
+}
+.app-shell .provider-settings-workspace header p {
+  display: none;
+}
+.app-shell .provider-settings-workspace h2 {
+  font-size: 13px;
+}
+.app-shell .provider-settings-grid {
+  gap: 8px;
+  margin: 8px 0;
+}
+.app-shell .provider-setting {
+  border: 0;
+  border-radius: 0;
+  padding: 7px 0;
+  background: transparent;
+}
+.app-shell .lighting-controls .provider-setting {
+  padding: 7px 0;
+}
+.app-shell .setting-control {
+  gap: 5px;
+  font-size: 12px;
+}
+.app-shell .lighting-workbench {
+  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) 290px;
+}
+.app-shell .lighting-options {
+  padding-top: 0;
+}
+.app-shell .lighting-owner {
+  margin: 5px 0 8px;
+}
+.app-shell .lighting-preview-heading {
+  margin: 6px 0;
+}
+.app-shell .lighting-presets {
+  padding-top: 8px;
+  margin: 10px 0 5px;
+}
+.app-shell .preview-caption,
+.app-shell .lighting-readback {
+  margin: 4px 0 8px;
+  font-size: 11px;
+}
+.app-shell .keyboard-assignment {
+  padding: 5px 0;
+}
+.app-shell .keyboard-assignment dl {
+  gap: 3px 10px;
+}
+.app-shell .keyboard-assignment p {
+  margin: 4px 0;
+  font-size: 11px;
+}
+.app-shell .assignment-details {
+  margin-top: 4px;
+}
+.app-shell .control-context-menu button {
+  justify-content: start;
+}
+dialog {
+  font-size: 12px;
+}
+dialog h2 {
+  font-size: 14px;
+}
+.app-shell .install-dialog,
+.app-shell .device-confirm-dialog,
+.app-shell .device-pair-dialog {
+  border-radius: 6px;
+}
+.app-shell .install-dialog header,
+.app-shell .install-dialog footer,
+.app-shell .dialog-body {
+  padding: 12px;
+  gap: 8px;
+}
+.app-shell .install-dialog header p {
+  display: none;
+}
+.app-shell .device-confirm-dialog,
+.app-shell .device-pair-dialog {
+  padding: 14px;
+}
+@media (max-width: 950px) {
+  .app-shell .lighting-workbench {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 720px) {
+  .app-shell .settings-layout {
+    grid-template-columns: 118px minmax(0, 1fr);
+  }
+  .app-shell .settings-devices {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .app-shell .settings-device-list {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .app-shell .settings-row,
+  .app-shell .device-preferences .settings-row {
+    grid-template-columns: minmax(100px, 35%) minmax(0, 1fr);
+  }
+  .app-shell .device-selector {
+    max-width: 210px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  button {
+    transition: none;
+  }
+}

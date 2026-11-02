@@ -37,6 +37,7 @@
       line-height: 1.6;
     }
   </style>
+  <link rel="stylesheet" href="inspector.css" />
   <h1 id="heading">System volume</h1>
   <label
     ><span id="stepLabel">Volume change per dial step</span
@@ -48,12 +49,16 @@
     </select></label
   >
   <label><span id="labelLabel">Label (optional)</span><input id="label" maxlength="24" /></label>
-  <p id="help">
-    Press a key or dial to mute. Turn a dial to change volume. Touch or drag across a Panel to set
-    volume. Controls follow the current Windows default output.
-  </p>
+  <details class="inspector-help">
+    <summary><span class="help-ru">Справка</span><span class="help-en">Help</span></summary>
+    <p id="help">
+      Press a key or dial to mute. Turn a dial to change volume. Touch or drag across a Panel to set
+      volume. Controls follow the current Windows default output.
+    </p>
+  </details>
   <p id="status"></p>
-  <script>
+  <script src="inspector-theme.js"></script>
+<script>
     let socket,
       context,
       saved = {},
@@ -72,6 +77,7 @@
       $('label').value = saved.label ?? '';
     }
     window.connectElgatoStreamDeckSocket = (port, uuid, event, info, actionInfo) => {
+      DeckWeaveAppearance.apply(JSON.parse(info).deckweave);
       const app = JSON.parse(info);
       const action = JSON.parse(actionInfo);
       language = app.application?.language ?? 'en';
@@ -79,9 +85,11 @@
       saved = action.payload?.settings ?? {};
       paint();
       socket = new WebSocket('ws://127.0.0.1:' + port);
+      DeckWeaveAppearance.subscribe(socket, uuid);
       socket.onopen = () => socket.send(JSON.stringify({ event, uuid }));
       socket.onmessage = ({ data }) => {
         const message = JSON.parse(data);
+        DeckWeaveAppearance.receive(message);
         if (message.event === 'didReceiveSettings') {
           saved = message.payload.settings ?? {};
           paint();

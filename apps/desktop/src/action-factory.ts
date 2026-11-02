@@ -48,20 +48,32 @@ export function plan(type: Plan['type'], device: Device): Plan {
     case 'hotkey':
       return { type, keys: ['Ctrl', 'C'] };
     case 'sequence':
-      return { type, steps: [{ delay_ms: 0, action: action() }] };
+      return { type, steps: [] };
     case 'switch':
-      return { type, states: [action('counter', 'A'), action('counter', 'B')] };
+      return {
+        type,
+        states: ['1', '2'].map((label) => ({
+          ...action('program', label),
+          plan: { type: 'sequence', steps: [] },
+        })),
+      };
     case 'key_logic':
       return {
         type,
-        single: action('counter', 'Single'),
-        double: action('counter', 'Double'),
-        hold: action('counter', 'Hold'),
+        single: { ...action('program', 'Single'), plan: { type: 'sequence', steps: [] } },
+        double: null,
+        hold: null,
         double_ms: 350,
         hold_ms: 650,
       };
     case 'dial_stack':
     case 'action_wheel':
-      return { type, actions: [action('counter', 'A'), action('counter', 'B')] };
+      return {
+        type,
+        actions: ['1', '2'].map((label) => ({
+          ...action('program', label),
+          plan: { type: 'sequence', steps: [] },
+        })),
+      };
   }
 }

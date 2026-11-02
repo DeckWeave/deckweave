@@ -155,6 +155,7 @@ pub fn show_registry(app: &tauri::AppHandle) {
             }
             if builder
                 .title("DeckWeave — Settings")
+                .theme(Some(crate::application_theme(&handle)))
                 .inner_size(980.0, 720.0)
                 .min_inner_size(820.0, 600.0)
                 .build()

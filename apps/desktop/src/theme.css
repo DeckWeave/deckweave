@@ -1,0 +1,427 @@
+/* Palette follows the application preference in every editor/settings window. */
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --surface: #1e1e1e;
+  --panel: #252525;
+  --raised: #303030;
+  --inset: #181818;
+  --line: #535353;
+  --text: #ededed;
+  --muted: #b8b8b8;
+  --danger: #ffb6ad;
+  --danger-bg: #462b29;
+  --warning: #edc582;
+  --success: #9edab3;
+  --accent: #e8b466;
+  --accent-ink: #141414;
+  --focus: #e8b466;
+  --preview-focus: #e8b466;
+  --depth: #77e2ff;
+}
+:root[data-theme='light'] {
+  color-scheme: light;
+  --surface: #f0efed;
+  --panel: #ffffff;
+  --raised: #e5e3df;
+  --inset: #f7f6f4;
+  --line: #95928b;
+  --text: #242321;
+  --muted: #5d5a54;
+  --danger: #a32720;
+  --danger-bg: #fff0ed;
+  --warning: #785210;
+  --success: #246a3b;
+  --depth: #006a83;
+}
+:root {
+  --selection: color-mix(in srgb, var(--accent) 16%, var(--panel));
+  color: var(--text);
+  background: var(--surface);
+  scrollbar-color: var(--line) var(--surface);
+}
+body {
+  color: var(--text);
+  background: var(--surface);
+}
+select,
+select option,
+select optgroup {
+  color: var(--text);
+  background: var(--panel);
+}
+select option:disabled {
+  color: var(--muted);
+}
+input,
+textarea {
+  color: var(--text);
+  background: var(--inset);
+}
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+input[type='checkbox'],
+input[type='range'] {
+  accent-color: var(--focus);
+}
+::selection {
+  color: var(--accent-ink);
+  background: var(--accent);
+}
+.app-shell :focus-visible {
+  outline-color: var(--focus);
+}
+.app-shell button.current,
+.app-shell button[aria-pressed='true'],
+.app-shell .primary {
+  color: var(--text);
+  border-color: var(--focus);
+  background: var(--selection);
+}
+.app-shell .primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--focus);
+}
+.app-shell .primary:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--accent-ink);
+  filter: brightness(1.07);
+}
+.app-shell .connection-error,
+.app-shell .error-bar {
+  color: var(--danger);
+}
+.app-shell .error-bar {
+  background: var(--danger-bg);
+}
+.app-shell .danger {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.app-shell .color-chip,
+.app-shell .swatches button {
+  border-color: var(--line);
+}
+.accent-options {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.accent-options .accent-swatch {
+  padding: 4px;
+  width: 28px;
+  height: 28px;
+}
+.accent-swatch span {
+  display: block;
+  background: var(--swatch);
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+}
+.accent-options input[type='color'] {
+  width: 32px;
+  height: 28px;
+  padding: 2px;
+}
+.app-shell .plan-fields.composite-plan {
+  display: block;
+}
+.composite-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.composite-list {
+  display: grid;
+  gap: 2px;
+}
+.composite-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+}
+.composite-row.active {
+  border-color: var(--focus);
+  background: var(--selection);
+}
+.composite-row > .action-summary {
+  flex: 1;
+  text-align: left;
+  justify-content: flex-start;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+}
+.action-summary span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.composite-row .step-delay {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.step-delay input {
+  width: 76px;
+}
+.composite-properties {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+.action-drop {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px;
+  border: 1px dashed var(--line);
+  border-radius: 4px;
+  color: var(--muted);
+  min-height: 30px;
+  margin: 4px 0;
+}
+.action-drop button {
+  margin-left: auto;
+}
+.action-drop[data-drop-active='true'] {
+  border-color: var(--focus);
+  background: var(--selection);
+  color: var(--text);
+}
+.action-drop[data-drop-rejected='true'] {
+  border-color: var(--danger);
+}
+.nested-action-header {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.nested-action-header > input {
+  flex: 1;
+  min-width: 80px;
+}
+.nested-action-header .action-drop {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+.nested-action-header .action-drop > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.composite-reorder {
+  cursor: grab;
+  touch-action: none;
+}
+.composite-row[data-reorder-active='true'] {
+  border-top: 2px solid var(--focus);
+}
+.direct-options {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.composite-sequence {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(240px, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+.composite-sequence > .composite-properties {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.app-shell .nested-action {
+  display: block;
+  min-width: 0;
+}
+.nested-action > .action-drop:has(input) {
+  padding: 3px 5px;
+}
+.nested-action > .action-drop input {
+  flex: 1;
+  width: 80px;
+  min-width: 0;
+}
+.nested-action > .plan-fields {
+  margin-top: 6px;
+}
+@media (max-width: 950px) {
+  .composite-sequence {
+    grid-template-columns: 1fr;
+  }
+}
+.panel-layout-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin-bottom: 8px;
+}
+.panel-resolution {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.panel-swipe {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+.panel-area-workspace {
+  display: grid;
+  grid-template-columns: minmax(140px, 22%) minmax(0, 1fr);
+  gap: 12px;
+}
+.panel-area-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 150px;
+  overflow: auto;
+}
+.panel-area-list > button {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  text-align: left;
+}
+.panel-area-list > button > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.panel-area-list small {
+  color: var(--muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.panel-area-list > .panel-add-area {
+  justify-content: flex-start;
+}
+.panel-area-heading {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.panel-area-heading input {
+  min-width: 80px;
+  flex: 1;
+}
+.panel-area-dimensions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.panel-area-dimensions label {
+  display: grid;
+  grid-template-columns: auto minmax(38px, 1fr) auto;
+  align-items: center;
+  gap: 4px;
+}
+.panel-area-dimensions input {
+  width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+.panel-area-dimensions label > span {
+  color: var(--muted);
+  font-size: 10px;
+}
+.panel-dial-links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+.panel-assignment-name {
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-left: auto;
+}
+.panel-y-hint {
+  display: block;
+  color: var(--warning);
+  margin-top: 6px;
+}
+.panel-legacy-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.app-shell .inspector-heading:has(+ .panel-layout-editor) {
+  justify-content: space-between;
+}
+.panel-layout-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--panel) 85%, transparent);
+  color: var(--text);
+  font-size: 12px;
+  pointer-events: none;
+}
+.app-shell .control.panel-layout-control {
+  border: 1px dashed var(--muted);
+}
+.app-shell .control.panel-layout-control.selected {
+  border: 2px solid var(--focus);
+}
+.panel-layout-editor .action-replacement {
+  margin: 6px 0;
+}
+/* The editor theme never recolors the hardware or plugin artwork. */
+.device-panel {
+  --surface: #1e1e1e;
+  --panel: #252525;
+  --raised: #303030;
+  --inset: #181818;
+  --line: #636363;
+  --text: #ededed;
+  --muted: #b8b8b8;
+  --focus: var(--preview-focus);
+  --depth: #77e2ff;
+  --selection: color-mix(in srgb, var(--accent) 16%, #252525);
+}
+.device-panel .empty-control {
+  color: var(--muted);
+}
+.app-shell .gesture-thresholds {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin-bottom: 6px;
+}
+.app-shell .gesture-thresholds label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.app-shell .gesture-thresholds input {
+  width: 68px;
+}
+@media (max-width: 1050px) {
+  .panel-area-dimensions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

@@ -3,6 +3,7 @@
   import { invoke } from '@tauri-apps/api/core';
   import { emptyProviderInventory, type ProviderInventory } from './provider-ui';
   import type { Client } from './client.svelte';
+  import Icon from './Icon.svelte';
   import { text } from './i18n';
   import { lifecycleText } from './device-lifecycle-i18n';
   import DeviceHardwareSettings from './DeviceHardwareSettings.svelte';
@@ -179,7 +180,6 @@
 </script>
 
 <h2>{t('devices')}</h2>
-<p class="settings-intro">{t('registryIntro')}</p>
 {#if snapshot.provider_error}<p class="connection-error">{snapshot.provider_error}</p>{/if}
 <div class="device-lifecycle-toolbar">
   <div class="device-lifecycle-tabs" role="group" aria-label={t('devices')}>
@@ -197,9 +197,10 @@
       void discover();
     }}>{ru ? 'Обнаруженное оборудование' : 'Discovered hardware'}</button
   >
-  <button disabled={client.busy} onclick={() => void add()}>＋ {lt('create')}</button>
+  <button disabled={client.busy} onclick={() => void add()}
+    ><Icon name="plus" />{lt('create')}</button
+  >
 </div>
-<p class="settings-intro">{lt('autoDiscovery')}</p>
 {#if view === 'discovered'}
   <div class="device-lifecycle-toolbar">
     <h3>{ru ? 'Добавить устройство' : 'Add device'}</h3>
@@ -315,7 +316,12 @@
       {#each devices as item}<button
           class:current={device?.id === item.id}
           onclick={() => (chosen = item.id)}
-          ><span class="device-list-icon" aria-hidden="true">▦</span><span
+          ><span class="device-list-icon" aria-hidden="true"
+            ><Icon
+              name={item.provider_descriptor?.definition.keyboard ? 'keyboard' : 'device'}
+              size={20}
+            /></span
+          ><span
             ><strong>{item.name}</strong><small
               ><i
                 class="status-dot"
@@ -331,7 +337,12 @@
     </div>
     {#if device && connection}<div class="device-preferences">
         <div class="settings-device-heading">
-          <span class="device-hero" aria-hidden="true">▦</span>
+          <span class="device-hero" aria-hidden="true"
+            ><Icon
+              name={device.provider_descriptor?.definition.keyboard ? 'keyboard' : 'device'}
+              size={22}
+            /></span
+          >
           <div>
             <h3>{device.name}</h3>
             <p>
@@ -361,7 +372,7 @@
             /></label
           >
           <label class="settings-row"
-            ><span>{t('defaultProfile')}<small>{t('defaultProfileHint')}</small></span><select
+            ><span title={t('defaultProfileHint')}>{t('defaultProfile')}</span><select
               value={device.default_profile ?? ''}
               onchange={(e) => {
                 const default_profile = e.currentTarget.value || null;
@@ -532,7 +543,7 @@
     margin: 16px 0;
   }
   .device-lifecycle-tabs .current {
-    background: var(--accent, #316cce);
+    background: var(--accent, var(--selection));
     color: white;
   }
   .saved-device-list {
@@ -565,9 +576,9 @@
   }
   .device-confirm-dialog {
     max-width: 520px;
-    background: #24262d;
+    background: var(--surface);
     color: inherit;
-    border: 1px solid #555;
+    border: 1px solid var(--line);
     border-radius: 12px;
     padding: 24px;
   }

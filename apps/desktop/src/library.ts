@@ -25,3 +25,17 @@ export function moved(
   [current[index], current[target]] = [current[target], current[index]];
   return [...order.filter((key) => !siblings.includes(key)), ...current];
 }
+
+/** Reorder one sibling set without discarding preferences for hidden/other groups. */
+export function placed(
+  order: string[],
+  siblings: string[],
+  id: string,
+  target: string,
+  after = false,
+): string[] {
+  if (id === target || !siblings.includes(id) || !siblings.includes(target)) return order;
+  const current = ordered(siblings, (key) => key, order).filter((key) => key !== id);
+  current.splice(current.indexOf(target) + Number(after), 0, id);
+  return [...order.filter((key) => !siblings.includes(key)), ...current];
+}

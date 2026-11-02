@@ -1,11 +1,11 @@
 # Редактор
 
-Ответственность: runtime snapshots, selection, немедленная настройка и отдельная проверка. Код apps/desktop/src: types.ts, client.svelte.ts, DeviceEditor, ActionEditor/PlanEditor, PanelEditor/TouchTest. Rust остаётся единственным runtime; browser-local fake store отсутствует.
+Ответственность: runtime snapshots, selection, немедленная настройка и отдельная проверка. Код apps/desktop/src: types.ts, client.svelte.ts, DeviceEditor, ActionEditor/PlanEditor/CompositionEditor, ActionDrop/action-drop, PanelEditor/panel-layout, TouchTest, theme и density. Rust остаётся единственным runtime продукта; отдельный локальный стенд проверяет интерфейс на искусственных данных.
 
 Назначение и поля сохраняются без Apply. Библиотека различает Keys/Dials/Plugins и Controllers; оригинальные PI открываются отдельно. Вложенные действия показывают свой feedback, Switch — следующее действие, Stack/Wheel — выбранное. Main preview выбирает область; отдельное поле исполняет tap/drag. Panel form ограничен по высоте, preview имеет минимальный размер и правильный aspect ratio.
 
 Собственный UI en/ru, имена пользователя не переводятся. Profiles/pages/folders пока покрывают создание/навигацию; полный CRUD и дальнейший UX остаются в v1 плане. [UI](../docs/UI.md), [проверки](../docs/RUNTIME-PROGRESS.md), [план](../docs/PLAN.md).
 
-Настройки языка, максимального размера preview, плотности и Smart Profiles вынесены в отдельное окно. Имя и обычный профиль устройства меняются в Настройки → Устройства. Библиотека группирует действия и фильтрует плагины по Keys/Dials; выключенный оригинальный Weather остаётся только в полном каталоге. [Настройки и погода](../docs/SETTINGS-AND-WEATHER.md).
+Настройки языка, темы/акцента, максимального размера preview и Smart Profiles вынесены в отдельное окно. Имя и обычный профиль устройства меняются в Настройки → Устройства. Библиотека группирует действия и фильтрует плагины по Keys/Dials; выключенный оригинальный Weather остаётся только в полном каталоге. [Настройки и погода](../docs/SETTINGS-AND-WEATHER.md).
 
 Дополнение 2026-11-02: библиотека назначает действия также через drag-and-drop с проверкой controller получателя; отдельная проверка сохраняется. Перенос обрабатывается через pointer capture внутри редактора, без зависимости от OS DataTransfer. Настройки/библиотека имеют доступные с клавиатуры разделители размеров и локально сохраняют размеры; поля адаптируются сеткой. Крутилки не имитируют экраны, feedback отображается на полосе. Номера обычных страниц не учитывают папки. [Геометрия, изображения и границы улучшения](../docs/EDITOR-REFINEMENT.md).

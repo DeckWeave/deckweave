@@ -149,7 +149,14 @@ fn dispatch_blocking(
     } else {
         None
     };
+    let appearance_change = matches!(command, Command::SetPreferences { .. });
     let snapshot = locked(state)?.dispatch(command, label)?;
+    if appearance_change {
+        let theme = window_theme(snapshot.configuration.preferences.theme);
+        for window in app.webview_windows().values() {
+            let _ = window.set_theme(Some(theme));
+        }
+    }
     if let Some((id, contexts)) = closing {
         if let Some(window) = app.get_webview_window(&format!("device-{id}")) {
             let _ = window.close();
@@ -600,8 +607,9 @@ async fn open_inspector(
         ),
     )
     .title("DeckWeave — Plugin settings")
+    .theme(Some(application_theme(&app)))
     .data_directory(directory.join("plugin-inspectors").join(package))
-    .inner_size(540.0, 720.0)
+    .inner_size(600.0, 480.0)
     .build()
     .map_err(|e| Error::new("window", e.to_string()))?;
     locked(&state)?.editor_opened(built.label());
@@ -673,7 +681,8 @@ pub(crate) fn show_device(app: &tauri::AppHandle, device_id: &str) -> Result<(),
         let _ = app.emit("deckweave:changed", ());
         return Ok(());
     }
-    let mut builder = WebviewWindowBuilder::new(app, &label, WebviewUrl::App("index.html".into()));
+    let mut builder = WebviewWindowBuilder::new(app, &label, WebviewUrl::App("index.html".into()))
+        .theme(Some(application_theme(app)));
     if let Some(directory) = directory_override() {
         builder = builder.data_directory(directory.join("web-editor"));
     }
@@ -735,6 +744,18 @@ fn settings_context(
         .lock()
         .map(|v| v.clone())
         .map_err(|_| Error::new("window", "Settings are unavailable"))
+}
+
+fn window_theme(theme: deckweave_core::Theme) -> tauri::Theme {
+    match theme {
+        deckweave_core::Theme::Dark => tauri::Theme::Dark,
+        deckweave_core::Theme::Light => tauri::Theme::Light,
+    }
+}
+fn application_theme(app: &tauri::AppHandle) -> tauri::Theme {
+    locked(&app.state::<Application>())
+        .map(|core| window_theme(core.snapshot().configuration.preferences.theme))
+        .unwrap_or(tauri::Theme::Dark)
 }
 
 fn main() {

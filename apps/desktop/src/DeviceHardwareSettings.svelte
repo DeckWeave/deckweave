@@ -107,7 +107,7 @@
 
 <style>
   .hardware-settings {
-    border-top: 1px solid var(--border, #3b3d44);
+    border-top: 1px solid var(--border, var(--line));
     padding-top: 18px;
     margin-top: 18px;
   }
@@ -117,7 +117,7 @@
   }
   p,
   small {
-    color: var(--muted, #a2a5b1);
+    color: var(--muted, var(--muted));
     font-size: 12px;
     line-height: 1.45;
   }
@@ -146,7 +146,7 @@
   input[type='range'] {
     width: 100%;
     margin: 0;
-    accent-color: var(--accent, #6f8fff);
+    accent-color: var(--focus);
   }
   .vibration {
     align-items: center;
@@ -158,17 +158,17 @@
   button {
     padding: 5px 10px;
     font-size: 12px;
-    border: 1px solid var(--border, #3b3d44);
+    border: 1px solid var(--border, var(--line));
     border-radius: 5px;
     background: transparent;
     color: inherit;
   }
   button[aria-pressed='true'] {
-    background: var(--accent, #526ed2);
-    border-color: var(--accent, #526ed2);
+    background: var(--accent, var(--selection));
+    border-color: var(--accent, var(--focus));
     color: white;
   }
   small.error {
-    color: #ff9c9c;
+    color: var(--danger);
   }
 </style>

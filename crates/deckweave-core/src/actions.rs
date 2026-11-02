@@ -932,13 +932,10 @@ fn validate_binding_inner(
             .ok_or_else(|| Error::new("action", "Action plan missing"))?
         {
             Plan::Sequence { steps } => {
-                if steps.is_empty()
-                    || steps.len() > 64
-                    || steps.iter().any(|s| s.delay_ms > 3600000)
-                {
+                if steps.len() > 64 || steps.iter().any(|s| s.delay_ms > 3600000) {
                     return Err(Error::new(
                         "limit",
-                        "Sequence requires 1..64 steps and delays up to 1 hour",
+                        "Sequence allows up to 64 steps and delays up to 1 hour",
                     ));
                 }
                 if in_sequence {
@@ -953,18 +950,13 @@ fn validate_binding_inner(
                 }
             }
             Plan::KeyLogic {
-                double_ms,
-                hold_ms,
-                single,
-                double,
-                hold,
+                double_ms, hold_ms, ..
             } => {
                 if depth > 0
                     || *double_ms < 100
                     || *double_ms > 1000
                     || *hold_ms < 200
                     || *hold_ms > 5000
-                    || [single, double, hold].iter().all(|b| b.is_none())
                 {
                     return Err(Error::new(
                         "action",

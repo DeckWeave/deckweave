@@ -2,6 +2,7 @@
   import type { Binding, KeyboardAlias } from './types';
   import type { OnboardAssignment } from './keyboard-assignments';
   import { keyboardActionError } from './keyboard-action-errors';
+  import Icon from './Icon.svelte';
   let {
     native,
     owner,
@@ -120,15 +121,22 @@
   class="keyboard-assignment"
   aria-label={ru ? 'Назначение клавиатуры' : 'Keyboard assignment'}
 >
-  {#if !candidate}<dl>
-      <dt>{ru ? 'В клавиатуре' : 'On keyboard'}</dt>
-      <dd>
-        {native.label}<span>{ru ? 'Общее для всех профилей' : 'Shared by all profiles'}</span>
-      </dd>
-      {#if binding}<dt>DeckWeave</dt>
-        <dd>{binding.label}<span>{ru ? 'Профиль' : 'Profile'}: {profileName}</span></dd>{/if}
-    </dl>
-    <p class="assignment-status" role="status">{phase}</p>
+  {#if !candidate}<div class="assignment-overview">
+      <span
+        class="native-assignment"
+        title={ru
+          ? 'Назначение в памяти клавиатуры, общее для всех профилей'
+          : 'Onboard assignment shared by all profiles'}
+        ><Icon name="keyboard" />{native.label}</span
+      >
+      <span class="assignment-status" role="status">{phase}</span>
+      {#if owner?.original && owner.phase !== 'released'}<button
+          class="quiet"
+          disabled={!canRestore}
+          onclick={() => (restoring = true)}
+          ><Icon name="back" />{ru ? 'Вернуть клавиатуре…' : 'Restore onboard…'}</button
+        >{/if}
+    </div>
     {#if !native.replaceable && native.observed && !owner}<p class="assignment-hint">
         {ru
           ? 'Это аппаратное назначение пока доступно только для просмотра.'
@@ -176,7 +184,7 @@
       onclick={onreconcile}
       >{ru ? 'Проверить привязку клавиатуры' : 'Check keyboard connection'}</button
     >{/if}
-  {#if owner && owner.phase !== 'released'}<details class="assignment-details">
+  {#if owner && owner.phase !== 'released'}<details class="assignment-details" open={restoring}>
       <summary>{ru ? 'Аппаратная привязка' : 'Keyboard trigger'}</summary>
       <p>F{owner.alias} · {owner.outcome}</p>
       {#if !owner.original}<p>
@@ -203,9 +211,7 @@
             >
           </div>
         </div>
-      {:else}<button disabled={!canRestore} onclick={() => (restoring = true)}
-          >{ru ? 'Восстановить назначение клавиатуры…' : 'Restore keyboard assignment…'}</button
-        >{/if}
+      {/if}
     </details>{/if}
   {#if route?.error}<p class="assignment-error" role="alert">
       {keyboardActionError(route.error, ru)}
@@ -217,25 +223,22 @@
     grid-column: 1/-1;
     min-width: 0;
     padding: 10px 0;
-    border-bottom: 1px solid #41454e;
+    border-bottom: 1px solid var(--line);
   }
-  dl {
-    display: grid;
-    grid-template-columns: max-content minmax(0, 1fr);
-    gap: 6px 14px;
-    margin: 0;
+  .assignment-overview {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 12px;
     font-size: 12px;
   }
-  dt {
-    color: #b4bdcb;
+  .native-assignment {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
   }
-  dd {
-    margin: 0;
-    overflow-wrap: anywhere;
-  }
-  dd span {
-    color: #b4bdcb;
-    margin-left: 10px;
+  .assignment-overview .assignment-status {
+    flex: 1;
   }
   p {
     font-size: 12px;
@@ -243,11 +246,11 @@
     margin: 8px 0;
   }
   .assignment-status {
-    color: #e6e8ed;
+    color: var(--text);
   }
   .assignment-hint,
   .assignment-details {
-    color: #b4bdcb;
+    color: var(--muted);
   }
   .assignment-details {
     margin-top: 8px;
@@ -258,8 +261,8 @@
   }
   .assignment-preview {
     padding: 10px;
-    background: #292d35;
-    border: 1px solid #41454e;
+    background: var(--panel);
+    border: 1px solid var(--line);
     border-radius: 7px;
     margin: 8px 0;
   }
@@ -299,6 +302,6 @@
     flex-wrap: wrap;
   }
   .assignment-error {
-    color: #ffb0aa;
+    color: var(--danger);
   }
 </style>

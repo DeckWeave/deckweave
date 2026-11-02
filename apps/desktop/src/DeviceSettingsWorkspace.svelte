@@ -5,6 +5,7 @@
   import DeviceHardwareSettings from './DeviceHardwareSettings.svelte';
   import ProviderSettings from './ProviderSettings.svelte';
   import KeyboardSettings from './KeyboardSettings.svelte';
+  import Icon from './Icon.svelte';
   let { client, device }: { client: Client; device: Device } = $props();
   const snapshot = $derived(client.snapshot!);
   const t = $derived((key: Parameters<typeof text>[1]) => text(snapshot.configuration.locale, key));
@@ -12,8 +13,10 @@
 
 <div class="device-settings-workspace">
   <header>
-    <h2>{device.name}</h2>
-    <button onclick={() => void client.openSettings(device.id)}>{t('devices')} →</button>
+    <h2>{t('deviceSettings')}</h2>
+    <button onclick={() => void client.openSettings(device.id)}
+      ><Icon name="device" />{t('devices')}</button
+    >
   </header>
   <label class="settings-row"
     ><span>{t('deviceName')}</span><input
@@ -31,7 +34,7 @@
     /></label
   >
   <label class="settings-row"
-    ><span>{t('defaultProfile')}<small>{t('defaultProfileHint')}</small></span><select
+    ><span title={t('defaultProfileHint')}>{t('defaultProfile')}</span><select
       value={device.default_profile ?? ''}
       onchange={(e) => {
         const default_profile = e.currentTarget.value || null;

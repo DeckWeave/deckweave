@@ -5,6 +5,7 @@
   import ProviderRecovery from './ProviderRecovery.svelte';
   import DeviceDecorations from './DeviceDecorations.svelte';
   import DepthRing from './DepthRing.svelte';
+  import Icon from './Icon.svelte';
   import ProviderColorControl from './ProviderColorControl.svelte';
   import ProviderSettingControl from './ProviderSettingControl.svelte';
   import {
@@ -352,10 +353,9 @@
               ? 'Настройки устройства'
               : 'Device settings'}
         </h2>
-        <p>{device.name}</p>
       </div>
       <button disabled={reading || edits.pending || !status} onclick={() => void refresh(true)}
-        >{reading
+        ><Icon name="refresh" />{reading
           ? ru
             ? 'Чтение…'
             : 'Reading…'
@@ -731,11 +731,6 @@
     margin: 0;
     font-size: 18px;
   }
-  header p {
-    margin: 4px 0 0;
-    font-size: 12px;
-    color: #aab1c0;
-  }
   p {
     line-height: 1.5;
   }
@@ -745,7 +740,7 @@
     flex-wrap: wrap;
     gap: 8px;
     font-size: 12px;
-    color: #b7becd;
+    color: var(--muted);
     margin: 8px 0 18px;
   }
   .lighting-owner strong {
@@ -774,7 +769,7 @@
   .lighting-target {
     display: flex;
     gap: 4px;
-    background: #191b21;
+    background: var(--inset);
     padding: 3px;
     border: 1px solid #ffffff14;
     border-radius: 7px;
@@ -787,8 +782,8 @@
     font-size: 12px;
   }
   .lighting-target button.current {
-    background: #454b69;
-    color: #fff;
+    background: var(--selection);
+    color: var(--text);
   }
   .keyboard-lighting-scroll {
     width: 100%;
@@ -802,9 +797,9 @@
   }
   .keyboard-lighting-preview button {
     position: absolute;
-    border: 1px solid #747b8b;
-    background: #333844;
-    color: #eef1f8;
+    border: 1px solid var(--line);
+    background: var(--raised);
+    color: var(--text);
     border-radius: 5px;
     padding: 3px;
     font-size: clamp(11px, 1vw, 15px);
@@ -813,7 +808,7 @@
     text-shadow: 0 1px 2px #0006;
   }
   .keyboard-lighting-preview button.selected {
-    outline: 2px solid #c2caff;
+    outline: 2px solid var(--focus);
     outline-offset: 1px;
     z-index: 1;
   }
@@ -825,7 +820,7 @@
     box-shadow: inset 0 0 9px #77e2ff40;
   }
   .preview-caption {
-    color: #aab1c0;
+    color: var(--muted);
     font-size: 12px;
     margin: 3px 0 20px;
   }
@@ -837,7 +832,7 @@
   }
   .provider-setting {
     border: 1px solid #ffffff16;
-    background: #24272f;
+    background: var(--surface);
     border-radius: 8px;
     padding: 16px;
     min-width: 0;
@@ -887,11 +882,11 @@
     display: block;
     margin-top: 8px;
     font-size: 11px;
-    color: #aab1c0;
+    color: var(--muted);
   }
   .lighting-readback {
     font-size: 12px;
-    color: #acb7cd;
+    color: var(--muted);
     margin: 12px 0 20px;
   }
   .lighting-presets {
@@ -902,14 +897,14 @@
   .lighting-presets summary {
     cursor: pointer;
     font-size: 13px;
-    color: #c5cee5;
+    color: var(--text);
   }
   .lighting-presets h3 {
     font-size: 13px;
     margin: 18px 0 10px;
   }
   .lighting-presets small {
-    color: #aab1c0;
+    color: var(--muted);
     font-size: 12px;
   }
   .preset-save,
@@ -939,7 +934,7 @@
   }
   .static-coverage {
     font-size: 12px;
-    color: #b5bece;
+    color: var(--muted);
   }
   .static-color-picker {
     max-width: 400px;

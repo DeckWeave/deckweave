@@ -1,7 +1,7 @@
 :root {
   font-family: Inter, 'Segoe UI', sans-serif;
-  color: #e6e8ed;
-  background: #1c1e22;
+  color: var(--text);
+  background: var(--inset);
   font-synthesis: none;
   font-size: 14px;
   color-scheme: dark;
@@ -21,8 +21,8 @@ select {
 button {
   cursor: pointer;
   color: inherit;
-  border: 1px solid #41454e;
-  background: #30343b;
+  border: 1px solid var(--line);
+  background: var(--raised);
   border-radius: 6px;
   padding: 9px 14px;
   transition:
@@ -30,8 +30,8 @@ button {
     border-color 0.12s;
 }
 button:hover:not(:disabled) {
-  background: #3b414b;
-  border-color: #626b7b;
+  background: var(--raised);
+  border-color: var(--line);
 }
 button:disabled {
   cursor: default;
@@ -40,14 +40,14 @@ button:disabled {
 button:focus-visible,
 input:focus-visible,
 select:focus-visible {
-  outline: 2px solid #80abff;
+  outline: 2px solid var(--focus);
   outline-offset: 3px;
 }
 input,
 select {
-  background: #202329;
-  border: 1px solid #41454e;
-  color: #eee;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--text);
   border-radius: 5px;
   padding: 9px 10px;
   min-width: 0;
@@ -67,18 +67,18 @@ h2 {
   font-weight: 600;
 }
 p {
-  color: #a0a6b2;
+  color: var(--muted);
   line-height: 1.6;
 }
 .primary {
-  background: #3869c9;
-  border-color: #497bdc;
+  background: var(--selection);
+  border-color: var(--focus);
   color: white;
   font-weight: 600;
 }
 .primary:hover:not(:disabled) {
-  background: #4779dc;
-  border-color: #7199e5;
+  background: var(--selection);
+  border-color: var(--focus);
 }
 .quiet {
   background: none;
@@ -88,12 +88,12 @@ p {
   padding: 5px 0;
   background: none;
   border: none;
-  color: #a8b8d5;
+  color: var(--muted);
   font-size: 12px;
 }
 .text-button:hover:not(:disabled) {
   background: none;
-  color: #fff;
+  color: var(--text);
 }
 .app-shell {
   min-height: 100vh;
@@ -104,8 +104,8 @@ p {
   align-items: center;
   justify-content: space-between;
   padding: 0 24px;
-  background: #24272d;
-  border-bottom: 1px solid #353941;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
 }
 .brand {
   display: flex;
@@ -121,14 +121,14 @@ p {
   place-content: center;
   width: 29px;
   height: 29px;
-  color: #c9dcff;
-  background: #2d4366;
-  border: 1px solid #516d98;
+  color: var(--text);
+  background: var(--selection);
+  border: 1px solid var(--focus);
   border-radius: 7px;
   font-weight: 700;
 }
 .build-label {
-  color: #818a99;
+  color: var(--muted);
   font-size: 11px;
   margin-left: 8px;
 }
@@ -142,13 +142,13 @@ p {
   font-size: 11px;
 }
 .save-status {
-  color: #8e99a9;
+  color: var(--muted);
   font-size: 11px;
 }
 .error-bar {
   padding: 12px 20px;
-  background: #4b2d31;
-  border-bottom: 1px solid #805058;
+  background: var(--raised);
+  border-bottom: 1px solid var(--line);
   display: flex;
   justify-content: space-between;
   gap: 20px;
@@ -158,7 +158,7 @@ p {
   margin-bottom: 3px;
 }
 .error-bar span {
-  color: #ead0d2;
+  color: var(--text);
   font-size: 12px;
 }
 .empty-screen {
@@ -173,7 +173,7 @@ p {
 }
 .empty-icon {
   font-size: 50px;
-  color: #668bbd;
+  color: var(--muted);
 }
 .registry {
   max-width: 1120px;
@@ -197,7 +197,7 @@ p {
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 1.7px;
-  color: #8c99ac;
+  color: var(--muted);
   font-weight: 600;
 }
 .device-list {
@@ -206,8 +206,8 @@ p {
   gap: 14px;
 }
 .device-card {
-  background: #25282f;
-  border: 1px solid #383d47;
+  background: var(--panel);
+  border: 1px solid var(--line);
   border-radius: 10px;
   padding: 25px;
   display: flex;
@@ -228,29 +228,29 @@ p {
   font-size: 12px;
 }
 .subtle {
-  color: #7f899a;
+  color: var(--muted);
   font-size: 11px;
 }
 .pill {
   white-space: nowrap;
   padding: 4px 8px;
-  border: 1px solid #3f5978;
-  color: #9fbce5;
-  background: #26354a;
+  border: 1px solid var(--focus);
+  color: var(--muted);
+  background: var(--raised);
   border-radius: 4px;
   font-size: 10px;
 }
 .pill.muted {
-  color: #98a1b0;
-  border-color: #414650;
-  background: #2a2e35;
+  color: var(--muted);
+  border-color: var(--line);
+  background: var(--panel);
 }
 .mini-device {
-  background: #14161b;
+  background: var(--inset);
   padding: 11px;
   width: 126px;
   border-radius: 9px;
-  border: 1px solid #424650;
+  border: 1px solid var(--line);
   box-shadow: 0 4px 10px #0004;
 }
 .mini-keys {
@@ -260,13 +260,13 @@ p {
 }
 .mini-keys i {
   height: 15px;
-  background: #343f54;
-  border: 1px solid #465773;
+  background: var(--raised);
+  border: 1px solid var(--line);
   border-radius: 2px;
 }
 .mini-strip {
   height: 10px;
-  background: #27384f;
+  background: var(--raised);
   margin: 7px 0 6px;
   border-radius: 2px;
 }
@@ -278,15 +278,15 @@ p {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: #3c424e;
-  border: 1px solid #667181;
+  background: var(--raised);
+  border: 1px solid var(--line);
 }
 .registry-footnote {
   display: flex;
   align-items: center;
   gap: 9px;
   margin-top: 28px;
-  color: #9ba6b6;
+  color: var(--muted);
   font-size: 12px;
 }
 .status-dot {
@@ -302,7 +302,7 @@ p {
 }
 .foundation-note {
   font-size: 11px;
-  color: #636d7d;
+  color: var(--muted);
   margin-top: 14px;
 }
 .editor-layout {
@@ -338,20 +338,20 @@ p {
 }
 .device-name:hover,
 .device-name:focus {
-  border-color: #41454e;
-  background: #24272d;
+  border-color: var(--line);
+  background: var(--surface);
 }
 .toolbar-meta {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 11px;
-  color: #8e99aa;
+  color: var(--muted);
   margin-top: 8px;
 }
 .meta-divider {
   margin: 0 6px;
-  color: #565e6c;
+  color: var(--line);
 }
 .panel-stage {
   padding: 10px 24px;
@@ -366,8 +366,8 @@ p {
   position: relative;
   width: min(100%, calc(100cqh * var(--device-ratio)), 640px);
   flex-shrink: 0;
-  background: linear-gradient(155deg, #30343c, #20232a);
-  border: 1px solid #484e5b;
+  background: linear-gradient(155deg, var(--raised), var(--surface));
+  border: 1px solid var(--line);
   border-radius: 23px;
   box-shadow:
     0 16px 35px #0005,
@@ -378,8 +378,8 @@ p {
   position: absolute;
   border-radius: 9px;
   padding: 4px;
-  background: #111318;
-  border: 2px solid #3c424e;
+  background: var(--inset);
+  border: 2px solid var(--line);
   box-shadow: 0 2px 3px #000a;
   display: flex;
   flex-direction: column;
@@ -389,8 +389,8 @@ p {
   overflow: hidden;
 }
 .control:hover:not(:disabled) {
-  background: #202631;
-  border-color: #6f7c93;
+  background: var(--surface);
+  border-color: var(--line);
 }
 .hardware-key-image {
   position: absolute;
@@ -402,7 +402,7 @@ p {
   pointer-events: none;
 }
 .hardware-note {
-  color: #929dad;
+  color: var(--muted);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -411,14 +411,14 @@ p {
   margin: 0;
   padding: 6px 28px;
   font-size: 10px;
-  background: #202329;
+  background: var(--surface);
 }
 .hardware-counts {
   margin-left: auto;
   white-space: nowrap;
 }
 .connection-error {
-  color: #ffb29e;
+  color: var(--danger);
   overflow-wrap: anywhere;
   font-size: 12px;
 }
@@ -428,18 +428,18 @@ p {
   flex-shrink: 0;
 }
 .control.selected {
-  border-color: #73a5ff;
-  box-shadow: 0 0 0 2px #3975db33;
+  border-color: var(--focus);
+  box-shadow: 0 2px 3px #000a;
 }
 .control.pressed {
-  background: #536d9e;
+  background: var(--selection);
   box-shadow: inset 0 0 14px #0005;
-  border-color: #b1d0ff;
+  border-color: var(--focus);
   transform: scale(0.96);
 }
 .control.active {
-  background: #263d56;
-  color: #a4d4ff;
+  background: var(--selection);
+  color: var(--text);
 }
 .control-value {
   font-size: 5cqw;
@@ -449,11 +449,11 @@ p {
 }
 .control-value.is-toggle {
   font-size: 5.7cqw;
-  color: #91b6e8;
+  color: var(--muted);
 }
 .control-label {
   font-size: 1.65cqw;
-  color: #abb4c4;
+  color: var(--muted);
   max-width: 100%;
   text-overflow: ellipsis;
   overflow: hidden;
@@ -462,17 +462,17 @@ p {
 }
 .empty-control {
   font-size: 2.3cqw;
-  color: #4b5361;
+  color: var(--line);
 }
 .touch-surface {
   position: absolute;
-  background: #0e1116;
-  border: 1px solid #424a58;
+  background: var(--inset);
+  border: 1px solid var(--line);
   border-radius: 5px;
 }
 .control.touch-control {
-  border: 1px solid #303b4e;
-  background: #131b27;
+  border: 1px solid var(--line);
+  background: var(--inset);
   border-radius: 3px;
   box-shadow: none;
   gap: 0;
@@ -482,10 +482,10 @@ p {
   border-color: transparent;
 }
 .control.touch-control.strip-overlay.selected {
-  border: 2px solid #73a5ff;
+  border: 2px solid var(--focus);
 }
 .control.touch-control.strip-overlay.pressed {
-  border-color: #a8c6ff;
+  border-color: var(--focus);
 }
 .touch-surface {
   overflow: hidden;
@@ -507,12 +507,12 @@ p {
   font-size: 1.45cqw;
 }
 .touch-control.selected {
-  border: 2px solid #73a5ff;
+  border: 2px solid var(--focus);
 }
 .control.dial-control {
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 25%, #404650, #292d35 70%);
-  border: 3px solid #5b6475;
+  background: radial-gradient(circle at 35% 25%, var(--raised), var(--panel) 70%);
+  border: 3px solid var(--line);
   box-shadow:
     0 4px 7px #0009,
     inset 0 1px #fff2;
@@ -525,10 +525,10 @@ p {
   max-width: 80%;
 }
 .dial-control.selected {
-  border-color: #73a5ff;
+  border-color: var(--focus);
 }
 .dial-control.pressed {
-  background: #496a9d;
+  background: var(--selection);
 }
 .dial-marker {
   position: absolute;
@@ -536,11 +536,11 @@ p {
   width: 3px;
   height: 17%;
   border-radius: 2px;
-  background: #b4bfd0;
+  background: var(--text);
 }
 .dial-number {
   font-size: 2.5cqw;
-  color: #c1cbdb;
+  color: var(--muted);
 }
 .control.drop-target {
   border-color: #a1efc0;
@@ -553,7 +553,7 @@ p {
   justify-content: center;
   cursor: row-resize;
   touch-action: none;
-  background: #202329;
+  background: var(--surface);
 }
 .pane-splitter.vertical {
   cursor: col-resize;
@@ -561,7 +561,7 @@ p {
 .pane-splitter span {
   height: 2px;
   width: 36px;
-  background: #596476;
+  background: var(--selection);
   border-radius: 2px;
 }
 .pane-splitter.vertical span {
@@ -570,7 +570,7 @@ p {
 }
 .pane-splitter:hover,
 .pane-splitter:focus-visible {
-  background: #3d567d;
+  background: var(--selection);
   outline: none;
 }
 .page-row {
@@ -604,21 +604,21 @@ p {
 }
 .folder-controls p {
   font-size: 12px;
-  color: #a4b0c2;
+  color: var(--muted);
 }
 .page-row button {
   min-width: 27px;
   height: 27px;
   padding: 3px 8px;
-  background: #292e37;
+  background: var(--panel);
   border-color: transparent;
   font-size: 11px;
-  color: #8e99ab;
+  color: var(--muted);
 }
 .page-row button.current {
-  border-color: #6a8cc2;
-  color: #d5e4fc;
-  background: #344662;
+  border-color: var(--focus);
+  color: var(--text);
+  background: var(--selection);
 }
 .page-row button.add-page {
   background: none;
@@ -628,7 +628,7 @@ p {
   background: var(--panel);
   display: grid;
   gap: 12px;
-  border-bottom: 1px solid #353944;
+  border-bottom: 1px solid var(--line);
 }
 .profile-settings label {
   display: grid;
@@ -644,7 +644,7 @@ p {
   align-items: center;
   margin: 10px 0;
   font-size: 12px;
-  color: #b7c0d0;
+  color: var(--muted);
 }
 .pin-field input {
   width: auto;
@@ -668,8 +668,8 @@ p {
   grid-column: 1/-1;
 }
 .action-step {
-  border: 1px solid #404552;
-  background: #1e222a;
+  border: 1px solid var(--line);
+  background: var(--surface);
   padding: 10px;
   border-radius: 7px;
   min-width: 0;
@@ -703,21 +703,21 @@ p {
 }
 textarea {
   font: inherit;
-  background: #151820;
-  color: #e5e9f2;
-  border: 1px solid #434956;
+  background: var(--inset);
+  color: var(--text);
+  border: 1px solid var(--line);
   border-radius: 5px;
   padding: 8px;
   min-width: 0;
   resize: vertical;
 }
 .inspector {
-  border-top: 1px solid #383d47;
+  border-top: 1px solid var(--line);
   padding: 12px 20px;
   height: var(--inspector-height, 230px);
   min-height: 0;
   overflow: auto;
-  background: #24272d;
+  background: var(--surface);
   flex-shrink: 0;
 }
 .inspector-heading {
@@ -757,7 +757,7 @@ textarea {
   cursor: pointer;
   padding: 6px 0;
   font-size: 12px;
-  color: #b8cbe7;
+  color: var(--text);
 }
 .inspector-fields > .form-row,
 .inspector-fields > .dial-tests,
@@ -773,14 +773,14 @@ textarea {
 }
 .form-row > span {
   font-size: 12px;
-  color: #98a1b0;
+  color: var(--muted);
 }
 .form-row input {
   width: 100%;
 }
 .result-value {
   font-size: 13px;
-  color: #b8cbe7;
+  color: var(--text);
 }
 .inspector-bottom {
   display: flex;
@@ -791,7 +791,7 @@ textarea {
 }
 .inspector-bottom p {
   font-size: 11px;
-  color: #7f8a9b;
+  color: var(--muted);
 }
 .inspector-hint {
   font-size: 12px;
@@ -809,22 +809,22 @@ textarea {
 }
 .select-icon {
   font-size: 28px;
-  color: #6b7b95;
+  color: var(--muted);
 }
 .editor-footer {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 10px 28px;
-  background: #202329;
+  background: var(--surface);
   font-size: 10px;
-  color: #8c96a6;
-  border-top: 1px solid #313741;
+  color: var(--muted);
+  border-top: 1px solid var(--line);
   flex-shrink: 0;
 }
 .action-library {
-  border-left: 1px solid #383d47;
-  background: #25282e;
+  border-left: 1px solid var(--line);
+  background: var(--panel);
 }
 .library-header {
   padding: 14px 12px 10px;
@@ -835,7 +835,7 @@ textarea {
 }
 .library-tabs {
   display: flex;
-  border: 1px solid #454b57;
+  border: 1px solid var(--line);
   border-radius: 5px;
   overflow: hidden;
   margin-bottom: 17px;
@@ -846,16 +846,16 @@ textarea {
   flex: 1;
   font-size: 11px;
   border-radius: 0;
-  background: #21242a;
-  color: #8e99ab;
+  background: var(--surface);
+  color: var(--muted);
 }
 .library-tabs button.current {
-  background: #3c4759;
-  color: #e8eef9;
+  background: var(--selection);
+  color: var(--text);
 }
 .search-field {
   width: 100%;
-  background: #1c1f25;
+  background: var(--surface);
   font-size: 12px;
 }
 .library-search-row {
@@ -874,14 +874,14 @@ textarea {
 }
 .library-display-button.current {
   font-size: 11px;
-  color: #adbbff;
+  color: var(--muted);
 }
 .library-options {
   padding: 0 12px 16px;
   font-size: 12px;
 }
 .library-options > p {
-  color: #a6afbe;
+  color: var(--muted);
   line-height: 1.5;
 }
 .library-check,
@@ -891,7 +891,7 @@ textarea {
   gap: 7px;
 }
 .library-option-group {
-  border-top: 1px solid #3a3e48;
+  border-top: 1px solid var(--line);
   padding: 8px 0;
 }
 .library-option-row {
@@ -910,15 +910,15 @@ textarea {
 }
 .library-option-action {
   padding-left: 10px;
-  color: #b9c1d0;
+  color: var(--muted);
 }
 .library-category {
   font-size: 11px;
-  color: #9aa6ba;
+  color: var(--muted);
   padding: 8px 18px;
-  background: #2d323b;
-  border-top: 1px solid #393f49;
-  border-bottom: 1px solid #393f49;
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
 }
 .action-list {
   padding: 8px;
@@ -949,8 +949,8 @@ textarea {
   pointer-events: none;
   max-width: 260px;
   padding: 8px 12px;
-  border: 1px solid #9ec6ff;
-  background: #293d5a;
+  border: 1px solid var(--focus);
+  background: var(--selection);
   box-shadow: 0 4px 16px #0008;
   border-radius: 6px;
   font-size: 12px;
@@ -959,14 +959,14 @@ textarea {
   display: block;
   font-size: 10px;
   line-height: 1.5;
-  color: #8f9bad;
+  color: var(--muted);
 }
 .action-icon {
   width: 29px;
   height: 29px;
-  background: #355073;
-  border: 1px solid #5178a8;
-  color: #c5deff;
+  background: var(--selection);
+  border: 1px solid var(--focus);
+  color: var(--text);
   display: grid;
   place-content: center;
   border-radius: 6px;
@@ -974,9 +974,9 @@ textarea {
   flex-shrink: 0;
 }
 .action-icon.purple {
-  background: #4c3e66;
-  border-color: #73608c;
-  color: #cfbae8;
+  background: var(--selection);
+  border-color: var(--line);
+  color: var(--text);
 }
 .library-empty {
   padding: 20px 18px;
@@ -1032,7 +1032,7 @@ textarea {
 .panel-settings {
   margin: 0 20px 12px;
   padding: 12px;
-  border: 1px solid var(--border, #363941);
+  border: 1px solid var(--border, var(--line));
   border-radius: 8px;
 }
 .panel-settings summary {
@@ -1046,12 +1046,12 @@ textarea {
 }
 .panel-settings p,
 .touch-test-tools p {
-  color: var(--muted, #9ca3af);
+  color: var(--muted, var(--muted));
   font-size: 12px;
 }
 .panel-region-fields {
   padding: 10px 0;
-  border-bottom: 1px solid #363941;
+  border-bottom: 1px solid var(--line);
 }
 .region-rect {
   display: grid;
@@ -1069,8 +1069,8 @@ textarea {
   height: 100px;
   display: grid;
   place-items: center;
-  background: #222936;
-  border: 1px dashed #7991b6;
+  background: var(--panel);
+  border: 1px dashed var(--focus);
   border-radius: 8px;
   touch-action: none;
   user-select: none;
@@ -1078,16 +1078,13 @@ textarea {
 }
 .nested-feedback {
   font-size: 12px;
-  color: #aeb9cb;
+  color: var(--muted);
 }
 /* Editor shell and preferences share one restrained surface hierarchy. */
-:root {
-  --accent: #8caeff;
-}
 .app-bar {
   height: 44px;
   padding: 0 18px;
-  background: #24262b;
+  background: var(--surface);
 }
 .brand {
   gap: 8px;
@@ -1121,7 +1118,7 @@ textarea {
   border-color: transparent;
 }
 .device-selector:hover {
-  border-color: #4d535f;
+  border-color: var(--line);
 }
 .toolbar-meta {
   margin-top: 3px;
@@ -1133,7 +1130,7 @@ textarea {
   padding: 4px;
 }
 .device-settings-link {
-  color: #9da7b8;
+  color: var(--muted);
   font-size: 20px;
   padding: 5px;
 }
@@ -1149,13 +1146,13 @@ textarea {
 .editor-footer {
   padding: 7px 22px;
   background: transparent;
-  color: #8d97a8;
+  color: var(--muted);
 }
 .library-header {
   position: sticky;
   top: 0;
   z-index: 2;
-  background: #25272c;
+  background: var(--surface);
   padding: 14px 14px 10px;
 }
 .library-header h2 {
@@ -1165,7 +1162,7 @@ textarea {
   margin-bottom: 10px;
   border: none;
   border-radius: 7px;
-  background: #202226;
+  background: var(--surface);
   padding: 3px;
 }
 .library-tabs button {
@@ -1173,21 +1170,21 @@ textarea {
   padding: 6px 4px;
 }
 .library-tabs button.current {
-  background: #3d414a;
+  background: var(--raised);
 }
 .library-group {
-  border-bottom: 1px solid #34373e;
+  border-bottom: 1px solid var(--line);
 }
 .library-group > summary {
   cursor: pointer;
   padding: 13px 16px;
   font-size: 12px;
   font-weight: 600;
-  color: #cbd1dc;
+  color: var(--text);
 }
 .library-group > summary span {
   float: right;
-  color: #7e8797;
+  color: var(--muted);
   font-size: 10px;
   font-weight: 400;
 }
@@ -1208,16 +1205,16 @@ textarea {
 .action-icon.purple {
   background: transparent;
   border: none;
-  color: #a5aebb;
+  color: var(--muted);
   width: 24px;
   height: 24px;
   font-size: 24px;
 }
 .action-item:hover .action-icon {
-  color: #c9d9ff;
+  color: var(--text);
 }
 .inspector {
-  background: #27292f;
+  background: var(--panel);
   padding: 16px 22px;
 }
 .inspector-heading {
@@ -1251,8 +1248,8 @@ textarea {
   grid-template-columns: 174px minmax(0, 1fr);
 }
 .settings-nav {
-  background: #222429;
-  border-right: 1px solid #363941;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
   padding: 24px 12px;
   display: flex;
   flex-direction: column;
@@ -1274,15 +1271,15 @@ textarea {
 .settings-nav button span {
   display: inline-block;
   width: 26px;
-  color: #a2afc5;
+  color: var(--muted);
 }
 .settings-nav button.current {
-  background: #363d4c;
-  color: #e7efff;
+  background: var(--raised);
+  color: var(--text);
 }
 .settings-nav .settings-quit {
   margin-top: auto;
-  color: #a0aaba;
+  color: var(--muted);
 }
 .settings-content {
   --settings-padding: 30px;
@@ -1297,8 +1294,8 @@ textarea {
   margin: 8px 0 24px;
 }
 .settings-group {
-  border: 1px solid #3b3e47;
-  background: #25282f;
+  border: 1px solid var(--line);
+  background: var(--panel);
   border-radius: 9px;
   margin: 16px 0 22px;
   overflow: hidden;
@@ -1311,7 +1308,7 @@ textarea {
   align-items: center;
   gap: 18px;
   font-size: 12px;
-  border-bottom: 1px solid #353943;
+  border-bottom: 1px solid var(--line);
 }
 .settings-row:last-child {
   border-bottom: 0;
@@ -1320,14 +1317,14 @@ textarea {
   display: block;
   line-height: 1.5;
   font-size: 11px;
-  color: #949eaf;
+  color: var(--muted);
   margin-top: 5px;
 }
 .settings-row input[type='checkbox'] {
   justify-self: end;
   width: 17px;
   height: 17px;
-  accent-color: #7e9ff0;
+  accent-color: var(--focus);
 }
 .settings-row input,
 .settings-row select {
@@ -1340,9 +1337,9 @@ textarea {
 }
 .settings-callout {
   padding: 16px;
-  background: #252b36;
+  background: var(--panel);
   border-radius: 8px;
-  border: 1px solid #37435a;
+  border: 1px solid var(--line);
 }
 .settings-callout strong {
   font-size: 13px;
@@ -1372,8 +1369,8 @@ textarea {
   gap: 10px;
 }
 .settings-device-list button.current {
-  background: #303846;
-  border-color: #44516a;
+  background: var(--raised);
+  border-color: var(--line);
 }
 .settings-device-list strong {
   display: block;
@@ -1386,17 +1383,17 @@ textarea {
   align-items: center;
   gap: 6px;
   font-size: 10px;
-  color: #96a2b5;
+  color: var(--muted);
   margin-top: 6px;
 }
 .settings-device-list .add-device {
   margin-top: 10px;
   font-size: 11px;
-  color: #a9c1ec;
+  color: var(--muted);
 }
 .device-list-icon {
   font-size: 26px;
-  color: #8b9bb6;
+  color: var(--muted);
 }
 .settings-device-heading {
   display: flex;
@@ -1408,11 +1405,11 @@ textarea {
   place-content: center;
   width: 55px;
   height: 55px;
-  background: #171b22;
-  border: 1px solid #424c5f;
+  background: var(--inset);
+  border: 1px solid var(--line);
   border-radius: 10px;
   font-size: 36px;
-  color: #8fa8d0;
+  color: var(--muted);
 }
 .settings-content h3 {
   font-size: 14px;
@@ -1433,7 +1430,7 @@ textarea {
 .device-diagnostics {
   margin-top: 24px;
   font-size: 11px;
-  color: #8e9bae;
+  color: var(--muted);
 }
 .device-diagnostics summary {
   cursor: pointer;
@@ -1450,8 +1447,8 @@ textarea {
   display: flex;
   align-items: start;
   gap: 14px;
-  border: 1px solid #3b3e47;
-  background: #25282f;
+  border: 1px solid var(--line);
+  background: var(--panel);
   border-radius: 8px;
   padding: 16px;
 }
@@ -1468,22 +1465,22 @@ textarea {
 }
 .installed-plugins summary {
   cursor: pointer;
-  color: #a7bbde;
+  color: var(--muted);
 }
 .installed-plugins details p {
   padding: 6px 0;
 }
 .installed-plugins details small {
-  color: #7d8ca4;
+  color: var(--muted);
 }
 .package-symbol {
   font-size: 28px;
-  color: #91a9cf;
+  color: var(--muted);
 }
 .plugin-error {
   color: #f2b7a3;
-  background: #3b2c2b;
-  border-color: #65433c;
+  background: var(--panel);
+  border-color: var(--line);
 }
 .about-app {
   padding: 50px 20px;
@@ -1500,7 +1497,7 @@ textarea {
   border-radius: 15px;
 }
 .about-app small {
-  color: #7f8a9b;
+  color: var(--muted);
 }
 @media (max-width: 900px) {
   .settings-content {
@@ -1567,7 +1564,7 @@ textarea {
     left: 4px;
     font-size: 7px;
     line-height: 1;
-    color: #91baff;
+    color: var(--muted);
   }
 }
 @media (max-width: 1050px) {

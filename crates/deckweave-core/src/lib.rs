@@ -346,6 +346,17 @@ impl Core {
                         "Preview scale must be between 75 and 150",
                     ));
                 }
+                if preferences.accent_color.len() != 7
+                    || !preferences.accent_color.starts_with('#')
+                    || !preferences.accent_color.as_bytes()[1..]
+                        .iter()
+                        .all(u8::is_ascii_hexdigit)
+                {
+                    return Err(Error::new(
+                        "preferences",
+                        "Accent must be a six-digit hex color",
+                    ));
+                }
                 next.preferences = preferences;
             }
             Command::DevicePreferences {

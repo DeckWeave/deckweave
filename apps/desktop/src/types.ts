@@ -6,6 +6,8 @@ export interface Preferences {
   smart_profiles: boolean;
   preview_scale: number;
   compact: boolean;
+  theme: 'dark' | 'light';
+  accent_color: string;
 }
 export interface LibraryPreferences {
   hidden: string[];

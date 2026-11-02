@@ -1,0 +1,55 @@
+{
+  "date": "2026-11-02",
+  "release_sha256": "bd33df775eca21356892985787020dc27e702b138e832195a722cd273d36a95e",
+  "build": "cargo build -p deckweave-desktop --release --locked",
+  "verification": {
+    "project_check": "npm run check passed; 41 plugin/UI tests and 7 weather tests; Rust workspace tests, fmt/clippy, Svelte and web build passed",
+    "final_followup": "Preset labels/layout refinements: Svelte/build/format and source detector passed",
+    "pe_icon": "All six canonical ICO frames found in the actual PE resources",
+    "embedded_frontend": "Current JavaScript and CSS asset names found inside the executable",
+    "impeccable_findings": 0
+  },
+  "installed_elgato_ui": {
+    "observed": [
+      "Opened existing Multi Action Switch",
+      "Selected both state tabs without executing it",
+      "Selected a step and observed its property inspector"
+    ],
+    "scope": "Read-only UI comparison; no physical Elgato hardware or complete SDK parity claim"
+  },
+  "native_ui": {
+    "observed": [
+      "New amber icon in title bar and app header",
+      "Readable expanded native device select",
+      "Neutral dark editor and compact general settings with actual accent swatches",
+      "Mirabox connected, hardware artwork present",
+      "Touch geometry occupies resizable inspector; selected D1 overlay matches bounds and shows action/dial links"
+    ],
+    "touch_presets": "New 3/4/5 presets verified on isolated UI fixture; existing hardware layout was not replaced by automation"
+  },
+  "isolated_browser_ui": {
+    "data": "Artificial virtual device; no real device, program execution or writes to owner assignments",
+    "observed": [
+      "Pointer drop Launch and Hotkey into Multi Action",
+      "Pointer reorder steps by grip preserves selected step",
+      "Drop Hotkey into second Switch state; first remains empty",
+      "Drop Launch into double-click Key Logic branch",
+      "Four linked dial regions",
+      "Direct drop of an action on a touch region opens its action settings",
+      "Light theme with neutral dark hardware preview",
+      "Five 160x128 regions on 800x128 strip; optional D1 link does not alter geometry or preset selection",
+      "Add/split command remains outside region-list scroll"
+    ],
+    "image": "touch-editor-light.png"
+  },
+  "data_safety": {
+    "elgato_weather": "Remains disabled by owner preference",
+    "hardware_mapping_writes": "None by this UI verification",
+    "owner_action_assignments": "No automated assignment edits. The owner interacted with the running application during work, so an across-turn action hash is not asserted."
+  },
+  "limitations": [
+    "Third-party plugin inspector HTML retains author styling",
+    "Inspector live appearance uses an opt-in DeckWeave protocol extension; standard Elgato inspectors receive no extra events without subscribing",
+    "No new physical keyboard alias acceptance in this UI work"
+  ]
+}

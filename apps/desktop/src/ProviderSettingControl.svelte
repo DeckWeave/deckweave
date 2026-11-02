@@ -18,26 +18,27 @@
   const number = $derived(draft ?? (typeof value === 'number' ? value : undefined));
 </script>
 
-<label class="setting-control" for={'provider-' + setting.id}>
+<div class="setting-control">
   <span
     >{label}{#if setting.presentation === 'slider'}<output
         >{number ?? '—'}{setting.max !== undefined ? ' / ' + setting.max : ''}</output
       >{/if}</span
   >
   {#if setting.type === 'boolean'}
-    <select
-      id={'provider-' + setting.id}
-      {disabled}
-      value={typeof value === 'boolean' ? String(value) : ''}
-      onchange={(e) => onchange(e.currentTarget.value === 'true')}
-    >
-      <option value="" disabled>{ru ? 'Не считано' : 'Not read'}</option><option value="true"
-        >{ru ? 'Включено' : 'On'}</option
-      ><option value="false">{ru ? 'Выключено' : 'Off'}</option>
-    </select>
+    <div class="segmented" role="group" aria-label={label}>
+      {#each [true, false] as option}<button
+          {disabled}
+          class:current={value === option}
+          aria-pressed={value === option}
+          onclick={() => {
+            if (value !== option) onchange(option);
+          }}>{option ? (ru ? 'Вкл' : 'On') : ru ? 'Выкл' : 'Off'}</button
+        >{/each}{#if typeof value !== 'boolean'}<span>{ru ? 'Не считано' : 'Not read'}</span>{/if}
+    </div>
   {:else if setting.type === 'number'}
     <input
       id={'provider-' + setting.id}
+      aria-label={label}
       type={setting.presentation === 'slider' ? 'range' : 'number'}
       min={setting.min}
       max={setting.max}
@@ -54,9 +55,25 @@
         }
       }}
     />
+  {:else if setting.choices && setting.choices.length <= 5}
+    <div class="segmented" role="group" aria-label={label}>
+      {#each setting.choices as choice}{@const val =
+          typeof choice === 'object' ? choice.value : choice}<button
+          {disabled}
+          class:current={JSON.stringify(value) === JSON.stringify(val)}
+          aria-pressed={JSON.stringify(value) === JSON.stringify(val)}
+          onclick={() => {
+            if (JSON.stringify(value) !== JSON.stringify(val)) onchange(val);
+          }}
+          >{typeof choice === 'object'
+            ? (choice.label?.[ru ? 'ru' : 'en'] ?? choice.label?.en ?? String(val))
+            : String(choice)}</button
+        >{/each}
+    </div>
   {:else}
     <select
       id={'provider-' + setting.id}
+      aria-label={label}
       {disabled}
       value={JSON.stringify(value) ?? ''}
       onchange={(e) => onchange(JSON.parse(e.currentTarget.value))}
@@ -70,7 +87,7 @@
         >{/each}
     </select>
   {/if}
-</label>
+</div>
 
 <style>
   .setting-control {
@@ -86,7 +103,7 @@
     gap: 12px;
   }
   output {
-    color: #b7c1db;
+    color: var(--muted);
     font-variant-numeric: tabular-nums;
   }
   select,
@@ -97,6 +114,6 @@
   input[type='range'] {
     height: 30px;
     padding: 0;
-    accent-color: #a1aaff;
+    accent-color: var(--focus);
   }
 </style>

@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Client } from './client.svelte';
   import type { Locale } from './types';
+  import Icon from './Icon.svelte';
   let {
     client,
     locale,
@@ -35,7 +36,7 @@
     disabled={client.observationBusy || ((!normalTyping || !connected) && !active)}
     onclick={() => void client.setObservation(!active)}
   >
-    <span aria-hidden="true">◎</span>
+    <Icon name="dial" />
     {ru ? 'Глубина' : 'Key travel'}{failed ? ' !' : active ? ' ●' : ''}
   </button>
   <select
@@ -71,8 +72,8 @@
     white-space: nowrap;
   }
   button.active {
-    border-color: #73c8ea;
-    background: #214450;
+    border-color: var(--focus);
+    background: var(--selection);
   }
   button.failed {
     border-color: #d79d58;

@@ -4,6 +4,7 @@
   import type { Client } from './client.svelte';
   import { text } from './i18n';
   import type { PluginPackage } from './types';
+  import Icon from './Icon.svelte';
   let { client }: { client: Client } = $props();
   type Entry = {
     id: string;
@@ -314,9 +315,11 @@
 <div class="catalogue-tools">
   <h2>{t('plugins')}</h2>
   <div class="plugin-toolbar">
-    <button disabled={busy} onclick={(e) => pick(e.currentTarget)}>{t('installFromFile')}</button>
+    <button disabled={busy} onclick={(e) => pick(e.currentTarget)}
+      ><Icon name="install" />{t('installFromFile')}</button
+    >
     <button disabled={busy} class:current={browsing} onclick={browse}
-      >{t('openDeckCatalogue')}</button
+      ><Icon name="plugin" />{t('openDeckCatalogue')}</button
     >
     {#if browsing}<button
         disabled={busy}
@@ -362,19 +365,21 @@
       >{t('morePlugins')} ({results.length - limit})</button
     >{/if}
 {:else}
-  <p class="settings-intro">{t('pluginCatalogHint')}</p>
-  <label
-    >{t('extensionType')}<select bind:value={kindFilter}
-      ><option value="all">{t('allExtensions')}</option><option value="action"
-        >{t('extensionTypeActions')}</option
-      ><option value="device">{t('extensionTypeDevices')}</option></select
-    ></label
-  >
+  <div class="segmented extension-filter" role="group" aria-label={t('extensionType')}>
+    {#each [['all', 'allExtensions'], ['action', 'extensionTypeActions'], ['device', 'extensionTypeDevices']] as [value, name]}<button
+        class:current={kindFilter === value}
+        aria-pressed={kindFilter === value}
+        onclick={() => (kindFilter = value)}
+        >{t(name as 'allExtensions' | 'extensionTypeActions' | 'extensionTypeDevices')}</button
+      >{/each}
+  </div>
 
   <div class="installed-plugins">
     {#if !installedResults.length}<p>{t('noInstalledPlugins')}</p>{/if}
     {#each installedResults as pack (`${pack.kind}:${pack.id}`)}<article>
-        <span class="package-symbol">◈</span>
+        <span class="package-symbol"
+          ><Icon name={pack.kind === 'device' ? 'device' : 'plugin'} size={20} /></span
+        >
         <div>
           <h3>{pack.name}</h3>
           <p>
@@ -384,8 +389,6 @@
                 ? t('resourcePackage')
                 : `${t('actions')}: ${pack.actions.filter((a) => a.visible).length}`}
           </p>
-          <code class="package-id">{pack.id}</code>
-          <p class="plugin-source">{sourceLabel(pack.source)}</p>
           {#if pack.blocked}<p class="pill">{t('unavailable')}</p>
             {#if !pack.available}<p>{t('reinstallHint')}</p>{/if}
             {#if pack.phase !== 'removed'}<p class="connection-error">{t('removalPending')}</p>{/if}
@@ -399,12 +402,23 @@
           {#if pack.actions.length && pack.actions.every((a) => !a.visible)}<p>
               {t('hiddenVendorActions')}
             </p>{/if}
-          {#if pack.actions.some((a) => a.visible)}<details>
-              <summary>{t('actions')}</summary
-              >{#each pack.actions.filter((a) => a.visible) as action}<p>
-                  {action.name} <small>{action.controllers.join(' · ')}</small>
-                </p>{/each}
-            </details>{/if}
+          <details class="package-details">
+            <summary>{config.locale === 'ru' ? 'Сведения' : 'Details'}</summary><code
+              class="package-id">{pack.id}</code
+            >
+            <p class="plugin-source">{sourceLabel(pack.source)}</p>
+            {#if pack.actions.some((a) => a.visible)}<div
+                class="package-action-names"
+                title={pack.actions
+                  .filter((a) => a.visible)
+                  .map((a) => a.name)
+                  .join(' · ')}
+              >
+                {#each pack.actions.filter((a) => a.visible) as action}<span>
+                    {action.name} <small>{action.controllers.join(' · ')}</small>
+                  </span>{/each}
+              </div>{/if}
+          </details>
         </div>
         <div class="package-operations">
           {#if pack.kind === 'action' && !pack.blocked && !pack.resource_only && pack.actions.some((a) => a.visible)}<label
@@ -431,7 +445,9 @@
               class="quiet"
               disabled={busy}
               onclick={(e) => askRemove(pack, e.currentTarget)}
-              >{t(pack.source === 'managed' ? 'uninstallPlugin' : 'disconnectPlugin')}</button
+              ><Icon name="trash" />{t(
+                pack.source === 'managed' ? 'uninstallPlugin' : 'disconnectPlugin',
+              )}</button
             >{/if}
         </div>
       </article>{/each}
@@ -465,7 +481,7 @@
       <h2 id="plugin-flow-title">{preview?.name ?? selected?.name ?? t('installReview')}</h2>
     </div>
     <button class="quiet" disabled={installing} aria-label={t('close')} onclick={closeFlow}
-      >✕</button
+      ><Icon name="close" /></button
     >
   </header>
   <div class="dialog-body" aria-busy={busy}>
@@ -534,10 +550,18 @@
   <header>
     <div>
       <p>{t(management?.source === 'managed' ? 'removalTitle' : 'disconnectTitle')}</p>
-      <h2 id="plugin-removal-title">{management?.name}</h2>
+      <h2 id="plugin-removal-title">
+        {config.locale === 'ru'
+          ? management?.source === 'managed'
+            ? 'Удалить плагин'
+            : 'Отключить плагин'
+          : management?.source === 'managed'
+            ? 'Remove plugin'
+            : 'Disconnect plugin'} · {management?.name}
+      </h2>
     </div>
     <button class="quiet" disabled={installing} aria-label={t('close')} onclick={closeManagement}
-      >✕</button
+      ><Icon name="close" /></button
     >
   </header>
   <div class="dialog-body" aria-busy={busy}>
@@ -592,12 +616,12 @@
   }
   .dependency-list small {
     display: block;
-    color: #aeb7c9;
+    color: var(--muted);
     margin-top: 3px;
   }
   .danger {
     background: #853d4c;
-    color: #fff;
+    color: var(--text);
   }
   .plugin-toolbar {
     display: flex;
@@ -606,7 +630,7 @@
     margin: 14px 0;
   }
   .plugin-toolbar button.current {
-    background: #3d475f;
+    background: var(--selection);
   }
   .plugin-search {
     width: 100%;
@@ -616,7 +640,7 @@
     position: sticky;
     top: calc(-1 * var(--settings-padding));
     z-index: 1;
-    background: #1c1e22;
+    background: var(--inset);
     padding: 16px 0 1px;
   }
   .install-dialog {
@@ -624,9 +648,9 @@
     max-height: calc(100dvh - 64px);
     padding: 0;
     margin: auto;
-    border: 1px solid #515b78;
+    border: 1px solid var(--line);
     border-radius: 12px;
-    background: #25282f;
+    background: var(--panel);
     color: inherit;
     overflow: hidden;
     box-shadow: 0 20px 80px #0008;
@@ -645,7 +669,7 @@
     align-items: start;
     gap: 20px;
     padding: 20px;
-    border-bottom: 1px solid #3b3e47;
+    border-bottom: 1px solid var(--line);
   }
   .install-dialog header p {
     font-size: 12px;
@@ -672,12 +696,12 @@
     justify-content: flex-end;
     gap: 10px;
     padding: 16px 20px;
-    border-top: 1px solid #3b3e47;
+    border-top: 1px solid var(--line);
   }
   .plugin-source,
   .package-id {
     overflow-wrap: anywhere;
-    color: #aab7cf;
+    color: var(--muted);
     font-size: 12px;
   }
   .installed-plugins article > div {

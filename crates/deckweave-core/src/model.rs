@@ -383,6 +383,18 @@ pub struct Preferences {
     pub smart_profiles: bool,
     pub preview_scale: u16,
     pub compact: bool,
+    pub theme: Theme,
+    pub accent_color: String,
+}
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum Theme {
+    #[default]
+    Dark,
+    Light,
+}
+fn accent_color() -> String {
+    "#e8b466".into()
 }
 impl<'de> Deserialize<'de> for Preferences {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
@@ -403,6 +415,10 @@ impl<'de> Deserialize<'de> for Preferences {
             preview_scale: u16,
             #[serde(default)]
             compact: bool,
+            #[serde(default)]
+            theme: Theme,
+            #[serde(default = "accent_color")]
+            accent_color: String,
         }
         let stored = Stored::deserialize(deserializer)?;
         Ok(Self {
@@ -418,6 +434,8 @@ impl<'de> Deserialize<'de> for Preferences {
             smart_profiles: stored.smart_profiles,
             preview_scale: stored.preview_scale,
             compact: stored.compact,
+            theme: stored.theme,
+            accent_color: stored.accent_color,
         })
     }
 }
@@ -433,6 +451,8 @@ impl Default for Preferences {
             smart_profiles: true,
             preview_scale: 100,
             compact: false,
+            theme: Theme::Dark,
+            accent_color: accent_color(),
         }
     }
 }

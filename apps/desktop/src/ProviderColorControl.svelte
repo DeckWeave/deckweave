@@ -205,19 +205,20 @@
     border-radius: 6px;
     margin-bottom: 9px;
     background-image:
-      linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent);
+      linear-gradient(to top, var(--inset), transparent),
+      linear-gradient(to right, var(--text), transparent);
     cursor: crosshair;
     touch-action: none;
   }
   .saturation:focus-visible {
-    outline: 2px solid #b2baff;
+    outline: 2px solid var(--focus);
     outline-offset: 2px;
   }
   .color-point {
     position: absolute;
     width: 12px;
     height: 12px;
-    border: 2px solid #fff;
+    border: 2px solid var(--line);
     border-radius: 50%;
     box-shadow: 0 0 0 1px #000;
     transform: translate(-50%, -50%);
@@ -230,7 +231,16 @@
     margin: 2px 0 14px;
     appearance: none;
     border-radius: 8px;
-    background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+    background: linear-gradient(
+      to right,
+      #f00,
+      #ff0,
+      #0f0,
+      var(--selection),
+      var(--selection),
+      #f0f,
+      #f00
+    );
   }
   .hue::-webkit-slider-thumb {
     appearance: none;
@@ -252,7 +262,7 @@
     font-family: monospace;
   }
   small {
-    color: #aaa;
+    color: var(--muted);
   }
   .swatches {
     display: flex;
@@ -269,7 +279,7 @@
     border: 2px solid #ffffff30;
   }
   .swatches button.active {
-    outline: 2px solid #b2baff;
+    outline: 2px solid var(--focus);
     outline-offset: 2px;
   }
   fieldset:disabled {

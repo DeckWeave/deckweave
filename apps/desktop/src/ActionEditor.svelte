@@ -1,8 +1,10 @@
 <script lang="ts">
   import type { Binding, Device, PluginPackage, Locale, Snapshot } from './types';
-  import { action, plan, planTypes } from './action-factory';
+  import ActionDrop from './ActionDrop.svelte';
   import PlanEditor from './PlanEditor.svelte';
   import { text } from './i18n';
+  import Icon from './Icon.svelte';
+  import { actionIcon } from './icons';
   let {
     value,
     device,
@@ -13,6 +15,7 @@
     openInspector,
     controller = 'Keypad',
     feedback = [],
+    inSequence = false,
   }: {
     value: Binding;
     device: Device;
@@ -23,6 +26,7 @@
     openInspector: (context: string) => void;
     controller?: 'Keypad' | 'Encoder';
     feedback?: Snapshot['feedback'];
+    inSequence?: boolean;
   } = $props();
   const t = $derived((key: Parameters<typeof text>[1]) => text(locale, key));
   const result = $derived(
@@ -37,58 +41,29 @@
   const unavailable = $derived(
     !!value.plugin && (!packageInfo || !!packageInfo.error || !pluginAction),
   );
-  const choice = $derived(
-    value.plugin
-      ? `plugin:${value.plugin.package}:${value.plugin.action}`
-      : value.plan
-        ? `program:${value.plan.type}`
-        : value.kind,
-  );
-  function choose(kind: string) {
-    if (kind.startsWith('program:')) {
-      const type = kind.slice(8) as Parameters<typeof plan>[0];
-      onchange({ ...action('program', t(type)), plan: plan(type, device) });
-    } else if (kind.startsWith('plugin:')) {
-      const [, pack, id] = kind.split(':');
-      const packInfo = plugins.find((p) => p.id === pack && !p.error);
-      const item = packInfo?.actions.find(
-        (a) => a.id === id && a.visible && a.controllers.includes(controller),
-      );
-      if (!item) return;
-      onchange({
-        ...action('plugin', item?.name ?? id),
-        plugin: { package: pack, action: id, settings: {}, controller },
-      });
-    } else {
-      onchange(action(kind, t(kind as 'counter' | 'toggle')));
-    }
-  }
 </script>
 
 <div class="nested-action">
-  <select aria-label={t('action')} value={choice} onchange={(e) => choose(e.currentTarget.value)}>
-    {#if unavailable}<option value={choice} disabled
-        >{value.label} · {locale === 'ru' ? 'Плагин недоступен' : 'Plugin unavailable'}</option
-      >{/if}
-    <option value="counter">{t('counter')}</option><option value="toggle">{t('toggle')}</option>
-    {#if depth < 6}{#each planTypes.filter((p) => !['key_logic', 'dial_bindings', 'dial_stack', 'action_wheel'].includes(p)) as p}<option
-          value={`program:${p}`}>{t(p)}</option
-        >{/each}{/if}
-    {#each plugins.filter((p) => !p.error) as pack}<optgroup label={pack.name}
-        >{#each pack.actions.filter((a) => a.visible && a.controllers.includes(controller)) as a}<option
-            value={`plugin:${pack.id}:${a.id}`}>{a.name}</option
-          >{/each}</optgroup
-      >{/each}
-  </select>
-  <input
-    aria-label={t('title')}
-    maxlength="80"
-    value={value.label}
-    onchange={(e) => onchange({ ...value, label: e.currentTarget.value })}
-  />
+  <ActionDrop
+    scope={{ controller, depth, inSequence }}
+    identity={JSON.stringify(value)}
+    ru={locale === 'ru'}
+    label={value.label}
+    {onchange}
+  >
+    <Icon name={actionIcon(value.plan?.type ?? value.plugin?.action ?? value.kind)} />
+    <input
+      aria-label={t('title')}
+      maxlength="80"
+      value={value.label}
+      onchange={(e) => onchange({ ...value, label: e.currentTarget.value })}
+    />
+  </ActionDrop>
   {#if value.plan}<PlanEditor
       {feedback}
       {openInspector}
+      {controller}
+      {inSequence}
       value={value.plan}
       {device}
       {plugins}
@@ -122,14 +97,14 @@
           }
         }}></textarea></label
     >{/if}
-  <output class="nested-feedback" class:connection-error={!!result?.error}
-    >{result?.error ??
-      (result?.running
-        ? t('running')
-        : value.kind === 'counter'
-          ? String(result?.value ?? 0)
-          : value.kind === 'toggle'
-            ? t(result?.active ? 'on' : 'off')
-            : (result?.display ?? result?.title ?? t('noActionYet')))}</output
-  >
+  {#if result}<output class="nested-feedback" class:connection-error={!!result?.error}
+      >{result?.error ??
+        (result?.running
+          ? t('running')
+          : value.kind === 'counter'
+            ? String(result?.value ?? 0)
+            : value.kind === 'toggle'
+              ? t(result?.active ? 'on' : 'off')
+              : (result?.display ?? result?.title ?? t('noActionYet')))}</output
+    >{/if}
 </div>

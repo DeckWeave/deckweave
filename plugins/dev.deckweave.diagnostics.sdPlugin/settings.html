@@ -25,25 +25,30 @@
       color: #b2b9c7;
     }
   </style>
+  <link rel="stylesheet" href="inspector.css" />
   <h2>Plugin counter</h2>
   <label>Button title <input id="prefix" maxlength="40" /></label
   ><button id="reset">Reset counter</button>
   <p id="status">Connecting…</p>
-  <script>
+  <script src="inspector-theme.js"></script>
+<script>
     let socket,
       context,
       settings = {};
     function connectElgatoStreamDeckSocket(port, uuid, event, info, actionInfo) {
+      DeckWeaveAppearance.apply(JSON.parse(info).deckweave);
       context = uuid;
       settings = JSON.parse(actionInfo).payload.settings || {};
       document.getElementById('prefix').value = settings.prefix || '';
       socket = new WebSocket('ws://127.0.0.1:' + port);
+      DeckWeaveAppearance.subscribe(socket, uuid);
       socket.onopen = () => {
         socket.send(JSON.stringify({ event, uuid }));
         document.getElementById('status').textContent = 'Connected · changes save automatically';
       };
       socket.onmessage = ({ data }) => {
         const message = JSON.parse(data);
+        DeckWeaveAppearance.receive(message);
         if (message.event === 'didReceiveSettings') {
           settings = message.payload.settings;
           document.getElementById('prefix').value = settings.prefix || '';

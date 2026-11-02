@@ -3,6 +3,7 @@
   import { invoke } from '@tauri-apps/api/core';
   import { keyboardActionError } from './keyboard-action-errors';
   import type { Client } from './client.svelte';
+  import Icon from './Icon.svelte';
   import type { Binding, Device } from './types';
   let { client, device, binding }: { client: Client; device: Device; binding: Binding } = $props();
   const ru = $derived(client.snapshot?.configuration.locale === 'ru');
@@ -171,7 +172,7 @@
       >
       <div class="alert-buttons">
         <button disabled={!config.enabled || !target} onclick={() => void test()}
-          >▷ {ru ? 'Проверить' : 'Test'}</button
+          ><Icon name="play" />{ru ? 'Проверить' : 'Test'}</button
         ><button onclick={() => void stop()}>{ru ? 'Остановить' : 'Stop'}</button>
       </div>
     </div>

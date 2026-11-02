@@ -34,6 +34,7 @@
       color: #b8c6d8;
     }
   </style>
+  <link rel="stylesheet" href="inspector.css" />
   <h2 id="heading">Timers</h2>
   <label><span id="labelText">Label</span><input id="label" maxlength="24" /></label
   ><label id="durationRow"
@@ -47,13 +48,17 @@
     </select></label
   ><button id="toggle">Start / Pause</button
   ><button id="reset">Reset</button>
-  <p id="hint">
-    Press to start/pause, hold 0.8 s to reset. Rotate a paused countdown to adjust minutes.
-    Continues across pages and restarts using the saved clock time. Finishes silently; no alert on a
-    hidden page. Changing duration resets the timer. Settings save automatically.
-  </p>
+  <details class="inspector-help">
+    <summary><span class="help-ru">Справка</span><span class="help-en">Help</span></summary>
+    <p id="hint">
+      Press to start/pause, hold 0.8 s to reset. Rotate a paused countdown to adjust minutes.
+      Continues across pages and restarts using the saved clock time. Finishes silently; no alert on
+      a hidden page. Changing duration resets the timer. Settings save automatically.
+    </p>
+  </details>
   <p id="status" role="status"></p>
-  <script>
+  <script src="inspector-theme.js"></script>
+<script>
     let socket,
       context,
       settings = {},
@@ -73,6 +78,7 @@
       if (ready) socket.send(JSON.stringify({ event: 'sendToPlugin', context, payload }));
     }
     window.connectElgatoStreamDeckSocket = (port, uuid, event, info, actionInfo) => {
+      DeckWeaveAppearance.apply(JSON.parse(info).deckweave);
       context = uuid;
       ru = JSON.parse(info).application?.language?.startsWith('ru') ?? false;
       document.documentElement.lang = ru ? 'ru' : 'en';
@@ -91,6 +97,7 @@
       }
       show();
       socket = new WebSocket(`ws://127.0.0.1:${port}`);
+      DeckWeaveAppearance.subscribe(socket, uuid);
       socket.onopen = () => {
         socket.send(JSON.stringify({ event, uuid }));
         ready = true;
@@ -99,6 +106,7 @@
       socket.onmessage = ({ data }) => {
         try {
           const m = JSON.parse(data);
+        DeckWeaveAppearance.receive(m);
           if (m.event === 'didReceiveSettings') {
             settings = m.payload.settings ?? {};
             show();

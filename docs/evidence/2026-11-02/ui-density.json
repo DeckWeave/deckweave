@@ -1,0 +1,50 @@
+{
+  "date": "2026-11-02",
+  "platform": "Windows 11",
+  "desktopReleaseSha256": "597e43235fd5887eef0bb13f840402de0370d808d8a1c8a33039ebb4adcffd8f",
+  "originalIconPngSha256": "e6fcb7767f767f89c4194791d2a3b56d9a342d004903ee6b5780211d2327c00e",
+  "iconCopiedWithoutRedrawing": true,
+  "compactOnly": true,
+  "checks": {
+    "svelteErrors": 0,
+    "svelteWarnings": 0,
+    "formatWebBuildRustFmtClippyWorkspaceTests": "passed",
+    "weatherTests": 7,
+    "pluginAndUiTests": 36,
+    "newReorderTests": 3,
+    "impeccableSourceDetectorFindings": 0,
+    "inspectorStyleSyncIdempotent": true
+  },
+  "nativeUiObservations": {
+    "io84ActionsLightingAndKeyboardSettings": true,
+    "miraboxEditorAndDeviceSettings": true,
+    "generalSettingsAndAbout": true,
+    "installedExtensionsAndOpenDeckCatalogue": true,
+    "releaseSelectionCancelledWithoutInstallation": true,
+    "pluginRemovalDependenciesInspectedAndCancelled": true,
+    "deviceRebindDialogInspectedAndUsedWithoutKeyboardWrite": true,
+    "libraryClickKeptExistingFnTLaunch": true,
+    "libraryGroupDragReorderedAndReturnedToOriginalVisibleOrder": true,
+    "libraryVisibilitySwitchHidClockGroupAndWasRestored": true,
+    "nestedSwitchTypeChangeRequiredConfirmationAndWasCancelled": true,
+    "panelLayoutReplacementRequiredConfirmationAndWasCancelled": true,
+    "monitorInspectorRenderedWithSharedCompactStyle": true,
+    "shortInspectorUsesContentHeight": true,
+    "emptyInspectorDoesNotReserveLargePane": true
+  },
+  "savedActionIntegrity": {
+    "scope": "All active device pinned actions and every profile's page bindings and Fn bindings, including their complete settings; excludes selected profile/page and runtime feedback",
+    "beforeSha256": "bb2089c61e3cdec17f66480fe5d0dda9a2dcd31a4f9bf9e8677cc3f46ebdf440",
+    "afterSha256": "bb2089c61e3cdec17f66480fe5d0dda9a2dcd31a4f9bf9e8677cc3f46ebdf440",
+    "existingFnTLaunchPreserved": true,
+    "elgatoWeatherRemainsDisabled": true,
+    "packagesRemovedDuringReview": 0,
+    "keyboardAssignmentsWrittenDuringReview": 0
+  },
+  "boundaries": [
+    "The detector scanned source files; it is not a contrast certification of every rendered third-party inspector.",
+    "Six owned plugin inspectors share the shipped stylesheet. The Monitor inspector was opened for native visual verification.",
+    "Original third-party Elgato inspector HTML and styling were preserved.",
+    "No physical keyboard actuation acceptance is inferred from this UI review."
+  ]
+}

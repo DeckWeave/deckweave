@@ -27,6 +27,7 @@
       color: #b6bfce;
     }
   </style>
+  <link rel="stylesheet" href="inspector.css" />
   <h2>OBS Studio</h2>
   <label>Host<input id="host" value="127.0.0.1" /></label
   ><label>Port<input id="port" type="number" value="4455" /></label
@@ -42,7 +43,8 @@
     Changes save automatically. “OBS connection” checks connectivity without changing recording or
     streaming.
   </p>
-  <script>
+  <script src="inspector-theme.js"></script>
+<script>
     let socket,
       context,
       settings = {};
@@ -53,16 +55,19 @@
           settings[id] ?? (id === 'host' ? '127.0.0.1' : id === 'port' ? 4455 : '');
     }
     function connectElgatoStreamDeckSocket(port, uuid, event, info, actionInfo) {
+      DeckWeaveAppearance.apply(JSON.parse(info).deckweave);
       context = uuid;
       settings = JSON.parse(actionInfo).payload.settings || {};
       show();
       socket = new WebSocket('ws://127.0.0.1:' + port);
+      DeckWeaveAppearance.subscribe(socket, uuid);
       socket.onopen = () => {
         socket.send(JSON.stringify({ event, uuid }));
         document.getElementById('status').textContent = 'Connected to DeckWeave';
       };
       socket.onmessage = ({ data }) => {
         const m = JSON.parse(data);
+        DeckWeaveAppearance.receive(m);
         if (m.event === 'didReceiveSettings') {
           settings = m.payload.settings;
           show();

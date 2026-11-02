@@ -1,5 +1,33 @@
 use deckweave_core::*;
 #[test]
+fn appearance_defaults_migrate_and_invalid_colors_cannot_change_saved_preferences() {
+    let legacy: Preferences = serde_json::from_str("{\"preview_scale\":100}").unwrap();
+    assert_eq!(legacy.theme, Theme::Dark);
+    assert_eq!(legacy.accent_color, "#e8b466");
+    let mut core = Core::memory().unwrap();
+    for color in ["white", "#abc", "#12345z", "#123456; color:red"] {
+        let revision = core.revision();
+        assert!(
+            core.dispatch(
+                Command::SetPreferences {
+                    preferences: Preferences {
+                        accent_color: color.into(),
+                        ..Default::default()
+                    },
+                    expected_revision: revision,
+                },
+                "invalid-appearance"
+            )
+            .is_err()
+        );
+        assert_eq!(core.revision(), revision);
+        assert_eq!(
+            core.snapshot().configuration.preferences.accent_color,
+            "#e8b466"
+        );
+    }
+}
+#[test]
 fn preferences_and_device_defaults_save_atomically_and_survive_restart() {
     let temp = tempfile::tempdir().unwrap();
     let path = temp.path().join("settings.sqlite3");
@@ -15,6 +43,8 @@ fn preferences_and_device_defaults_save_atomically_and_survive_restart() {
                 smart_profiles: false,
                 preview_scale: 125,
                 compact: true,
+                theme: Theme::Light,
+                accent_color: "#123abc".into(),
                 library: LibraryPreferences {
                     hidden: vec!["plugin:example.test".into()],
                     order: vec!["plugin:example.test".into()],
@@ -81,6 +111,8 @@ fn preferences_and_device_defaults_save_atomically_and_survive_restart() {
     );
     assert!(snapshot.configuration.preferences.library.show_development);
     assert_eq!(snapshot.configuration.preferences.preview_scale, 125);
+    assert_eq!(snapshot.configuration.preferences.theme, Theme::Light);
+    assert_eq!(snapshot.configuration.preferences.accent_color, "#123abc");
     assert!(!snapshot.configuration.preferences.smart_profiles);
     assert_eq!(
         snapshot.configuration.preferences.disabled_plugins,

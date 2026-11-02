@@ -254,9 +254,9 @@
     width: min(650px, 90vw);
     max-height: 85vh;
     overflow: auto;
-    background: #252830;
-    color: #e4e7ee;
-    border: 1px solid #6c7079;
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--line);
     border-radius: 12px;
     padding: 24px;
   }

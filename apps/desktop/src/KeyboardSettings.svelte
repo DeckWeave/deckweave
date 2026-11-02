@@ -6,6 +6,7 @@
   import type { ProviderSessionState } from './provider-ui';
   import DeviceDecorations from './DeviceDecorations.svelte';
   import DepthRing from './DepthRing.svelte';
+  import Icon from './Icon.svelte';
   import { recoveryErrorText } from './provider-recovery';
   let { client, device }: { client: Client; device: Device } = $props();
   let status = $state<ProviderSessionState | null>(null);
@@ -229,14 +230,9 @@
   <header>
     <div>
       <h3>{ru ? 'Настройки клавиатуры' : 'Keyboard settings'}</h3>
-      <p>
-        {ru
-          ? 'Выберите одну или несколько клавиш. Завершённое изменение сразу отправляется устройству.'
-          : 'Select one or more keys. Each completed edit is sent immediately.'}
-      </p>
     </div>
     <button disabled={reading} onclick={() => void refresh(true)}
-      >{reading
+      ><Icon name="refresh" />{reading
         ? ru
           ? 'Чтение…'
           : 'Reading…'
@@ -294,17 +290,21 @@
       {#if mapping?.bindingFormat === 'keyboard-usage'}<div>
           <h4>{ru ? 'Клавиша на устройстве' : 'Onboard assignment'}</h4>
           <label
-            >{ru ? 'Слой' : 'Layer'}<select bind:value={layer}
-              >{#each mapping.layers as item}<option value={item}
+            >{ru ? 'Слой' : 'Layer'}
+            <div class="segmented" role="group" aria-label={ru ? 'Слой' : 'Layer'}>
+              {#each mapping.layers as item}<button
+                  class:current={layer === item}
+                  aria-pressed={layer === item}
+                  onclick={() => (layer = item)}
                   >{item === 'main'
                     ? ru
                       ? 'Основной'
                       : 'Main'
                     : item === 'fn'
                       ? 'Fn'
-                      : item}</option
-                >{/each}</select
-            ></label
+                      : item}</button
+                >{/each}
+            </div></label
           ><label
             >{ru ? 'Выполняемая клавиша' : 'Assigned key'}<select
               disabled={!connected || client.busy || paired}
@@ -443,17 +443,17 @@
   }
   .keyboard-selection button {
     position: absolute;
-    border: 2px solid #222;
+    border: 2px solid var(--line);
     border-radius: 5px;
-    background: #383c46;
-    color: #ddd;
+    background: var(--raised);
+    color: var(--text);
     padding: 2px;
     font-size: 11px;
     min-height: 0;
   }
   .keyboard-selection button.selected {
-    background: #356d9f;
-    border-color: #9dd6ff;
+    background: var(--selection);
+    border-color: var(--focus);
   }
   .key-selection-tools {
     display: flex;

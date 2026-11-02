@@ -223,6 +223,7 @@ struct Session {
     sender: mpsc::SyncSender<Peer>,
     socket: Option<Socket>,
     inspectors: BTreeMap<String, Socket>,
+    appearance_subscriptions: BTreeSet<String>,
     slots: BTreeMap<String, Slot>,
     retired: RetiredContexts,
     child: Option<Child>,
@@ -521,8 +522,11 @@ fn assigned_packages(snapshot: &Snapshot) -> BTreeSet<String> {
     }
     result
 }
+fn appearance(snapshot: &Snapshot) -> Value {
+    json!({"theme":snapshot.configuration.preferences.theme,"accentColor":snapshot.configuration.preferences.accent_color})
+}
 fn info(snapshot: &Snapshot, package: &Package) -> Value {
-    json!({"application":{"language":if snapshot.configuration.locale==deckweave_core::Locale::Ru{"ru"}else{"en"},"platform":if cfg!(windows){"windows"}else{"mac"},"platformVersion":if cfg!(windows){"11"}else{"0"},"version":"7.6.0","font":"Arial"},"plugin":{"uuid":package.id,"version":package.version},"devicePixelRatio":1,"colors":{"buttonPressedBackgroundColor":"#303030","buttonPressedBorderColor":"#808080","buttonPressedTextColor":"#ffffff","disabledColor":"#777777","highlightColor":"#5b85ff","mouseDownColor":"#4455aa"},"devices":snapshot.configuration.devices.iter().map(|d|json!({"id":d.id,"name":d.name,"type":0,"size":{"columns":5,"rows":2}})).collect::<Vec<_>>()})
+    json!({"deckweave":appearance(snapshot),"application":{"language":if snapshot.configuration.locale==deckweave_core::Locale::Ru{"ru"}else{"en"},"platform":if cfg!(windows){"windows"}else{"mac"},"platformVersion":if cfg!(windows){"11"}else{"0"},"version":"7.6.0","font":"Arial"},"plugin":{"uuid":package.id,"version":package.version},"devicePixelRatio":1,"colors":{"buttonPressedBackgroundColor":"#303030","buttonPressedBorderColor":"#808080","buttonPressedTextColor":"#ffffff","disabledColor":"#777777","highlightColor":"#5b85ff","mouseDownColor":"#4455aa"},"devices":snapshot.configuration.devices.iter().map(|d|json!({"id":d.id,"name":d.name,"type":0,"size":{"columns":5,"rows":2}})).collect::<Vec<_>>()})
 }
 fn start(
     package: Package,
@@ -542,6 +546,7 @@ fn start(
         sender,
         socket: None,
         inspectors: BTreeMap::new(),
+        appearance_subscriptions: BTreeSet::new(),
         slots: BTreeMap::new(),
         retired: RetiredContexts::default(),
         child: None,
@@ -714,6 +719,7 @@ fn run(
     let mut close_failures: BTreeMap<String, String> = BTreeMap::new();
     let mut disabled_plugins = snapshot.configuration.preferences.disabled_plugins.clone();
     let mut removed_packages = BTreeSet::new();
+    let mut last_appearance = appearance(&snapshot);
     while !stop.load(Ordering::Relaxed) {
         let mut pending_requests = vec![];
         while let Ok(request) = requests.try_recv() {
@@ -761,6 +767,9 @@ fn run(
         if let Some(changed) = changed {
             snapshot = changed;
         }
+        let current_appearance = appearance(&snapshot);
+        let appearance_changed = last_appearance != current_appearance;
+        last_appearance = current_appearance;
         let changed_plugins: Vec<_> = disabled_plugins
             .iter()
             .chain(&snapshot.configuration.preferences.disabled_plugins)
@@ -912,6 +921,7 @@ fn run(
                         session.retired.entries.clear();
                     } else {
                         let context = peer.uuid;
+                        session.appearance_subscriptions.remove(&context);
                         session.inspectors.insert(context.clone(), peer.socket);
                         if let Some(slot) = active.get(&context) {
                             session.send(slot.event("propertyInspectorDidAppear"));
@@ -984,6 +994,12 @@ fn run(
                 }
                 let mut closed = vec![];
                 for (ctx, socket) in &mut session.inspectors {
+                    if appearance_changed && session.appearance_subscriptions.contains(ctx) {
+                        send(
+                            socket,
+                            json!({"event":"deckweaveDidChangeAppearance","payload":last_appearance}),
+                        );
+                    }
                     match drain(socket) {
                         Ok(messages) => {
                             incoming.extend(messages.into_iter().map(|v| (Some(ctx.clone()), v)))
@@ -992,6 +1008,7 @@ fn run(
                     }
                 }
                 for ctx in closed {
+                    session.appearance_subscriptions.remove(&ctx);
                     session.inspectors.remove(&ctx);
                     if let Some(slot) = session.slots.get(&ctx).cloned() {
                         session.send(slot.event("propertyInspectorDidDisappear"));
@@ -1191,6 +1208,17 @@ fn handle(
     }
     let slot = session.slots.get(context).cloned();
     match event {
+        "deckweaveSubscribeAppearance" if pi.is_some() => {
+            if let Some(socket) = session.inspectors.get_mut(context)
+                && let Ok(core) = core.lock()
+            {
+                session.appearance_subscriptions.insert(context.into());
+                send(
+                    socket,
+                    json!({"event":"deckweaveDidChangeAppearance","payload":appearance(&core.snapshot())}),
+                );
+            }
+        }
         "getGlobalSettings" => {
             let path = directory
                 .join("plugin-settings")

@@ -5,6 +5,9 @@
   import DeviceEditor from './DeviceEditor.svelte';
   import Settings from './Settings.svelte';
   import DepthObservationControl from './DepthObservationControl.svelte';
+  import Icon from './Icon.svelte';
+  import appIcon from '../../../assets/branding/icon.png';
+  import { applyTheme } from './theme';
 
   type Workspace = 'actions' | 'lighting' | 'settings';
   let workspace = $state<Workspace>('actions');
@@ -30,31 +33,33 @@
   });
   $effect(() => {
     document.documentElement.lang = locale;
+    applyTheme(document.documentElement, client.snapshot?.configuration.preferences);
   });
 </script>
 
-<div class="app-shell" class:compact={client.snapshot?.configuration.preferences.compact}>
+<div class="app-shell compact">
   <header class="app-bar" class:device-header={client.deviceId !== 'main' && !!device}>
     <div class="brand">
-      <span class="brand-mark">D</span><strong>DeckWeave</strong>
+      <img class="brand-mark" src={appIcon} alt="" /><strong>DeckWeave</strong>
     </div>
     {#if client.deviceId !== 'main' && device}
       <nav class="editor-workspace-tabs" role="group" aria-label={t('deviceSettings')}>
         <button
           class:current={workspace === 'actions'}
           aria-pressed={workspace === 'actions'}
-          onclick={() => (workspace = 'actions')}>{t('actions')}</button
+          onclick={() => (workspace = 'actions')}><Icon name="device" />{t('actions')}</button
         >
         {#if lightingSupported}<button
             class:current={workspace === 'lighting'}
             aria-pressed={workspace === 'lighting'}
             onclick={() => (workspace = 'lighting')}
-            >{locale === 'ru' ? 'Освещение' : 'Lighting'}</button
+            ><Icon name="light" />{locale === 'ru' ? 'Освещение' : 'Lighting'}</button
           >{/if}
         <button
           class:current={workspace === 'settings'}
           aria-pressed={workspace === 'settings'}
-          onclick={() => (workspace = 'settings')}>{t('deviceSettings')}</button
+          onclick={() => (workspace = 'settings')}
+          ><Icon name="sliders" />{t('deviceSettings')}</button
         >
       </nav>
     {/if}
@@ -73,7 +78,7 @@
           class="settings-button quiet"
           aria-label={t('settings')}
           title={t('settings')}
-          onclick={() => void client.openSettings()}>⚙</button
+          onclick={() => void client.openSettings()}><Icon name="settings" /></button
         >{/if}
     </div>
   </header>
@@ -81,13 +86,15 @@
   {#if client.error}
     <div class="error-bar" role="alert">
       <div><strong>{t('error')}</strong><span>{client.error}</span></div>
-      <button class="quiet" aria-label={t('dismiss')} onclick={() => (client.error = '')}>×</button>
+      <button class="quiet" aria-label={t('dismiss')} onclick={() => (client.error = '')}
+        ><Icon name="close" /></button
+      >
     </div>
   {/if}
 
   {#if !client.available}
     <main class="empty-screen">
-      <div class="empty-icon">▦</div>
+      <Icon name="device" size={36} />
       <h1>{t('desktopRequired')}</h1>
       <p>{t('desktopNote')}</p>
     </main>
@@ -132,16 +139,16 @@
     white-space: nowrap;
     font-size: 12px;
     border-radius: 5px;
-    color: #b4bdcb;
+    color: var(--muted);
   }
   .editor-workspace-tabs button:hover {
-    background: #30353e;
-    color: #e5edfa;
+    background: var(--raised);
+    color: var(--text);
   }
   .editor-workspace-tabs button.current {
-    background: #34465f;
-    border-color: #4a6486;
-    color: #eaf2ff;
+    background: var(--selection);
+    border-color: var(--focus);
+    color: var(--text);
   }
   .device-header .app-tools {
     gap: 10px;
