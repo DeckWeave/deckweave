@@ -1,7 +1,8 @@
 export type Locale = 'ru' | 'en';
 export interface Preferences {
   library: LibraryPreferences;
-  allow_weather_geolocation: boolean;
+  disabled_plugins: string[];
+  last_device: string | null;
   smart_profiles: boolean;
   preview_scale: number;
   compact: boolean;

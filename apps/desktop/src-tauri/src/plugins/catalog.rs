@@ -62,7 +62,7 @@ pub fn scan(roots: &[PathBuf]) -> Vec<Package> {
     packages.sort_by(|a, b| a.name.cmp(&b.name));
     packages
 }
-fn read_package(root: PathBuf, id: String) -> Package {
+pub(crate) fn read_package(root: PathBuf, id: String) -> Package {
     let root = root.canonicalize().unwrap_or(root);
     let mut package = Package {
         name: id.clone(),

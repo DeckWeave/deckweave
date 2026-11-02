@@ -240,6 +240,18 @@ impl Core {
         };
         match command {
             Command::SetPreferences { preferences, .. } => {
+                if preferences.disabled_plugins.len() > 4096
+                    || preferences.disabled_plugins.iter().any(|id| id.len() > 256)
+                    || preferences
+                        .last_device
+                        .as_ref()
+                        .is_some_and(|id| id.len() > 256)
+                {
+                    return Err(Error::new(
+                        "preferences",
+                        "Plugin preferences exceed limits",
+                    ));
+                }
                 for ids in [&preferences.library.hidden, &preferences.library.order] {
                     if ids.len() > 4096 || ids.iter().any(|id| id.len() > 512) {
                         return Err(Error::new(

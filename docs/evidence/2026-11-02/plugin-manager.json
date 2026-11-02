@@ -1,0 +1,62 @@
+{
+  "date": "2026-11-02",
+  "base_commit": "d65c214",
+  "checks": {
+    "full_check": "npm run check",
+    "rust_passed": 96,
+    "js_passed": 19,
+    "live_catalogue": "cargo test -p deckweave-desktop live_catalogue --locked --offline -- --ignored --nocapture",
+    "catalogue_entries": 220,
+    "counter": {
+      "id": "me.amankhanna.oacounter",
+      "version": "1.0.1",
+      "archive": "me.amankhanna.oacounter.zip",
+      "size": 5026456,
+      "actions": 2,
+      "download_and_inspection": true,
+      "installed": false,
+      "backend_executed": false
+    },
+    "native_host": {
+      "command": "node scripts/smoke-installer.mjs",
+      "disable_enable": true,
+      "hardware_access": false,
+      "install": true,
+      "live_update": true,
+      "package": "dev.deckweave.installsmoke",
+      "settings_retained": true
+    }
+  },
+  "native_ui": {
+    "startup": "Opened Mirabox editor directly, Tools profile, no settings window",
+    "settings": "Separate window from editor gear",
+    "plugins": "Generic enable checkbox per package; no Weather permission header",
+    "catalogue": "Loaded, searched Counter, selected release, downloaded to review, cancelled without installation",
+    "local_archive": "Native file picker read first-party v1.zip, review shown, cancelled",
+    "relaunch": "Same Mirabox editor window reused; settings not opened"
+  },
+  "owner_state": {
+    "weather_choice": "com.elgato.weather remains disabled via migrated preferences",
+    "physical_assignments": "Unchanged by installer tests; isolated virtual database for live update regression",
+    "persisted_preferences": {
+      "weather_disabled": true,
+      "legacy_weather_field_absent": true,
+      "last_device_valid": true
+    }
+  },
+  "limits": [
+    "Not every catalogue package is compatible",
+    "Protected/encrypted manifests and resource-only or hardware-provider archives are rejected",
+    "No Elgato Marketplace integration",
+    "GitHub latest stable release only; source builds and .tar.gz unsupported"
+  ],
+  "execution_notes": [
+    "A clean-store native smoke timed out inside restricted execution; its backend checks succeeded after moving window creation off UI callbacks",
+    "Full native smoke then passed in ordinary desktop execution without sandbox restrictions"
+  ],
+  "release": {
+    "path": "target/release/deckweave-desktop.exe",
+    "sha256": "409F5FFE89EC88C84DB0F570462080DF945530129C48945B117D4D1516ED99AC",
+    "bytes": 21547008
+  }
+}

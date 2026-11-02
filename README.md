@@ -52,4 +52,4 @@ npm run build
 - [Поведение редактора и будущая приёмка](docs/research/2026-11-01/UX-ACCEPTANCE.md).
 - [Изученная основа IO Type 84](docs/research/2026-11-01/IO-TYPE-84.md).
 
-Соседние репозитории `../plugin-sdk`, `../plugin-template` и `../plugin-registry` содержат SDK действий, самостоятельный генератор плагинов и проверяемый реестр. Готовы System Audio, System Monitor и Timers; Weather остаётся сетевым примером. [Начать расширение](docs/EXTENSIONS.md). SDK внешних драйверов оборудования пока не реализован.
+Соседние репозитории `../plugin-sdk`, `../plugin-template` и `../plugin-registry` содержат SDK действий, самостоятельный генератор плагинов и проверяемый реестр. Готовы System Audio, System Monitor и Timers; Weather остаётся сетевым примером. [Установка из ZIP и каталога OpenDeck, создание своих плагинов](docs/EXTENSIONS.md). SDK внешних драйверов оборудования пока не реализован.

@@ -299,18 +299,51 @@ pub struct Configuration {
     pub devices: Vec<Device>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct Preferences {
-    #[serde(default)]
     pub library: LibraryPreferences,
-    #[serde(default)]
-    pub allow_weather_geolocation: bool,
-    #[serde(default = "enabled")]
+    pub disabled_plugins: Vec<String>,
+    pub last_device: Option<String>,
     pub smart_profiles: bool,
-    #[serde(default = "preview_scale")]
     pub preview_scale: u16,
-    #[serde(default)]
     pub compact: bool,
+}
+impl<'de> Deserialize<'de> for Preferences {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        struct Stored {
+            #[serde(default)]
+            library: LibraryPreferences,
+            #[serde(default)]
+            disabled_plugins: Option<Vec<String>>,
+            #[serde(default)]
+            last_device: Option<String>,
+            // One-time migration of the owner's earlier opt-out. Never serialized again.
+            #[serde(default)]
+            allow_weather_geolocation: Option<bool>,
+            #[serde(default = "enabled")]
+            smart_profiles: bool,
+            #[serde(default = "preview_scale")]
+            preview_scale: u16,
+            #[serde(default)]
+            compact: bool,
+        }
+        let stored = Stored::deserialize(deserializer)?;
+        Ok(Self {
+            library: stored.library,
+            disabled_plugins: stored.disabled_plugins.unwrap_or_else(|| {
+                if stored.allow_weather_geolocation == Some(false) {
+                    vec!["com.elgato.weather".into()]
+                } else {
+                    vec![]
+                }
+            }),
+            last_device: stored.last_device,
+            smart_profiles: stored.smart_profiles,
+            preview_scale: stored.preview_scale,
+            compact: stored.compact,
+        })
+    }
 }
 fn preview_scale() -> u16 {
     100
@@ -319,7 +352,8 @@ impl Default for Preferences {
     fn default() -> Self {
         Self {
             library: LibraryPreferences::default(),
-            allow_weather_geolocation: false,
+            disabled_plugins: vec![],
+            last_device: None,
             smart_profiles: true,
             preview_scale: 100,
             compact: false,

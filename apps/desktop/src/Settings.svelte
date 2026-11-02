@@ -3,6 +3,7 @@
   import type { Locale, Preferences } from './types';
   import { text } from './i18n';
   import Registry from './Registry.svelte';
+  import PluginManager from './PluginManager.svelte';
   let { client }: { client: Client } = $props();
   let tab = $state('devices');
   const config = $derived(client.snapshot!.configuration);
@@ -80,48 +81,7 @@
         <p>{t('backgroundHint')}</p>
       </div>
     {:else if tab === 'plugins'}
-      <h2>{t('plugins')}</h2>
-      <p class="settings-intro">{t('pluginCatalogHint')}</p>
-      <div class="settings-group">
-        <label class="settings-row"
-          ><span
-            >{t('elgatoWeatherPermission')}<small>{t('elgatoWeatherPermissionHint')}</small></span
-          ><input
-            type="checkbox"
-            checked={config.preferences.allow_weather_geolocation}
-            onchange={(e) => preference({ allow_weather_geolocation: e.currentTarget.checked })}
-          /></label
-        >
-      </div>
-      <div class="installed-plugins">
-        {#each client.plugins as pack}<article>
-            <span class="package-symbol">◈</span>
-            <div>
-              <h3>{pack.name}</h3>
-              <p>
-                {pack.version} · {pack.resource_only
-                  ? t('resourcePackage')
-                  : `${pack.actions.filter((a) => a.visible).length} ${t('actions').toLocaleLowerCase()}`}
-              </p>
-              {#if pack.actions.length && pack.actions.every((a) => !a.visible)}<p>
-                  {t('hiddenVendorActions')}
-                </p>{/if}
-              {#if pack.error}<p class="connection-error">{pack.error}</p>{/if}
-              {#if pack.actions.some((a) => a.visible)}<details>
-                  <summary>{t('actions')}</summary>{#each pack.actions as action}<p>
-                      {action.name} <small>{action.controllers.join(' · ')}</small>
-                    </p>{/each}
-                </details>{/if}
-            </div>
-            <span class="pill" class:plugin-error={!!pack.error}
-              >{pack.error
-                ? t('unavailable')
-                : pack.id === 'com.elgato.weather' && !config.preferences.allow_weather_geolocation
-                  ? t('disabledWeather')
-                  : t('available')}</span
-            >
-          </article>{/each}
-      </div>
+      <PluginManager {client} />
     {:else}
       <div class="about-app">
         <div class="brand-mark">D</div>

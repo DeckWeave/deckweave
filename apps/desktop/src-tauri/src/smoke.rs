@@ -40,6 +40,10 @@ pub fn configuration() -> Option<&'static Configuration> {
         .as_ref()
 }
 pub fn start(app: &tauri::AppHandle) {
+    if let Some(fixtures) = std::env::var_os("DECKWEAVE_SMOKE_INSTALLER") {
+        installer(app, PathBuf::from(fixtures));
+        return;
+    }
     let Some(package) = std::env::var("DECKWEAVE_SMOKE_PLUGIN")
         .ok()
         .or_else(|| configuration().map(|c| c.plugin.clone()))
@@ -217,5 +221,139 @@ pub fn start(app: &tauri::AppHandle) {
         if std::env::var_os("DECKWEAVE_SMOKE_EXIT").is_some() {
             app.exit(0);
         }
+    });
+}
+
+// Opt-in native-host regression: two locally generated fixture archives, isolated
+// database and no hardware. Unlike file-publication unit tests, this exercises
+// the actual pause/reload worker, assigned context restart and generic disabling.
+fn installer(app: &tauri::AppHandle, fixtures: PathBuf) {
+    let Some(directory) = crate::directory_override() else {
+        return;
+    };
+    let local = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../..")
+        .join(".local");
+    let (Ok(local), Ok(fixtures), Ok(directory)) = (
+        local.canonicalize(),
+        fixtures.canonicalize(),
+        directory.canonicalize(),
+    ) else {
+        return;
+    };
+    if !fixtures.starts_with(&local)
+        || !directory.starts_with(&local)
+        || std::env::var_os("DECKWEAVE_VIRTUAL_ONLY").is_none()
+    {
+        return;
+    }
+    let app = app.clone();
+    thread::spawn(move || {
+        let result = (|| -> Result<_, String> {
+            let state = app.state::<Application>();
+            let Application::Ready { plugins, .. } = state.inner() else {
+                return Err("Host unavailable".into());
+            };
+            let manager = app.state::<crate::plugin_manager::Manager>();
+            let first = manager.prepare_file(&fixtures.join("v1.zip"), &plugins.packages())?;
+            let package = first.id.clone();
+            manager.commit(&first.token, plugins)?;
+            let d = locked(&state)
+                .map_err(|e| e.to_string())?
+                .snapshot()
+                .configuration
+                .devices[0]
+                .clone();
+            let context = {
+                let mut core = locked(&state).map_err(|e| e.to_string())?;
+                let revision = core.revision();
+                let snapshot = core
+                    .dispatch(
+                        Command::ConfigurePlugin {
+                            device_id: d.id.clone(),
+                            page_id: d.profile.active_page_id.clone(),
+                            control_id: "key-1".into(),
+                            plugin: PluginAction {
+                                controller: None,
+                                package: package.clone(),
+                                action: format!("{package}.action"),
+                                settings: json!({"prefix":"Kept"}),
+                            },
+                            label: "Installer smoke".into(),
+                            expected_revision: revision,
+                        },
+                        "smoke",
+                    )
+                    .map_err(|e| e.to_string())?;
+                snapshot.configuration.devices[0].profile.pages[0].bindings["key-1"]
+                    .id
+                    .clone()
+            };
+            let wait = |expected: &str, disabled: bool| -> Result<(), String> {
+                let start = Instant::now();
+                while start.elapsed() < Duration::from_secs(8) {
+                    let snapshot = locked(&state).map_err(|e| e.to_string())?.snapshot();
+                    if let Some(feedback) =
+                        snapshot.feedback.iter().find(|f| f.binding_id == context)
+                    {
+                        if disabled
+                            && feedback
+                                .error
+                                .as_ref()
+                                .is_some_and(|e| e.contains("выключен") || e.contains("disabled"))
+                        {
+                            return Ok(());
+                        }
+                        if !disabled
+                            && feedback.error.is_none()
+                            && feedback.title.as_deref() == Some(expected)
+                        {
+                            return Ok(());
+                        }
+                    }
+                    thread::sleep(Duration::from_millis(50));
+                }
+                Err(format!("Expected feedback {expected}, disabled={disabled}"))
+            };
+            wait("v1 Kept", false)?;
+            let second = manager.prepare_file(&fixtures.join("v2.zip"), &plugins.packages())?;
+            if second.installed_version.as_deref() != Some("1.0.0") {
+                return Err("Installed version not detected".into());
+            }
+            manager.commit(&second.token, plugins)?;
+            wait("v2 Kept", false)?;
+            for disabled in [true, false] {
+                let mut core = locked(&state).map_err(|e| e.to_string())?;
+                let mut preferences = core.snapshot().configuration.preferences;
+                if disabled {
+                    preferences.disabled_plugins.push(package.clone());
+                } else {
+                    preferences.disabled_plugins.retain(|id| id != &package);
+                }
+                let revision = core.revision();
+                core.dispatch(
+                    Command::SetPreferences {
+                        preferences,
+                        expected_revision: revision,
+                    },
+                    "smoke",
+                )
+                .map_err(|e| e.to_string())?;
+                drop(core);
+                wait("v2 Kept", disabled)?;
+            }
+            Ok(
+                json!({"package":package,"install":true,"live_update":true,"settings_retained":true,"disable_enable":true,"hardware_access":false}),
+            )
+        })();
+        let report = match result {
+            Ok(report) => report,
+            Err(error) => json!({"error":error}),
+        };
+        let _ = std::fs::write(
+            directory.join("installer-smoke.json"),
+            serde_json::to_vec_pretty(&report).unwrap_or_default(),
+        );
+        app.exit(0);
     });
 }

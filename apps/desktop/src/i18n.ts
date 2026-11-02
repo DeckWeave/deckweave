@@ -1,6 +1,26 @@
 import type { Locale } from './types';
 
 const ru = {
+  installFromFile: 'Установить из файла…',
+  openDeckCatalogue: 'Каталог OpenDeck',
+  installedPlugins: 'Установленные',
+  pluginLoading: 'Загрузка…',
+  installReview: 'Установка плагина',
+  installedVersion: 'Установленная версия',
+  installPlugin: 'Установить',
+  updatePlugin: 'Обновить',
+  cancelInstall: 'Отмена',
+  catalogueHint:
+    'Каталог OpenAction, который использует OpenDeck. Выберите готовый архив для Windows из релиза автора. Совместимость зависит от конкретного пакета; драйверы устройств пока не поддерживаются.',
+  searchPlugins: 'Поиск по каталогу',
+  releaseFiles: 'Файлы релиза',
+  chooseReleaseFile: 'Выберите архив для вашей ОС',
+  prepareInstall: 'Скачать и проверить',
+  noReleaseFiles:
+    'В последнем релизе нет готового ZIP / streamDeckPlugin. Исходники автоматически не собираются.',
+  morePlugins: 'Показать ещё',
+  pluginEnabled: 'Включён',
+  installSuccess: 'Плагин установлен. Действия уже доступны в редакторах.',
   libraryDisplay: 'Настроить список действий',
   libraryDisplayHint:
     'Показывайте нужные группы и действия, меняйте порядок стрелками. Назначения на устройстве продолжают работать.',
@@ -9,10 +29,6 @@ const ru = {
   done: 'Готово',
   resourcePackage: 'Библиотека ресурсов',
   hiddenVendorActions: 'Служебные действия (скрыты автором)',
-  elgatoWeatherPermission: 'Разрешить определение местоположения Elgato Weather',
-  elgatoWeatherPermissionHint:
-    'Оригинальный плагин получает внешний IP через api.ipify.org и передаёт его в ip-api.com (HTTP), при ошибке — ipinfo.io или ipapi.co (HTTPS), даже если город выбран вручную. Этот переключатель разрешает его запуск. DeckWeave Weather не определяет IP.',
-  disabledWeather: 'Выключен',
   settings: 'Настройки',
   general: 'Общие',
   plugins: 'Плагины',
@@ -192,6 +208,26 @@ const ru = {
   currentPage: 'Текущая страница',
 } as const;
 const en: Record<keyof typeof ru, string> = {
+  installFromFile: 'Install from file…',
+  openDeckCatalogue: 'OpenDeck catalogue',
+  installedPlugins: 'Installed',
+  pluginLoading: 'Loading…',
+  installReview: 'Plugin installation',
+  installedVersion: 'Installed version',
+  installPlugin: 'Install',
+  updatePlugin: 'Update',
+  cancelInstall: 'Cancel',
+  catalogueHint:
+    'The OpenAction catalogue used by OpenDeck. Choose an author-provided Windows archive. Compatibility depends on the package; hardware providers are not supported yet.',
+  searchPlugins: 'Search catalogue',
+  releaseFiles: 'Release files',
+  chooseReleaseFile: 'Choose an archive for your OS',
+  prepareInstall: 'Download and inspect',
+  noReleaseFiles:
+    'The latest release has no ZIP / streamDeckPlugin asset. Source code is not built automatically.',
+  morePlugins: 'Show more',
+  pluginEnabled: 'Enabled',
+  installSuccess: 'Plugin installed. Actions are now available in device editors.',
   libraryDisplay: 'Customize action list',
   libraryDisplayHint:
     'Choose groups and actions, then reorder with arrows. Assigned actions keep running.',
@@ -200,10 +236,6 @@ const en: Record<keyof typeof ru, string> = {
   done: 'Done',
   resourcePackage: 'Resource library',
   hiddenVendorActions: 'Internal actions (hidden by author)',
-  elgatoWeatherPermission: 'Allow Elgato Weather location detection',
-  elgatoWeatherPermissionHint:
-    'The original plugin obtains your public IP from api.ipify.org and passes it to ip-api.com (HTTP), falling back to ipinfo.io or ipapi.co (HTTPS), even with a manually selected city. This switch permits it to run. DeckWeave Weather does not detect your IP.',
-  disabledWeather: 'Disabled',
   settings: 'Settings',
   general: 'General',
   plugins: 'Plugins',

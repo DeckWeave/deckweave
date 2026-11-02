@@ -32,13 +32,32 @@ download afterward. Update `lib/sdk.mjs`, its matching types and `SDK-VERSION`
 together when intentionally upgrading. The SDK is source-distributed, not an
 unpublished npm dependency. It is GPL-3.0-or-later, as requested for this project.
 
-To load a development plugin, put its complete `<reverse.dns.id>.sdPlugin` folder
-inside the application's app-data `plugins` directory, then restart DeckWeave.
-The host also scans this repository's `plugins` during source development. It
-does not watch folders for newly installed packages. Do not overwrite the Elgato
-installation. The registry is metadata only: no automatic download/install/run.
-ZIP archives currently require manual extraction into the same plugins directory.
-Settings/assignments live in the host database, outside the plugin bundle.
+In Settings → Plugins, **Install from file…** accepts the generated ZIP or an
+unprotected `.streamDeckPlugin` archive. Review the bundle identity, version,
+action count and SHA-256, then choose Install/Update. Cancel leaves the installed
+files unchanged. A successful install refreshes all editors without restarting
+DeckWeave; assigned contexts of an updated package restart. Settings and action
+assignments remain outside the bundle, in the host data directory.
+
+**OpenDeck catalogue** reads the public [OpenAction catalogue](https://github.com/OpenActionAPI/plugins).
+Search for a plugin, open Release files, select an author-provided archive for
+your OS, then Download and inspect → Install. The latest stable GitHub release
+is used; source code is not built automatically. Missing releases, API limits,
+protected manifests, unsupported platforms and incomplete bundles show errors.
+Catalogue inclusion alone is not proof of full DeckWeave compatibility. Hardware
+providers and resource-only archives are not supported by this action installer.
+
+Managed copies go to the application's app-data `plugins/<id>.sdPlugin`.
+They take precedence over the repository development bundles and locally installed
+Elgato packages. Original Elgato files are never overwritten. Disable/enable is a
+generic per-package control in Settings → Plugins, independent of library display
+preferences. Disabling stops the backend and inspectors while preserving assignments.
+
+For manual source development, put the complete `<id>.sdPlugin` folder in the
+app-data plugins directory and restart; arbitrary filesystem changes are not
+watched. The host also scans this repository's `plugins`. The sibling DeckWeave
+registry remains author metadata/validation, separate from the public OpenAction
+catalogue; no release URLs are invented or unpublished packages downloaded.
 
 ## Starter bundles
 
@@ -89,3 +108,20 @@ The native helper is checked read-only. Companion repositories have their own
 packaging checks. Windows CI runs the main checks and creates the three new
 starter archives. CI configuration is checked in; a hosted run has not been
 claimed before publishing the repositories.
+
+Archive regression tests cover unsafe paths, links/case collisions, bundle identity,
+platform/required files, preview cancellation/expiry, updates and rollback. The
+public Counter v1.0.1 ZIP was downloaded/inspected without executing its backend.
+For an opt-in native host install → assigned action → live update → disable/enable
+regression, close other DeckWeave instances, build debug and run:
+
+```powershell
+cargo build -p deckweave-desktop --locked
+node scripts/smoke-installer.mjs
+```
+
+This generates first-party v1/v2 fixture archives under `.local`, uses a fresh
+isolated database, disables physical hardware discovery and exits on completion.
+It verifies new feedback after the update and retention of the assigned settings.
+On Windows, run it in an ordinary desktop process: restricted execution can block
+WebView2 initialization. [Recorded result](evidence/2026-11-02/plugin-manager.json).

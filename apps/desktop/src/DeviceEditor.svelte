@@ -58,8 +58,7 @@
   function accepts(item: LibraryAction, control: Control): boolean {
     if (
       item.type === 'plugin' &&
-      item.package === 'com.elgato.weather' &&
-      !snapshot.configuration.preferences.allow_weather_geolocation
+      snapshot.configuration.preferences.disabled_plugins.includes(item.package)
     )
       return false;
     const region = regionFor(control);
@@ -267,8 +266,7 @@
             !pack.error &&
             !pack.resource_only &&
             (!pack.development || libraryPrefs.show_development) &&
-            (pack.id !== 'com.elgato.weather' ||
-              snapshot.configuration.preferences.allow_weather_geolocation),
+            !snapshot.configuration.preferences.disabled_plugins.includes(pack.id),
         )
         .map((pack) => ({
           id: 'plugin:' + pack.id,

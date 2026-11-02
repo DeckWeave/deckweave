@@ -27,9 +27,12 @@ enum Request {
         reply: Sender<Result<(String, String), String>>,
     },
     Restart(String),
+    Pause(String, Sender<()>),
+    Resume(String, Sender<()>),
 }
 pub struct Host {
     catalog: Arc<Mutex<Vec<Package>>>,
+    roots: Vec<PathBuf>,
     requests: Sender<Request>,
     stop: Arc<AtomicBool>,
     thread: Mutex<Option<JoinHandle<()>>>,
@@ -56,10 +59,32 @@ impl Host {
             thread::spawn(move || run(core, app, directory, epoch, packages, stopping, rx));
         Self {
             catalog,
+            roots,
             requests: tx,
             stop,
             thread: Mutex::new(Some(thread)),
         }
+    }
+    pub fn pause(&self, id: &str) -> Result<(), String> {
+        let (tx, rx) = mpsc::channel();
+        self.requests
+            .send(Request::Pause(id.into(), tx))
+            .map_err(|_| "Plugin host stopped")?;
+        rx.recv_timeout(Duration::from_secs(10))
+            .map_err(|_| "Plugin stop timed out".into())
+    }
+    pub fn reload(&self, id: &str) -> Result<(), String> {
+        let packages = catalog::scan(&self.roots);
+        *self
+            .catalog
+            .lock()
+            .map_err(|_| "Plugin catalogue unavailable")? = packages;
+        let (tx, rx) = mpsc::channel();
+        self.requests
+            .send(Request::Resume(id.into(), tx))
+            .map_err(|_| "Plugin host stopped")?;
+        rx.recv_timeout(Duration::from_secs(10))
+            .map_err(|_| "Plugin reload timed out".into())
     }
     pub fn packages(&self) -> Vec<Package> {
         self.catalog.lock().map(|v| v.clone()).unwrap_or_default()
@@ -170,9 +195,24 @@ impl Session {
     }
     fn close(mut self, app: &tauri::AppHandle, net: &Network) {
         net.remove(&self.token);
-        for id in self.slots.keys() {
+        let contexts: BTreeSet<_> = self
+            .slots
+            .keys()
+            .chain(self.inspectors.keys())
+            .chain(self.retired.entries.keys())
+            .cloned()
+            .collect();
+        for id in &contexts {
             net.remove(id);
         }
+        let handle = app.clone();
+        let _ = app.run_on_main_thread(move || {
+            for id in contexts {
+                if let Some(window) = handle.get_webview_window(&format!("pi-{id}")) {
+                    let _ = window.close();
+                }
+            }
+        });
         if let Some(mut child) = self.child.take() {
             let _ = child.kill();
             let _ = child.wait();
@@ -419,9 +459,9 @@ fn start(
         if let Some(e) = &s.package.error {
             return Err(e.clone());
         }
-        if let Some(error) = weather_permission_error(
-            &s.package,
-            snapshot.configuration.preferences.allow_weather_geolocation,
+        if let Some(error) = disabled_error(
+            &s.package.id,
+            &snapshot.configuration.preferences,
             snapshot.configuration.locale,
         ) {
             return Err(error);
@@ -568,8 +608,28 @@ fn run(
     };
     let mut active = BTreeMap::new();
     let mut assigned = BTreeSet::new();
-    let mut weather_geolocation = snapshot.configuration.preferences.allow_weather_geolocation;
+    let mut paused = BTreeSet::new();
+    let mut disabled_plugins = snapshot.configuration.preferences.disabled_plugins.clone();
     while !stop.load(Ordering::Relaxed) {
+        let mut pending_requests = vec![];
+        while let Ok(request) = requests.try_recv() {
+            match request {
+                Request::Pause(id, reply) => {
+                    paused.insert(id.clone());
+                    if let Some(session) = sessions.remove(&id)
+                        && let Some(network) = &net
+                    {
+                        session.close(&app, network);
+                    }
+                    let _ = reply.send(());
+                }
+                Request::Resume(id, reply) => {
+                    paused.remove(&id);
+                    let _ = reply.send(());
+                }
+                other => pending_requests.push(other),
+            }
+        }
         let Ok((revision, changed, retained, inputs)) = core.lock().map(|mut c| {
             (
                 c.revision(),
@@ -587,9 +647,20 @@ fn run(
         if let Some(changed) = changed {
             snapshot = changed;
         }
-        let weather_permission_changed =
-            weather_geolocation != snapshot.configuration.preferences.allow_weather_geolocation;
-        weather_geolocation = snapshot.configuration.preferences.allow_weather_geolocation;
+        let changed_plugins: Vec<_> = disabled_plugins
+            .iter()
+            .chain(&snapshot.configuration.preferences.disabled_plugins)
+            .filter(|id| {
+                disabled_plugins.contains(id)
+                    != snapshot
+                        .configuration
+                        .preferences
+                        .disabled_plugins
+                        .contains(id)
+            })
+            .cloned()
+            .collect();
+        disabled_plugins = snapshot.configuration.preferences.disabled_plugins.clone();
         if revision != last_revision {
             assigned = assigned_packages(&snapshot);
         }
@@ -606,10 +677,10 @@ fn run(
             net = Network::start().ok();
         }
         if let Some(network) = &net {
-            if weather_permission_changed
-                && let Some(session) = sessions.remove("com.elgato.weather")
-            {
-                session.close(&app, network);
+            for id in &changed_plugins {
+                if let Some(session) = sessions.remove(id) {
+                    session.close(&app, network);
+                }
             }
             let unused: Vec<_> = sessions
                 .keys()
@@ -624,7 +695,7 @@ fn run(
                     s.close(&app, network);
                 }
             }
-            for id in &needed {
+            for id in needed.iter().filter(|id| !paused.contains(*id)) {
                 if !sessions.contains_key(id) {
                     let package = packages
                         .lock()
@@ -649,8 +720,9 @@ fn run(
                     }
                 }
             }
-            while let Ok(request) = requests.try_recv() {
+            for request in pending_requests {
                 match request {
+                    Request::Pause(..) | Request::Resume(..) => {}
                     Request::Restart(id) => {
                         if let Some(s) = sessions.remove(&id) {
                             s.close(&app, network);
@@ -870,9 +942,9 @@ fn prepare_inspector(
     let session = sessions
         .get_mut(&plugin.package)
         .ok_or("Plugin is not running")?;
-    if let Some(error) = weather_permission_error(
-        &session.package,
-        snapshot.configuration.preferences.allow_weather_geolocation,
+    if let Some(error) = disabled_error(
+        &session.package.id,
+        &snapshot.configuration.preferences,
         snapshot.configuration.locale,
     ) {
         return Err(error);
@@ -899,20 +971,25 @@ fn prepare_inspector(
     Ok((net.url(&nonce, &page), session.package.id.clone()))
 }
 
-fn weather_permission_error(
-    package: &Package,
-    allowed: bool,
+fn disabled_error(
+    package: &str,
+    preferences: &deckweave_core::Preferences,
     locale: deckweave_core::Locale,
 ) -> Option<String> {
-    if package.id != "com.elgato.weather" || allowed {
-        return None;
-    }
-    Some(if locale == deckweave_core::Locale::Ru {
-        "Elgato Weather выключен: оригинальный плагин определяет внешний IP через api.ipify.org и передаёт его сервисам геолокации. Разрешите это в общих настройках приложения или используйте DeckWeave Weather."
-    } else {
-        "Elgato Weather is disabled: the original plugin detects your public IP via api.ipify.org and sends it to geolocation services. Allow this in application settings or use DeckWeave Weather."
-    }.into())
+    preferences
+        .disabled_plugins
+        .iter()
+        .any(|id| id == package)
+        .then(|| {
+            if locale == deckweave_core::Locale::Ru {
+                "Плагин выключен. Включите его в настройках плагинов."
+            } else {
+                "Plugin is disabled. Enable it in plugin settings."
+            }
+            .into()
+        })
 }
+
 fn handle(
     session: &mut Session,
     pi: Option<&str>,
@@ -1160,6 +1237,24 @@ fn drain(socket: &mut Socket) -> Result<Vec<Value>, String> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn disabling_a_package_is_generic_and_does_not_disable_other_packages() {
+        let mut preferences = deckweave_core::Preferences::default();
+        for id in ["dev.example.test", "com.other.plugin"] {
+            preferences.disabled_plugins = vec![id.into()];
+            assert!(super::disabled_error(id, &preferences, deckweave_core::Locale::Ru).is_some());
+            assert!(
+                super::disabled_error(
+                    "dev.unrelated.plugin",
+                    &preferences,
+                    deckweave_core::Locale::En
+                )
+                .is_none()
+            );
+            preferences.disabled_plugins.clear();
+            assert!(super::disabled_error(id, &preferences, deckweave_core::Locale::En).is_none());
+        }
+    }
     use super::*;
     use deckweave_core::{InputEvent, PluginAction};
     fn settings_fixture() -> (Core, Slot, String) {
@@ -1325,27 +1420,6 @@ mod tests {
         assert_eq!(retired.entries.len(), RetiredContexts::LIMIT);
         retired.prune(now + RetiredContexts::LIFETIME);
         assert!(retired.entries.is_empty());
-    }
-    #[test]
-    fn elgato_weather_requires_explicit_permission_before_process_or_inspector() {
-        let mut package = Package {
-            id: "com.elgato.weather".into(),
-            name: "Elgato Weather".into(),
-            version: "1.2.1.103".into(),
-            actions: vec![],
-            error: None,
-            resource_only: false,
-            development: false,
-            root: PathBuf::new(),
-            entry: None,
-            isolated_weather: true,
-        };
-        let reason = weather_permission_error(&package, false, deckweave_core::Locale::En).unwrap();
-        assert!(reason.contains("api.ipify.org"));
-        assert!(reason.contains("application settings"));
-        assert!(weather_permission_error(&package, true, deckweave_core::Locale::En).is_none());
-        package.id = "other.plugin".into();
-        assert!(weather_permission_error(&package, false, deckweave_core::Locale::En).is_none());
     }
     #[test]
     fn original_plugin_context_is_retained_until_release_after_navigation() {

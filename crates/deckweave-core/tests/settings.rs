@@ -10,7 +10,8 @@ fn preferences_and_device_defaults_save_atomically_and_survive_restart() {
     core.dispatch(
         Command::SetPreferences {
             preferences: Preferences {
-                allow_weather_geolocation: false,
+                disabled_plugins: vec!["example.disabled".into()],
+                last_device: Some(id.clone()),
                 smart_profiles: false,
                 preview_scale: 125,
                 compact: true,
@@ -82,9 +83,42 @@ fn preferences_and_device_defaults_save_atomically_and_survive_restart() {
     assert_eq!(snapshot.configuration.preferences.preview_scale, 125);
     assert!(!snapshot.configuration.preferences.smart_profiles);
     assert_eq!(
+        snapshot.configuration.preferences.disabled_plugins,
+        ["example.disabled"]
+    );
+    assert_eq!(
+        snapshot.configuration.preferences.last_device.as_deref(),
+        Some(snapshot.configuration.devices[0].id.as_str())
+    );
+    assert_eq!(
         snapshot.configuration.devices[0].default_profile.as_ref(),
         Some(&profile)
     );
+}
+
+#[test]
+fn legacy_plugin_opt_out_migrates_once_without_a_special_serialized_preference() {
+    let blocked: Preferences =
+        serde_json::from_value(serde_json::json!({"allow_weather_geolocation":false})).unwrap();
+    assert_eq!(blocked.disabled_plugins, ["com.elgato.weather"]);
+    let stored = serde_json::to_value(&blocked).unwrap();
+    assert!(stored.get("allow_weather_geolocation").is_none());
+    let reloaded: Preferences = serde_json::from_value(stored).unwrap();
+    assert_eq!(reloaded.disabled_plugins, blocked.disabled_plugins);
+    for value in [
+        serde_json::json!({}),
+        serde_json::json!({"allow_weather_geolocation":true}),
+        serde_json::json!({"allow_weather_geolocation":false,"disabled_plugins":[]}),
+    ] {
+        assert!(
+            serde_json::from_value::<Preferences>(value)
+                .unwrap()
+                .disabled_plugins
+                .is_empty()
+        );
+    }
+    let generic:Preferences=serde_json::from_value(serde_json::json!({"allow_weather_geolocation":false,"disabled_plugins":["dev.example.test"]})).unwrap();
+    assert_eq!(generic.disabled_plugins, ["dev.example.test"]);
 }
 #[test]
 fn global_smart_profile_switch_and_settings_window_pause_do_not_override_manual_profile() {

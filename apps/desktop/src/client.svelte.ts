@@ -15,6 +15,7 @@ export class Client {
   private queue: Promise<unknown> = Promise.resolve();
   private unlisten?: UnlistenFn;
   private unlistenSettings?: UnlistenFn;
+  private unlistenPlugins?: UnlistenFn;
   private stopped = false;
   private refreshing?: Promise<void>;
   private refreshAgain = false;
@@ -22,6 +23,7 @@ export class Client {
   async start() {
     if (!this.available) return;
     try {
+      this.unlistenPlugins = await listen('deckweave:plugins', () => void this.reloadPlugins());
       this.unlistenSettings = await listen<string | null>('deckweave:settings', (event) => {
         this.settingsDevice = event.payload;
         this.settingsRequest++;
@@ -36,6 +38,7 @@ export class Client {
       if (this.stopped) {
         this.unlisten();
         this.unlistenSettings?.();
+        this.unlistenPlugins?.();
         return;
       }
       await this.refresh();
@@ -48,6 +51,15 @@ export class Client {
     this.stopped = true;
     this.unlisten?.();
     this.unlistenSettings?.();
+    this.unlistenPlugins?.();
+  }
+  async reloadPlugins() {
+    try {
+      const plugins = await invoke<PluginPackage[]>('list_plugins');
+      if (!this.stopped) this.plugins = plugins;
+    } catch (e) {
+      this.fail(e);
+    }
   }
   private adopt(snapshot: Snapshot) {
     if (
