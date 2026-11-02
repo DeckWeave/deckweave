@@ -1,0 +1,100 @@
+# Device and extension management
+
+* **Author:** Codex, from the owner's requirements and a source audit
+* **Date:** 2026-11-02
+* **Status:** Working hypothesis for the owner's EGM readiness checkpoint. No Goldfish review has run. This is not an accepted implementation design.
+
+## Overview
+
+DeckWeave needs a complete way to install, identify, configure, disable and remove extensions, and to add, configure and remove actual devices. A user should not need to understand the runtime protocol to distinguish an installed driver from a connected keyboard. The next hardware implementation should use IO Type 84 to test an external device contract alongside the existing Mirabox, without changing the keyboard's firmware or replacing its normal typing on connection.
+
+The proposed user model has two extension types: **Actions** and **Device support**. They share installation and management. **Devices** lists actual or virtual instances. Installing support once can discover several independent devices. Each device keeps its own editor, profiles and hardware settings. The host owns the interface and action execution; a device extension owns discovery and communication with its hardware.
+
+## Analysis
+
+### What the source audit established
+
+| Finding | Evidence | Consequence |
+| --- | --- | --- |
+| Add device creates only another Virtual Studio | [Registry](../../../apps/desktop/src/Registry.svelte), [Core](../../../crates/deckweave-core/src/lib.rs) | Rename the existing operation and provide a real discovery/add flow. |
+| Device removal and plugin uninstallation are missing | [Commands](../../../crates/deckweave-core/src/model.rs), [installer](../../../apps/desktop/src-tauri/src/plugin_manager.rs) | These are missing operations, not hidden buttons the owner failed to find. |
+| Device names, default profile and diagnostics are exposed; hardware settings are not | [Registry](../../../apps/desktop/src/Registry.svelte) | Add settings supplied by the selected device's supported features. |
+| Geometry and registration still contain built-in provider branches | [model](../../../crates/deckweave-core/src/model.rs), [Core](../../../crates/deckweave-core/src/lib.rs), [hardware worker](../../../apps/desktop/src-tauri/src/hardware.rs) | A second device requires a descriptor registry, not another N4-shaped placeholder. The existing editor already positions controls from geometry and can be extended. |
+| Existing extension tools support action bundles only | [SDK](../../../../plugin-sdk/README.md), [template](../../../../plugin-template/README.md), [registry schema](../../../../plugin-registry/schema/registry.schema.json) | Add a separately versioned device contract and generator mode. Do not advertise the current action template as a device SDK. |
+| Plugin discovery scans managed copies, repository bundles and the Elgato installation, in that order | [host](../../../apps/desktop/src-tauri/src/plugins/mod.rs), [catalogue](../../../apps/desktop/src-tauri/src/plugins/catalog.rs) | Deleting a managed copy alone can reveal another copy. Show origin and ownership, and prevent removed packages from silently returning through another scan root. |
+| The earlier Mirabox adapter has separate screen and LED brightness commands | [transport](../../../../../../CODEX/companion-surface-mirabox-stream-dock/src/streamdock.ts), [protocol](../../../../../../CODEX/companion-surface-mirabox-stream-dock/src/protocol.ts) | Port the existing command builders and gamma mapping; do not invent new packets. Verify screen and ring controls separately. |
+| IO Type 84 has a Rust transport and settings codec | [device](../../../../../io_type_84/crates/io-platform/src/device.rs), [protocol](../../../../../io_type_84/docs/PROTOCOL.md), [physical mapping](../../../../../io_type_84/crates/io-platform/src/layout.rs) | Reuse the hardware-specific code and evidence, not its whole Vue application or a second automation engine. |
+| IO's current open function rejects multiple matching keyboards | [device](../../../../../io_type_84/crates/io-platform/src/device.rs) | Refactor discovery/open-by-identity before claiming one provider supports multiple IO instances. |
+| IO has narrower verified capabilities than its planned feature list | [current state](../../../../../io_type_84/docs/STATUS.md), [integration levels](../../../../../io_type_84/docs/INTEGRATION.md), [depth ownership](../../../../../io_type_84/modules/exclusive-depth.md) | Preserve firmware/model guards and distinguish readback, physical behavior and proposed firmware APIs. |
+
+### Proposed user flows
+
+**Manage extensions.** Settings → Extensions has Installed and Catalogue views, with Actions and Device support filters. A card shows name, version, author, type, source, enabled state and an actionable failure reason. Install/update stays in the existing modal at any list position. Existing action Property Inspectors remain action settings; they are not presented as device settings.
+
+A managed extension has **Uninstall…**. Its confirmation lists affected assignments/devices before stopping the extension. Preserve profiles and action settings by default; show unavailable assignments with the missing extension's name. Offer reinstall from that state. Do not execute removed actions. Data erasure is a separate explicit operation.
+
+A package supplied by Elgato has **Disconnect from DeckWeave**; a built-in component has **Disable**. Neither operation deletes the Elgato installation or source checkout. A removed/disconnected package must not silently reappear from a lower-priority scan root. Show the difference in the card's source label and operation text, rather than presenting a nonfunctional Delete button.
+
+**Add a device.** Settings → Devices → Add device shows discovered, not-yet-added hardware and a separate Create virtual device operation. If support is missing, link to the Device support catalogue or Install from file. First-time discovery may add supported new hardware automatically, as Mirabox does now, but explicit removal takes precedence and prevents it from immediately returning. Re-adding explicitly clears that exclusion.
+
+**Configure a device.** The gear beside a device opens that exact device's settings. Mirabox offers separate Screen brightness and Dial lighting brightness controls. IO offers its keyboard layout and supported groups: lighting, onboard assignments and actuation, with further groups only when the driver implements and verifies them. Controls show the current/desired/pending/error state. A saved desktop value must not be labelled applied hardware state when disconnected or after an unsuccessful write.
+
+**Remove a device.** Remove from DeckWeave stops that instance, closes its editor, cancels held/queued actions without executing release actions, and keeps other instances working. Preserve its configuration for explicit restoration. Do not reset or flash physical hardware. A separate Forget saved settings operation requires a clear destructive confirmation. The exclusion survives restart and USB reconnect, so removal is not undone by the next scan.
+
+**Use a keyboard.** Its controls do not pretend to contain LCDs. Ordinary typing remains intact when it is discovered or its editor opens. Onboard mappings and RGB are driver settings; existing DeckWeave action execution remains in the host. Depth observation and any temporary input takeover are distinct operations. Reuse the proven IO ownership/restore rules before offering exclusive light/deep actions; do not generalize the tested PgUp/PgDn behavior to every key without evidence.
+
+### Technical direction to challenge in review
+
+- Keep the existing action WebSocket protocol and Elgato compatibility. Define a distinct, versioned device process protocol; do not cram device registration into an action Property Inspector.
+- One supervised provider process can serve many independent instance sessions. Use stable model/control IDs and opaque hardware identity, session generations, bounded queues, cancellation and actionable errors. No USB, encoding or process waits under the Core lock.
+- Descriptors specify geometry, actual input events, display targets, lighting zones and settings. Keyboard keys, LCD keys, LED zones and touch surfaces are different capabilities. Unsupported settings are absent or explained, never successful no-ops.
+- Common settings use host-rendered fields declared by the extension. Keep room for a custom advanced editor when a keyboard interaction cannot be expressed by those fields. Avoid an extra always-running WebView for every device.
+- Serialize hardware writes through the owning provider. Coalesce volatile slider updates, commit persistent changes at a deliberate field interaction boundary, verify when readback exists, and retain the original snapshot for recovery. Do not write flash for every animation frame or auto-reset on discovery.
+- Adapt N4 to the same descriptor/lifecycle boundary while retaining its accepted input numbering, JPEG mode and page rendering. Introduce the boundary incrementally with regression coverage; a plugin design is not a reason to discard working transport code.
+- Removing an extension that owns connected devices is a cross-instance operation: show all affected instances, stop them before changing files, retain their profiles, and make reinstall recover them. Disabled support does not mean the physical device was erased.
+
+### Weak points and counterarguments
+
+A universal schema can become a second UI framework. Start with common fields and reusable keyboard/control selection, then add only the advanced editor hooks the real IO implementation needs. The opposite extreme, embedding the entire old IO app, duplicates persistence and automation and reintroduces inconsistent Apply/draft behavior.
+
+An external process adds protocol and packaging work compared with linking another Rust crate. It is justified by the owner's requirement that third parties add hardware without rebuilding DeckWeave; it also gives a lifecycle boundary for provider failures. Keep built-in adapters available during the transition.
+
+Automatic discovery is convenient but conflicts with deliberate removal. A persistent exclusion plus explicit re-add resolves this. USB paths alone cannot be treated as permanent identity; IO's identity behavior must be checked rather than assumed from the existing single-device prototype.
+
+A safe uninstall is more than deleting a directory. Scan-root fallback, open inspectors, active device sessions, inactive profiles and nested actions all need dependency accounting. A per-package source/ownership record is needed; the exact storage schema remains a review item.
+
+IO's larger platform crate includes scripting, integrations and OS helpers. Depending on all of it would import unrelated runtimes. Extract or vendor the narrow transport/codec modules with provenance instead of using an absolute path into the old checkout. The IO README still defers its own licence declaration; check provenance and notices before public redistribution rather than claiming a licence was already established there.
+
+## Goals vs. Non-Goals
+
+**In scope:** complete extension/device lifecycle; source-aware uninstall/disconnect; add/re-add/remove hardware and virtual instances; hardware settings; Mirabox screen/ring brightness; device SDK, generator and registry entries; an IO Type 84 adapter based on the existing stock-firmware work; independent instances; en/ru; examples and tests that authors can run without real hardware.
+
+**Not part of this change:** new keyboard firmware, reset/calibration/OTA on connection, unsupported IO LED-panel APIs, claiming global input suppression, replacing the existing Elgato action protocol, Android application implementation, Logitech adapter implementation, synchronized device groups, importing old application profiles, or a second automation engine.
+
+## Alternatives Weighed
+
+| Option | Assessment |
+| --- | --- |
+| Treat every new device as another built-in Rust branch | Shorter initially; fails the requirement that third parties install device support independently. Keep only as a transition adapter. |
+| Make a device an ordinary Elgato action plugin | Confuses physical instance lifetime with action visibility; existing protocol does not supply DeckWeave hardware registration/settings. Rejected as the primary device contract. |
+| Create another SDK, registry and template repository for hardware | Creates duplicate release/docs/validation work. Extend the existing repositories with explicitly separate action/device interfaces and templates. |
+| Give every driver its own permanently open settings app | Recreates the inconsistent UX the owner rejected and adds background processes/WebViews. Keep the common shell in DeckWeave. |
+| Delete every package found in every scan directory | Would modify Elgato and repository files and can erase data outside DeckWeave ownership. Restrict physical uninstallation to managed copies. |
+| Remove a device's database row and let discovery run unchanged | The next scan adds it back, losing the user's intent. Require exclusion and explicit re-add. |
+| Copy the whole IO application | Duplicates UI, storage and execution rules. Reuse transport, codecs, physical mapping and proven recovery rules instead. |
+
+## Key Decisions & Staging for Next Steps
+
+The owner has already chosen Rust/Tauri/Svelte, Windows first, independent instances, action/device extensibility and a common editor model. IO integration is now requested rather than deferred. The following staging remains a proposal pending the EGM readiness checkpoint and independent review:
+
+1. Add source/ownership and dependency information, extension removal/disconnection, and persisted device removal/re-add behavior. Make these flows reviewable in the current UI before broadening hardware support.
+2. Add capability-based device settings and wire Mirabox brightness through the existing worker. Test software invariants first; request only the remaining physical observations from the owner.
+3. Add a mock provider, versioned device host/SDK, schema validation and a device generator. Exercise multiple instances, provider loss, stale generations, corrupt messages, removal and restart without hardware. Generate an independent project with no dependency on a G: checkout.
+4. Add IO Type 84 as the second physical adapter: discovery by identity, read-only snapshot, layout/settings UI, supported settings writes with readback/recovery, then the existing measured depth behavior. Do not change stock assignments merely by starting DeckWeave.
+5. Finish packaging, documentation and registry metadata together. Verify install/update/uninstall of the generated provider, then connect the physical keyboard for the checks that software tests cannot prove.
+
+Repository proposal: retain **plugin-sdk**, **plugin-template** and **plugin-registry**. Add action/device subdirectories or generator modes, not three more infrastructure repositories. Put the actual keyboard provider in **G:/APPS/DW/device-io-type-84** once the direction is accepted; an optional GitHub repository of the same name can be created later. A separate Mirabox provider repository is justified when its extraction is complete, not before.
+
+### EGM checkpoint
+
+This artifact is the anchored working hypothesis for owner review. No independent reviewers have been launched, and no production code or hardware settings have changed in this research step. After explicit readiness confirmation, run fresh-context parallel reviews for the six EGM lenses, record objections and revise this brief before accepting the implementation design. Remaining technical questions belong to those reviews; no new stack or firmware permission question is being put to the owner.
