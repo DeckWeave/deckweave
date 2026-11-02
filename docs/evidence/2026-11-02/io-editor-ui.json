@@ -1,0 +1,16 @@
+{
+  "date": "2026-11-02",
+  "runtime": "Windows native Tauri release",
+  "observed": {
+    "workspaceTabsInAppHeader": true,
+    "oldSecondTabRowRemoved": true,
+    "explicitExistingInstanceRebindKeepsProfiles": true,
+    "rightShiftAlignedWithMainBank": true,
+    "passiveLedPanelVisible": true,
+    "depthControlVisibleAfterDescriptorUpdate": true,
+    "depthControlEnabledWithoutError": true
+  },
+  "physicalKeyToCircleCorrespondence": "Owner acceptance requested; not established by this UI inspection",
+  "writes": "Explicit volatile observation66 only; no mapping/lighting settings changed by agent",
+  "redaction": "No raw key telemetry, mappings, USB paths or screenshots retained"
+}

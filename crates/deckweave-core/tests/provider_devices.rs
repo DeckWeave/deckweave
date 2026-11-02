@@ -437,3 +437,181 @@ fn host_converted_devices_without_lcd_surface_pair_and_do_not_invent_pixels() {
         );
     }
 }
+#[test]
+fn passive_light_strip_decoration_preserves_geometry_without_creating_a_control() {
+    let mut c = Core::memory().unwrap();
+    let mut d = descriptor();
+    d.geometry.width = 1044.0;
+    d.geometry.height = 356.0;
+    d.definition["decorations"] = serde_json::json!([{"id":"led-panel","kind":"light-strip","label":{"en":"LED panel","ru":"LED-панель"},"x":928,"y":185,"width":116,"height":43}]);
+    let id = c
+        .register_provider_device("example.keyboard", "decorated", "Keyboard", d)
+        .unwrap();
+    let s = c.snapshot();
+    assert_eq!(s.geometries[&id].controls.len(), 2);
+    assert!(
+        s.geometries[&id]
+            .controls
+            .iter()
+            .all(|control| control.id != "led-panel")
+    );
+    let device = s.configuration.devices.iter().find(|d| d.id == id).unwrap();
+    assert_eq!(
+        device.provider_descriptor.as_ref().unwrap().definition["decorations"][0]["kind"],
+        "light-strip"
+    );
+    assert!(
+        c.dispatch(
+            Command::ConfigureControl {
+                device_id: id.clone(),
+                page_id: device.profile.active_page_id.clone(),
+                control_id: "led-panel".into(),
+                kind: Some(ActionKind::Counter),
+                label: "Not assignable".into(),
+                expected_revision: c.revision()
+            },
+            "editor"
+        )
+        .is_err()
+    );
+    assert!(
+        c.dispatch(
+            Command::Input {
+                device_id: id,
+                control_id: "led-panel".into(),
+                event: InputEvent::Click
+            },
+            "editor"
+        )
+        .is_err()
+    );
+}
+#[test]
+fn malformed_or_active_decorations_are_rejected_before_registration() {
+    let base = serde_json::json!({"id":"led-panel","kind":"light-strip","x":928,"y":185,"width":116,"height":43});
+    let mut invalid = vec![serde_json::json!([base.clone(), base.clone()])];
+    for patch in [
+        serde_json::json!({"width":117}),
+        serde_json::json!({"width":0}),
+        serde_json::json!({"y":-1}),
+        serde_json::json!({"x":"928"}),
+        serde_json::json!({"kind":"touch"}),
+        serde_json::json!({"id":"key-42"}),
+        serde_json::json!({"id":""}),
+        serde_json::json!({"events":[]}),
+        serde_json::json!({"actions":[]}),
+        serde_json::json!({"target":"screen"}),
+        serde_json::json!({"label":{"en":4}}),
+        serde_json::json!({"label":{"de":"Unexpected locale"}}),
+        serde_json::json!({"label":{"en":"x".repeat(129)}}),
+    ] {
+        let mut item = base.clone();
+        item.as_object_mut()
+            .unwrap()
+            .extend(patch.as_object().unwrap().clone());
+        invalid.push(serde_json::json!([item]));
+    }
+    invalid.push(serde_json::json!(
+        (0..33)
+            .map(|n| {
+                let mut item = base.clone();
+                item["id"] = serde_json::json!(format!("passive-{n}"));
+                item
+            })
+            .collect::<Vec<_>>()
+    ));
+    for decorations in invalid {
+        let mut c = Core::memory().unwrap();
+        let mut d = descriptor();
+        d.geometry.width = 1044.0;
+        d.geometry.height = 356.0;
+        d.definition["decorations"] = decorations;
+        let revision = c.revision();
+        assert_eq!(
+            c.register_provider_device("example.keyboard", "invalid", "Invalid decoration", d)
+                .unwrap_err()
+                .code,
+            "descriptor"
+        );
+        assert_eq!(c.revision(), revision);
+    }
+}
+#[test]
+fn optional_key_travel_capability_preserves_old_descriptors_and_valid_sdk_ranges() {
+    for capability in [
+        None,
+        Some(
+            serde_json::json!({"minUm":0,"maxUm":4000,"staleAfterMs":600,"normalTyping":true,"evidence":"partial"}),
+        ),
+        Some(
+            serde_json::json!({"minUm":0.0,"maxUm":10000.0,"staleAfterMs":600.0,"normalTyping":false,"evidence":"verified"}),
+        ),
+    ] {
+        let mut c = Core::memory().unwrap();
+        let mut d = descriptor();
+        if let Some(capability) = capability {
+            d.definition["observation"] = serde_json::json!({"keyTravel":capability});
+        }
+        let original = d.definition.get("observation").cloned();
+        let id = c
+            .register_provider_device("example.keyboard", "travel", "Keyboard", d)
+            .unwrap();
+        let s = c.snapshot();
+        let device = s.configuration.devices.iter().find(|d| d.id == id).unwrap();
+        assert_eq!(
+            device
+                .provider_descriptor
+                .as_ref()
+                .unwrap()
+                .definition
+                .get("observation"),
+            original.as_ref()
+        );
+        assert_eq!(s.geometries[&id].controls.len(), 2);
+    }
+}
+#[test]
+fn malformed_key_travel_metadata_fails_registration_without_changing_saved_state() {
+    let valid = serde_json::json!({"minUm":0,"maxUm":4000,"staleAfterMs":600,"normalTyping":true,"evidence":"partial"});
+    let mut invalid = vec![
+        serde_json::Value::Null,
+        serde_json::json!([]),
+        serde_json::json!({}),
+        serde_json::json!({"keyTravel":null}),
+        serde_json::json!({"keyTravel":valid.clone(),"unexpected":{}}),
+    ];
+    for patch in [
+        serde_json::json!({"minUm":-1}),
+        serde_json::json!({"minUm":1}),
+        serde_json::json!({"minUm":"0"}),
+        serde_json::json!({"maxUm":0}),
+        serde_json::json!({"maxUm":10001}),
+        serde_json::json!({"maxUm":3999.5}),
+        serde_json::json!({"maxUm":null}),
+        serde_json::json!({"staleAfterMs":601}),
+        serde_json::json!({"staleAfterMs":"600"}),
+        serde_json::json!({"normalTyping":1}),
+        serde_json::json!({"evidence":"accepted"}),
+        serde_json::json!({"extra":true}),
+    ] {
+        let mut range = valid.clone();
+        range
+            .as_object_mut()
+            .unwrap()
+            .extend(patch.as_object().unwrap().clone());
+        invalid.push(serde_json::json!({"keyTravel":range}));
+    }
+    for observation in invalid {
+        let mut c = Core::memory().unwrap();
+        let mut d = descriptor();
+        d.definition["observation"] = observation;
+        let revision = c.revision();
+        assert_eq!(
+            c.register_provider_device("example.keyboard", "invalid-travel", "Invalid travel", d)
+                .unwrap_err()
+                .code,
+            "descriptor"
+        );
+        assert_eq!(c.revision(), revision);
+    }
+}

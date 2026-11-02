@@ -12,11 +12,17 @@
   import { pageLabel } from './page-label';
   import DeviceSettingsWorkspace from './DeviceSettingsWorkspace.svelte';
   import ProviderSettings from './ProviderSettings.svelte';
-  let { client, device }: { client: Client; device: Device } = $props();
-  let workspace = $state<'actions' | 'lighting' | 'settings'>('actions');
+  import DeviceDecorations from './DeviceDecorations.svelte';
+  import DepthRing from './DepthRing.svelte';
+  let {
+    client,
+    device,
+    workspace = $bindable<'actions' | 'lighting' | 'settings'>('actions'),
+  }: { client: Client; device: Device; workspace?: 'actions' | 'lighting' | 'settings' } = $props();
   let contextMenu = $state<{ x: number; y: number } | null>(null);
   const ru = $derived(client.snapshot?.configuration.locale === 'ru');
   const lightingSupported = $derived(!!device.provider_descriptor?.definition.lighting?.length);
+  const travel = $derived(device.provider_descriptor?.definition.observation?.keyTravel);
   let selectedId = $state<string | null>(null);
   let search = $state('');
   let editingLibrary = $state(false);
@@ -533,20 +539,12 @@
         )}
   </div>
 {/if}
-<div class="device-mode-tabs" role="group" aria-label={t('deviceSettings')}>
-  <button class:current={workspace === 'actions'} onclick={() => (workspace = 'actions')}
-    >{t('actions')}</button
-  >
-  {#if lightingSupported}<button
-      class:current={workspace === 'lighting'}
-      onclick={() => (workspace = 'lighting')}>{ru ? 'Освещение' : 'Lighting'}</button
-    >{/if}
-  <button class:current={workspace === 'settings'} onclick={() => (workspace = 'settings')}
-    >{t('deviceSettings')}</button
-  >
-</div>
-{#if workspace === 'settings'}<DeviceSettingsWorkspace {client} {device} />
-{:else if workspace === 'lighting'}<ProviderSettings {client} {device} lighting />
+{#if workspace === 'settings'}<div class="device-mode-content">
+    <DeviceSettingsWorkspace {client} {device} />
+  </div>
+{:else if workspace === 'lighting'}<div class="device-mode-content">
+    <ProviderSettings {client} {device} lighting />
+  </div>
 {:else}
   <div
     class="editor-layout"
@@ -652,6 +650,11 @@
           style:--device-ratio={geometry.width / geometry.height}
           style:--preview-scale={snapshot.configuration.preferences.preview_scale / 100}
         >
+          <DeviceDecorations
+            definition={device.provider_descriptor?.definition}
+            {geometry}
+            locale={snapshot.configuration.locale}
+          />
           {#if geometry.controls.some((c) => c.kind === 'touch')}<div
               class="touch-surface"
               style:left={`${(geometry.surface[0] / geometry.width) * 100}%`}
@@ -662,6 +665,8 @@
               {#if stripVisible}<img class="hardware-key-image" src={strip.data_url} alt="" />{/if}
             </div>{/if}
           {#each geometry.controls as control (control.id)}
+            {@const depth =
+              travel && control.kind === 'key' ? client.depth(control.id, travel.maxUm) : null}
             {@const assignment = page.bindings[control.id]}
             {@const feedback = assignment
               ? snapshot.feedback.find(
@@ -681,13 +686,14 @@
               class:strip-overlay={control.kind === 'touch' && stripVisible}
               class:selected={selectedId === control.id}
               class:pressed
+              class:depth-pressed={!!depth && depth.um >= 300}
               class:active={feedback?.active}
               class:drop-target={dropTarget === control.id}
               style:left={`${(control.rect[0] / geometry.width) * 100}%`}
               style:top={`${(control.rect[1] / geometry.height) * 100}%`}
               style:width={`${(control.rect[2] / geometry.width) * 100}%`}
               style:height={`${(control.rect[3] / geometry.height) * 100}%`}
-              title={`${controlLabel(control)} · ${assignment?.label || t('unassigned')}`}
+              title={`${controlLabel(control)} · ${assignment?.label || t('unassigned')}${depth ? ' · ' + (depth.um / 1000).toFixed(2) + (ru ? ' мм' : ' mm') : ''}`}
               aria-label={`${controlLabel(control)}: ${assignment?.label || t('unassigned')}`}
               aria-pressed={selectedId === control.id}
               oncontextmenu={(e) => {
@@ -708,6 +714,7 @@
                   openFolder(plan.page_id);
               }}
             >
+              <DepthRing reading={depth} />
               {#if control.kind === 'key' && !hasDisplay(control)}
                 <span class="physical-key-label">{controlLabel(control)}</span><span
                   class="physical-key-binding">{assignment?.label ?? ''}</span
@@ -1142,6 +1149,10 @@
   </div>{/if}
 
 <style>
+  .control.depth-pressed {
+    border-color: #77e2ff;
+    box-shadow: inset 0 0 9px #77e2ff40;
+  }
   .physical-key-label {
     font-size: 12px;
     line-height: 1.1;
@@ -1154,25 +1165,9 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .editor-layout {
-    height: calc(100vh - 88px);
-  }
   .device-mode-content {
-    height: calc(100vh - 88px);
+    height: calc(100vh - 44px);
     overflow: auto;
-  }
-  .device-mode-tabs {
-    height: 44px;
-
-    display: flex;
-    gap: 6px;
-    padding: 8px 20px;
-    border-bottom: 1px solid #ffffff18;
-    flex-shrink: 0;
-  }
-  .device-mode-tabs .current {
-    background: #3868a9;
-    color: white;
   }
   .unavailable-action {
     padding: 12px;

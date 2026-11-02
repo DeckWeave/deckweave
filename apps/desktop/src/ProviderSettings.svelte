@@ -3,6 +3,8 @@
   import { invoke } from '@tauri-apps/api/core';
   import type { Client } from './client.svelte';
   import ProviderRecovery from './ProviderRecovery.svelte';
+  import DeviceDecorations from './DeviceDecorations.svelte';
+  import DepthRing from './DepthRing.svelte';
   import { observedStaticColors, unsupportedStaticColors } from './static-color-coverage';
   import type { Device, ProviderSetting } from './types';
   import type { ProviderInventory, ProviderSessionState } from './provider-ui';
@@ -32,6 +34,7 @@
   );
   const keyboardStatusOnly = $derived(!lighting && !!definition?.keyboard && settings.length === 0);
   const geometry = $derived(device.provider_descriptor?.geometry);
+  const travel = $derived(definition?.observation?.keyTravel);
   const staticGroup = $derived(groups.find((g) => g.staticColors?.address === 'controlId'));
   const staticControlIds = $derived(
     (geometry?.controls ?? [])
@@ -331,12 +334,16 @@
         class="keyboard-lighting-preview"
         style:aspect-ratio={geometry.width + '/' + geometry.height}
       >
+        <DeviceDecorations {definition} {geometry} locale={ru ? 'ru' : 'en'} />
         {#each geometry.controls.filter((c) => c.kind === 'key') as control (control.id)}
           {@const keyRgb = keyColor(control.id)}
+          {@const depth = travel ? client.depth(control.id, travel.maxUm) : null}
           <button
             class:selected={chosen.includes(control.id)}
+            class:depth-pressed={!!depth && depth.um >= 300}
             disabled={!connected || !Object.hasOwn(colorCoverage, control.id)}
-            title={keyLabel(control.id, control.number)}
+            title={keyLabel(control.id, control.number) +
+              (depth ? ' · ' + (depth.um / 1000).toFixed(2) + (ru ? ' мм' : ' mm') : '')}
             aria-label={keyLabel(control.id, control.number)}
             style:background={keyRgb?.background}
             style:color={keyRgb?.foreground}
@@ -345,7 +352,8 @@
             style:top={(control.rect[1] / geometry.height) * 100 + '%'}
             style:width={(control.rect[2] / geometry.width) * 100 + '%'}
             style:height={(control.rect[3] / geometry.height) * 100 + '%'}
-            onclick={() => choose(control.id)}>{keyLabel(control.id, control.number)}</button
+            onclick={() => choose(control.id)}
+            ><DepthRing reading={depth} />{keyLabel(control.id, control.number)}</button
           >
         {/each}
       </div>
@@ -450,6 +458,11 @@
 </div>
 
 <style>
+  .keyboard-lighting-preview button.depth-pressed {
+    opacity: 1;
+    border-color: #77e2ff;
+    box-shadow: inset 0 0 9px #77e2ff40;
+  }
   .lighting-owner,
   .preset-save,
   .preset-row {

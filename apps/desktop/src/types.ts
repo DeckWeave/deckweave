@@ -107,6 +107,24 @@ export interface ProviderSetting {
   readback?: boolean;
 }
 export interface ProviderDefinition {
+  observation?: {
+    keyTravel: {
+      minUm: number;
+      maxUm: number;
+      staleAfterMs: number;
+      normalTyping: boolean;
+      evidence: string;
+    };
+  };
+  decorations?: {
+    id: string;
+    kind: 'light-strip';
+    label?: { en?: string; ru?: string };
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }[];
   keyboard?: {
     onboardMappings?: {
       settingId: string;

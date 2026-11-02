@@ -10,6 +10,7 @@ Provider обслуживает много независимых instances и �
 | Descriptor | logical body/surface rectangles, native surface pixels, стабильные control IDs, kind key/dial/touch и реально поддерживаемые события. Наличие dial click не означает наличие down/up/hold |
 | Open | hardware identity → instance session с новым generation. Отсутствие устройства — Offline, отказ открытия — Error. Core instance ID и назначения сохраняются |
 | Input | session/generation + возрастающий sequence; текущий внешний host принимает down/up/rotate и firmware click. Старые события отбрасываются, переполнение/ошибка останавливает процесс |
+| Observation | optional keyTravel capability, явный observe и отдельная последовательность depth. Samples ограничены и устаревают через 600 мс; подписки окон и provider lease не меняют Core/configuration и не исполняют действия |
 | Present | instance ID + generation + display target + page/binding identity + bounded image. Последний желаемый кадр заменяет устаревшие; транзакция одного изображения не прерывается другим изображением |
 | Close / loss | прекращение ввода/вывода этой session, освобождение handles, отмена контактов без исполнения действия. Sibling instances продолжают работу |
 | Settings | явный intent из Core, валидация полей/диапазонов, requested/observed/evidence отдельно. Открытие, восстановление и rebind не проигрывают сохранённые SET |
@@ -25,4 +26,4 @@ SDK/source distribution находятся в соседнем `plugin-sdk`: `DE
 
 Текущий внешний host не передаёт LCD frames и touchStart/Move/End до Core; эти части предварительного SDK описывают будущую границу. Внешний IO не объявляет таких событий/дисплеев. Полный N4 input/render/present остаётся в `deckweave-n4` и desktop hardware worker. Core поддерживает сохранённые provider descriptors; встроенные N4 IDs/geometries ещё остаются.
 
-Подсветка задаётся именованными пресетами и явными владельцами. Текущая арбитрация — на экземпляр, независимые output groups ещё не стабилизированы. Временные onboard overrides закрыты до полной поддержки восстановления. Аналоговые каналы, захват клавиатуры, мышь, Android transport и синхронные группы не имитируются.
+Подсветка задаётся именованными пресетами и явными владельцами. Текущая арбитрация — на экземпляр, независимые output groups ещё не стабилизированы. Временные onboard overrides закрыты до полной поддержки восстановления. Пассивные decorations показывают физическую LED-панель, не добавляя Controls или output capability. Наблюдение глубины реализовано отдельно; захват клавиатуры, мышь, Android transport и синхронные группы не имитируются.

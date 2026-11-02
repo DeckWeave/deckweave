@@ -1,0 +1,21 @@
+{
+  "date": "2026-11-02",
+  "scope": "explicit volatile monitor66/67 transport smoke; no onboard settings changes",
+  "firmwareGuard": "IO White 1.17 exact descriptor and GET info passed",
+  "sequence": ["open", "readState", "observe true", "fresh readState while observing", "observe false", "fresh readState", "observe true", "no heartbeat for 3400ms", "readState reports observation stopped", "observe false", "close"],
+  "startAcknowledged": true,
+  "stopAcknowledged": true,
+  "nativeLeaseExpired": true,
+  "readbackAfterStop": "passed",
+  "closeRecovery": "not_needed",
+  "freshSamplesReceived": 157,
+  "sessionErrors": 0,
+  "onboardSettingsWrites": 0,
+  "exclusiveCapture": false,
+  "keyHistorySaved": false,
+  "providerProcessExited": true,
+  "physicalTravelAcceptance": "not-tested; no instructed key presses",
+  "normalTypingAcceptance": "not-tested by owner",
+  "full84AddressAcceptance": "not-tested",
+  "regressionFoundAndFixed": "67 ACK must be consumed before another GET. Strict GET matching retained; STOP accepts its matching ACK, known asynchronous FB and previously observed unframed reports only."
+}

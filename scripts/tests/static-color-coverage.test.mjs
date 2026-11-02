@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  observedStaticColors,
-  unsupportedStaticColors,
-} from '../../apps/desktop/src/static-color-coverage.ts';
+import { loadTypeScript } from './load-ts-source.mjs';
+const { observedStaticColors, unsupportedStaticColors } = await loadTypeScript(
+  new URL('../../apps/desktop/src/static-color-coverage.ts', import.meta.url),
+);
 const keys = Array.from({ length: 84 }, (_, i) => `key-${i}`);
 test('84 layout controls do not imply 84 writable static color addresses', () => {
   const coverage = observedStaticColors({ 'key-0': { r: 1, g: 2, b: 3 } }, keys);

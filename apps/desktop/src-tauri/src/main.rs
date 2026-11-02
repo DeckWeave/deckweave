@@ -235,6 +235,35 @@ fn refresh_provider_state(
     }
 }
 #[tauri::command]
+fn set_provider_observation(
+    device_id: String,
+    enabled: bool,
+    window: WebviewWindow,
+    state: State<'_, Application>,
+) -> Result<device_providers::ObservationSnapshot, String> {
+    provider_window(&window, &device_id)?;
+    match state.inner() {
+        Application::Ready {
+            device_providers, ..
+        } => device_providers.set_observation(&device_id, window.label(), enabled),
+        Application::Failed(error) => Err(error.to_string()),
+    }
+}
+#[tauri::command]
+fn provider_observation(
+    device_id: String,
+    window: WebviewWindow,
+    state: State<'_, Application>,
+) -> Result<device_providers::ObservationSnapshot, String> {
+    provider_window(&window, &device_id)?;
+    match state.inner() {
+        Application::Ready {
+            device_providers, ..
+        } => device_providers.observation(&device_id, window.label()),
+        Application::Failed(error) => Err(error.to_string()),
+    }
+}
+#[tauri::command]
 fn list_plugins(
     window: WebviewWindow,
     state: State<'_, Application>,
@@ -574,7 +603,13 @@ fn main() {
                 if let Ok(mut core) = locked(&state) {
                     core.editor_closed(window.label());
                 }
-                if let Application::Ready { hardware, .. } = state.inner() {
+                if let Application::Ready {
+                    hardware,
+                    device_providers,
+                    ..
+                } = state.inner()
+                {
+                    device_providers.stop_observer(window.label());
                     hardware.changed();
                 }
                 let _ = window.app_handle().emit("deckweave:changed", ());
@@ -603,6 +638,8 @@ fn main() {
             device_provider_status,
             add_provider_device,
             refresh_provider_state,
+            set_provider_observation,
+            provider_observation,
             provider_recovery_preview,
             recover_provider_settings,
             shell::quit_application

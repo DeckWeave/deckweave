@@ -35,6 +35,116 @@ pub(super) fn validate_provider_descriptor(descriptor: &ProviderDescriptor) -> R
             ));
         }
     }
+    if let Some(observation) = descriptor.definition.get("observation") {
+        let observation = observation
+            .as_object()
+            .filter(|value| value.len() == 1 && value.contains_key("keyTravel"))
+            .ok_or_else(|| {
+                Error::new(
+                    "descriptor",
+                    "Observation must declare the supported keyTravel capability",
+                )
+            })?;
+        let range = observation["keyTravel"]
+            .as_object()
+            .filter(|value| {
+                value.len() == 5
+                    && value.keys().all(|key| {
+                        ["minUm", "maxUm", "staleAfterMs", "normalTyping", "evidence"]
+                            .contains(&key.as_str())
+                    })
+            })
+            .ok_or_else(|| Error::new("descriptor", "Key travel capability has invalid fields"))?;
+        let maximum = range["maxUm"].as_f64();
+        if range["minUm"].as_f64() != Some(0.0)
+            || maximum.is_none_or(|value| {
+                !value.is_finite() || value.fract() != 0.0 || value <= 0.0 || value > 10000.0
+            })
+            || range["staleAfterMs"].as_f64() != Some(600.0)
+            || range["normalTyping"].as_bool().is_none()
+            || !matches!(range["evidence"].as_str(), Some("partial" | "verified"))
+        {
+            return Err(Error::new(
+                "descriptor",
+                "Invalid key travel observation range or evidence",
+            ));
+        }
+    }
+    if let Some(decorations) = descriptor.definition.get("decorations") {
+        let decorations = decorations
+            .as_array()
+            .filter(|d| d.len() <= 32)
+            .ok_or_else(|| {
+                Error::new(
+                    "descriptor",
+                    "Decorations must be an array of at most 32 passive elements",
+                )
+            })?;
+        let mut decoration_ids = BTreeSet::new();
+        for decoration in decorations {
+            let object = decoration
+                .as_object()
+                .ok_or_else(|| Error::new("descriptor", "Decoration must be an object"))?;
+            if object.keys().any(|key| {
+                !["id", "kind", "label", "x", "y", "width", "height"].contains(&key.as_str())
+            }) {
+                return Err(Error::new(
+                    "descriptor",
+                    "Passive decorations cannot declare events, actions or output capabilities",
+                ));
+            }
+            let id = decoration["id"]
+                .as_str()
+                .filter(|id| !id.trim().is_empty() && id.len() <= 128)
+                .ok_or_else(|| Error::new("descriptor", "Invalid decoration ID"))?;
+            if !decoration_ids.insert(id)
+                || g.controls.iter().any(|c| c.id == id)
+                || decoration["kind"] != "light-strip"
+            {
+                return Err(Error::new(
+                    "descriptor",
+                    "Decoration IDs must be unique and separate from controls; only passive light-strip is supported",
+                ));
+            }
+            let [Some(x), Some(y), Some(w), Some(h)] = ["x", "y", "width", "height"]
+                .map(|key| decoration[key].as_f64().filter(|v| v.is_finite()))
+            else {
+                return Err(Error::new(
+                    "descriptor",
+                    "Decoration bounds must be finite numbers",
+                ));
+            };
+            if x < 0.0
+                || y < 0.0
+                || w <= 0.0
+                || h <= 0.0
+                || x + w > g.width + 1e-9
+                || y + h > g.height + 1e-9
+            {
+                return Err(Error::new(
+                    "descriptor",
+                    "Decoration lies outside device geometry",
+                ));
+            }
+            if let Some(label) = decoration.get("label") {
+                let label = label.as_object().ok_or_else(|| {
+                    Error::new(
+                        "descriptor",
+                        "Decoration labels must be localized plain strings",
+                    )
+                })?;
+                if label.iter().any(|(locale, value)| {
+                    !["en", "ru"].contains(&locale.as_str())
+                        || value.as_str().is_none_or(|text| text.chars().count() > 128)
+                }) {
+                    return Err(Error::new(
+                        "descriptor",
+                        "Decoration labels support bounded en/ru plain strings",
+                    ));
+                }
+            }
+        }
+    }
     let absent_surface = g.surface == [0.0; 4] && g.surface_pixels == [0; 2];
     if !absent_surface
         && (!g.surface.iter().all(|n| n.is_finite())

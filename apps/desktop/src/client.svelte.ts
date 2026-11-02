@@ -2,6 +2,7 @@ import { invoke, isTauri } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import type { Command, InputEvent, Snapshot, PluginPackage } from './types';
+import { emptyDepthFrame, keyDepth, type DepthFrame } from './depth-observation';
 
 type SettingsContext = {
   device_id: string | null;
@@ -10,6 +11,10 @@ type SettingsContext = {
 export class Client {
   snapshot = $state<Snapshot | null>(null);
   busy = $state(false);
+  observation = $state<DepthFrame>(emptyDepthFrame());
+  observationBusy = $state(false);
+  observationReceivedAt = $state(0);
+  observationNow = $state(0);
   error = $state('');
   plugins = $state<PluginPackage[]>([]);
   settingsDevice = $state<string | null>(null);
@@ -24,6 +29,67 @@ export class Client {
   private stopped = false;
   private refreshing?: Promise<void>;
   private refreshAgain = false;
+  private observationTimer?: ReturnType<typeof setInterval>;
+  private observationPolling = false;
+  private observationGeneration = 0;
+
+  depth(controlId: string, nominalMaxUm: number) {
+    return keyDepth(
+      this.observation,
+      controlId,
+      this.observationReceivedAt,
+      this.observationNow,
+      nominalMaxUm,
+    );
+  }
+  private adoptObservation(frame: DepthFrame) {
+    if (this.stopped) return;
+    this.observation = frame;
+    this.observationReceivedAt = performance.now();
+    this.observationNow = this.observationReceivedAt;
+    if (!frame.enabled && !['starting', 'stopping'].includes(frame.state)) {
+      clearInterval(this.observationTimer);
+      this.observationTimer = undefined;
+    }
+  }
+  private async pollObservation() {
+    this.observationNow = performance.now();
+    if (this.observationPolling || this.observationBusy || this.stopped) return;
+    this.observationPolling = true;
+    const generation = this.observationGeneration;
+    try {
+      const frame = await invoke<DepthFrame>('provider_observation', { deviceId: this.deviceId });
+      if (generation === this.observationGeneration) this.adoptObservation(frame);
+    } catch (e) {
+      if (!this.stopped && generation === this.observationGeneration) {
+        this.observation = { ...this.observation, state: 'error', samples: [], error: String(e) };
+        clearInterval(this.observationTimer);
+        this.observationTimer = undefined;
+      }
+    } finally {
+      this.observationPolling = false;
+    }
+  }
+  async setObservation(enabled: boolean) {
+    if (!this.available || this.deviceId === 'main' || this.observationBusy) return;
+    this.observationBusy = true;
+    this.observationGeneration++;
+    try {
+      this.adoptObservation(
+        await invoke<DepthFrame>('set_provider_observation', { deviceId: this.deviceId, enabled }),
+      );
+      if (
+        (this.observation.enabled || ['starting', 'stopping'].includes(this.observation.state)) &&
+        !this.observationTimer
+      )
+        this.observationTimer = setInterval(() => void this.pollObservation(), 50);
+    } catch (e) {
+      this.observation = { ...emptyDepthFrame(), enabled: true, state: 'error', error: String(e) };
+      this.fail(e);
+    } finally {
+      this.observationBusy = false;
+    }
+  }
 
   async start() {
     if (!this.available) return;
@@ -56,6 +122,11 @@ export class Client {
     }
   }
   stop() {
+    clearInterval(this.observationTimer);
+    if (this.observation.enabled && this.available && this.deviceId !== 'main')
+      void invoke('set_provider_observation', { deviceId: this.deviceId, enabled: false }).catch(
+        () => {},
+      );
     this.stopped = true;
     this.unlisten?.();
     this.unlistenSettings?.();

@@ -77,6 +77,82 @@ pub struct ProviderSnapshot {
     pub discovered: Vec<DiscoveredDevice>,
     pub sessions: BTreeMap<String, SessionStatus>,
 }
+const OBSERVER_LEASE: Duration = Duration::from_secs(3);
+const DEPTH_TTL: Duration = Duration::from_millis(600);
+#[derive(Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ObservationSnapshot {
+    pub enabled: bool,
+    pub state: String,
+    pub sequence: u64,
+    pub samples: Vec<TravelSample>,
+    pub error: Option<String>,
+}
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TravelSample {
+    pub control_id: String,
+    pub travel_um: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_travel_um: Option<u64>,
+    pub age_ms: u64,
+}
+struct ReceivedTravel {
+    travel: u64,
+    maximum: Option<u64>,
+    received: Instant,
+}
+#[derive(Default)]
+struct Observation {
+    leases: BTreeMap<String, Instant>,
+    active: bool,
+    needs_stop: bool,
+    sequence: u64,
+    samples: BTreeMap<String, ReceivedTravel>,
+    error: Option<String>,
+}
+impl Observation {
+    fn desired(&mut self) -> bool {
+        self.leases
+            .retain(|_, renewed| renewed.elapsed() < OBSERVER_LEASE);
+        !self.leases.is_empty()
+    }
+    fn snapshot(&mut self) -> ObservationSnapshot {
+        let desired = self.desired();
+        self.samples
+            .retain(|_, sample| sample.received.elapsed() < DEPTH_TTL);
+        ObservationSnapshot {
+            enabled: desired,
+            state: if self.error.is_some() {
+                "error"
+            } else if desired && self.active {
+                "observing"
+            } else if desired {
+                "starting"
+            } else if self.needs_stop {
+                "stopping"
+            } else {
+                "off"
+            }
+            .into(),
+            sequence: self.sequence,
+            samples: if desired && self.active {
+                self.samples
+                    .iter()
+                    .map(|(control, sample)| TravelSample {
+                        control_id: control.clone(),
+                        travel_um: sample.travel,
+                        max_travel_um: sample.maximum,
+                        age_ms: sample.received.elapsed().as_millis() as u64,
+                    })
+                    .collect()
+            } else {
+                vec![]
+            },
+            error: self.error.clone(),
+        }
+    }
+}
 struct Shared {
     core: Arc<Mutex<Core>>,
     app: Option<tauri::AppHandle>,
@@ -92,6 +168,7 @@ struct Shared {
     lifecycle: Arc<crate::plugin_lifecycle::Store>,
     recovery_packages: Mutex<BTreeSet<String>>,
     controls: Mutex<VecDeque<RecoveryRequest>>,
+    observations: Mutex<BTreeMap<String, Observation>>,
 }
 struct RecoveryRequest {
     device: String,
@@ -131,6 +208,7 @@ impl Host {
             lifecycle,
             recovery_packages: Mutex::new(BTreeSet::new()),
             controls: Mutex::new(VecDeque::new()),
+            observations: Mutex::new(BTreeMap::new()),
         });
         let repo = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .ancestors()
@@ -260,6 +338,103 @@ impl Host {
             .map_err(|_| "Provider refresh unavailable")?
             .insert(device_id.into());
         Ok(())
+    }
+    /// Volatile editor subscription. Polling renews an existing lease only.
+    pub fn set_observation(
+        &self,
+        device_id: &str,
+        owner: &str,
+        enabled: bool,
+    ) -> Result<ObservationSnapshot, String> {
+        if enabled {
+            let core = self
+                .shared
+                .core
+                .lock()
+                .map_err(|_| "Workspace unavailable")?;
+            let snapshot = core.snapshot();
+            let device = snapshot
+                .configuration
+                .devices
+                .iter()
+                .find(|value| value.id == device_id)
+                .ok_or("Device no longer exists")?;
+            if !device
+                .provider_descriptor
+                .as_ref()
+                .is_some_and(|descriptor| {
+                    descriptor
+                        .definition
+                        .pointer("/observation/keyTravel")
+                        .is_some()
+                })
+            {
+                return Err("Device does not support key travel observation".into());
+            }
+            if !self
+                .shared
+                .lifecycle
+                .allows(&format!("device:{}", device.provider_id))
+            {
+                return Err("Device support is disabled".into());
+            }
+            drop(core);
+            if !self
+                .shared
+                .inventory
+                .lock()
+                .map_err(|_| "Provider unavailable")?
+                .sessions
+                .get(device_id)
+                .is_some_and(|session| session.state == "connected")
+            {
+                return Err("Pair and connect the device before observing key travel".into());
+            }
+        }
+        let mut observations = self
+            .shared
+            .observations
+            .lock()
+            .map_err(|_| "Observation unavailable")?;
+        if !enabled && !observations.contains_key(device_id) {
+            return Ok(ObservationSnapshot {
+                state: "off".into(),
+                ..Default::default()
+            });
+        }
+        let observation = observations.entry(device_id.into()).or_default();
+        if enabled {
+            observation.leases.insert(owner.into(), Instant::now());
+        } else {
+            observation.leases.remove(owner);
+        }
+        observation.error = None;
+        Ok(observation.snapshot())
+    }
+    pub fn observation(&self, device: &str, owner: &str) -> Result<ObservationSnapshot, String> {
+        let mut observations = self
+            .shared
+            .observations
+            .lock()
+            .map_err(|_| "Observation unavailable")?;
+        let Some(observation) = observations.get_mut(device) else {
+            return Ok(ObservationSnapshot {
+                state: "off".into(),
+                ..Default::default()
+            });
+        };
+        observation.desired();
+        if let Some(renewed) = observation.leases.get_mut(owner) {
+            *renewed = Instant::now();
+        }
+        Ok(observation.snapshot())
+    }
+    pub fn stop_observer(&self, owner: &str) {
+        if let Ok(mut observations) = self.shared.observations.lock() {
+            for observation in observations.values_mut() {
+                observation.leases.remove(owner);
+            }
+        }
     }
     pub fn pause_package(&self, id: &str) -> Result<(), String> {
         if self
@@ -616,6 +791,21 @@ fn load(directory: &Path) -> Result<Package, String> {
 }
 
 pub fn descriptor_geometry(definition: &Value) -> Result<ProviderDescriptor, String> {
+    if let Some(observation) = definition.get("observation") {
+        let range = observation
+            .get("keyTravel")
+            .ok_or("Invalid observation capability")?;
+        if range["minUm"].as_u64() != Some(0)
+            || !range["maxUm"]
+                .as_u64()
+                .is_some_and(|max| max > 0 && max <= 10_000)
+            || range["staleAfterMs"].as_u64() != Some(600)
+            || range["normalTyping"].as_bool().is_none()
+            || !matches!(range["evidence"].as_str(), Some("partial" | "verified"))
+        {
+            return Err("Invalid observation range/evidence".into());
+        }
+    }
     let number = |object: &Value, field: &str| {
         object
             .get(field)
@@ -884,6 +1074,7 @@ enum Operation {
     Read(String),
     Settings(String, BTreeMap<String, Value>, u64),
     Close(String),
+    Observe(String, bool),
     Recovery(String, mpsc::Sender<Result<Value, String>>, bool),
 }
 struct Pending {
@@ -902,6 +1093,10 @@ struct Session {
     edit: u64,
     recovery: Value,
     released: bool,
+    observing: bool,
+    observation_needs_stop: bool,
+    last_observe: Instant,
+    depth_sequence: u64,
 }
 struct ProcessState {
     sessions: BTreeMap<String, Session>,
@@ -1173,6 +1368,14 @@ fn fail_package(shared: &Shared, provider: &str, error: &str) {
         .iter()
         .filter(|device| device.provider_id == provider)
     {
+        if let Ok(mut observations) = shared.observations.lock()
+            && let Some(observation) = observations.get_mut(&device.id)
+        {
+            observation.leases.clear();
+            observation.samples.clear();
+            observation.error =
+                Some("Observation stopped unexpectedly; hardware stop is unconfirmed".into());
+        }
         let generation = snapshot
             .connections
             .get(&device.id)
@@ -1445,7 +1648,21 @@ fn reconcile(
             });
         let pending_recovery =
             session.recovery.get("state").and_then(Value::as_str) == Some("pending");
-        if pending_recovery && (!gone || session.released) {
+        let released = session.released;
+        if (pending_recovery || session.failed || gone || recovery_only)
+            && epochs.get(&session.device) == Some(&session.lifecycle_epoch)
+            && let Ok(mut observations) = shared.observations.lock()
+            && let Some(observation) = observations.get_mut(&session.device)
+        {
+            observation.leases.clear();
+            observation.samples.clear();
+        }
+        if session.observation_needs_stop && (pending_recovery || session.failed || gone || recovery_only)
+            && !state.pending.values().any(|request| matches!(&request.operation, Operation::Observe(existing, _) if existing == &id))
+            && shared.observations.lock().is_ok_and(|observations| observations.get(&session.device).is_some_and(|observation| observation.error.is_none())) {
+            state.request(transport, "observe", Operation::Observe(id.clone(), false), Some(&id), json!({"enabled":false}))?;
+        }
+        if pending_recovery && (!gone || released) {
             continue;
         }
         if gone && !state.pending.values().any(
@@ -1477,6 +1694,33 @@ fn reconcile(
             })
             .map(|(id, session)| (id.clone(), session.opened, session.failed, session.edit))
         {
+            let observe = if let Ok(mut observations) = shared.observations.lock() {
+                observations.get_mut(&device.id).and_then(|observation| {
+                    let desired = observation.desired() && !recovery_only && opened && !failed;
+                    let session = &state.sessions[&id];
+                    if observation.error.is_none()
+                        && (desired != session.observing
+                            || !desired && session.observation_needs_stop
+                            || desired && session.last_observe.elapsed() >= Duration::from_secs(1))
+                    {
+                        Some(desired)
+                    } else {
+                        None
+                    }
+                })
+            } else {
+                None
+            };
+            if let Some(enabled) = observe
+                && !state.pending.values().any(|request| matches!(&request.operation, Operation::Observe(existing, _) if existing == &id)) {
+                state.sessions.get_mut(&id).unwrap().last_observe = Instant::now();
+                if enabled {
+                    state.sessions.get_mut(&id).unwrap().observation_needs_stop = true;
+                    if let Ok(mut observations) = shared.observations.lock()
+                        && let Some(observation) = observations.get_mut(&device.id) { observation.needs_stop = true; }
+                }
+                state.request(transport, "observe", Operation::Observe(id.clone(), enabled), Some(&id), json!({"enabled":enabled}))?;
+            }
             let (edit, changes) = shared
                 .edits
                 .lock()
@@ -1544,6 +1788,9 @@ fn reconcile(
             continue;
         }
         state.next_generation += 1;
+        if let Ok(mut observations) = shared.observations.lock() {
+            observations.remove(&device.id);
+        }
         let id = format!("device-{}-{}", device.id, state.next_generation);
         state.sessions.insert(
             id.clone(),
@@ -1563,6 +1810,10 @@ fn reconcile(
                     .unwrap_or(0),
                 recovery: Value::Null,
                 released: false,
+                observing: false,
+                observation_needs_stop: false,
+                last_observe: Instant::now(),
+                depth_sequence: 0,
             },
         );
         shared.connection(
@@ -1671,7 +1922,8 @@ fn handle(
                 Operation::Open(id)
                 | Operation::Read(id)
                 | Operation::Settings(id, _, _)
-                | Operation::Close(id) => Some(id.clone()),
+                | Operation::Close(id)
+                | Operation::Observe(id, _) => Some(id.clone()),
                 Operation::Recovery(id, _, _) => Some(id.clone()),
                 _ => None,
             };
@@ -1717,6 +1969,7 @@ fn handle(
                             | Operation::Recovery(..)
                             | Operation::Read(_)
                             | Operation::Open(_)
+                            | Operation::Observe(..)
                     )
                 {
                     state.pending.remove(value["requestId"].as_str().unwrap());
@@ -1737,6 +1990,16 @@ fn handle(
                     .collect::<String>();
                 if let Operation::Recovery(_, reply, _) = &pending.operation {
                     let _ = reply.send(Err(message));
+                    return Ok(());
+                }
+                if let Operation::Observe(id, _) = &pending.operation {
+                    if let Some(session) = state.sessions.get(id)
+                        && let Ok(mut observations) = shared.observations.lock()
+                        && let Some(observation) = observations.get_mut(&session.device)
+                    {
+                        observation.error = Some(message);
+                        observation.samples.clear();
+                    }
                     return Ok(());
                 }
                 if matches!(pending.operation, Operation::Close(_)) {
@@ -1910,6 +2173,27 @@ fn handle(
                     }
                     status(shared, session, &response, None, None);
                 }
+                Operation::Observe(id, enabled) => {
+                    let session = state.sessions.get_mut(&id).unwrap();
+                    if let Ok(mut observations) = shared.observations.lock()
+                        && let Some(observation) = observations.get_mut(&session.device)
+                    {
+                        if response.get("observing").and_then(Value::as_bool) == Some(enabled) {
+                            session.observing = enabled;
+                            session.observation_needs_stop = enabled;
+                            observation.active = enabled;
+                            observation.needs_stop = enabled;
+                            observation.error = None;
+                            if !enabled {
+                                observation.samples.clear();
+                            }
+                        } else {
+                            observation.error =
+                                Some("Provider did not confirm observation state".into());
+                            observation.samples.clear();
+                        }
+                    }
+                }
                 Operation::Settings(id, requested, edit) => {
                     let session = state.sessions.get_mut(&id).unwrap();
                     update_recovery(session, &response);
@@ -1917,6 +2201,11 @@ fn handle(
                     status(shared, session, &response, Some(&requested), None);
                 }
                 Operation::Close(id) => {
+                    if let Some(session) = state.sessions.get(&id)
+                        && let Ok(mut observations) = shared.observations.lock()
+                    {
+                        observations.remove(&session.device);
+                    }
                     if response.get("recovery").and_then(Value::as_str) == Some("pending") {
                         let session = state.sessions.get_mut(&id).unwrap();
                         session.failed = true;
@@ -1961,6 +2250,9 @@ fn handle(
                         if (!present || current_epoch)
                             && let Ok(mut inventory) = shared.inventory.lock()
                         {
+                            if let Ok(mut observations) = shared.observations.lock() {
+                                observations.remove(&session.device);
+                            }
                             inventory.sessions.remove(&session.device);
                             if !present {
                                 for device in inventory.discovered.iter_mut().filter(|device| {
@@ -2042,6 +2334,10 @@ fn handle(
             }
             Ok(())
         }
+        Some("depth") => {
+            depth(shared, state, &value);
+            Ok(())
+        }
         Some("input") => {
             if let Err(error) = input(shared, state, &value)
                 && let Some(session) = event_session(state, &value)
@@ -2072,6 +2368,69 @@ fn handle(
             Ok(())
         }
         _ => Err("Unsupported provider message".into()),
+    }
+}
+// Independent from action input and configuration revisions. Missing samples mean unknown.
+fn depth(shared: &Shared, state: &mut ProcessState, value: &Value) {
+    let Some(session) = event_session(state, value) else {
+        return;
+    };
+    if !session.observing
+        || !shared.core.lock().is_ok_and(|core| {
+            core.has_device(&session.device)
+                && core.device_lifecycle_epoch(&session.device) == session.lifecycle_epoch
+        })
+    {
+        return;
+    }
+    let Some(sequence) = value
+        .get("sequence")
+        .and_then(Value::as_u64)
+        .filter(|sequence| *sequence > session.depth_sequence)
+    else {
+        return;
+    };
+    let Some(control) = value.get("control").and_then(Value::as_str) else {
+        return;
+    };
+    if !session
+        .definition
+        .get("controls")
+        .and_then(Value::as_array)
+        .is_some_and(|controls| {
+            controls.iter().any(|c| {
+                c["id"].as_str() == Some(control)
+                    && c.pointer("/telemetry/keyTravel").and_then(Value::as_bool) == Some(true)
+            })
+        })
+    {
+        return;
+    }
+    let Some(travel) = value
+        .pointer("/value/travelUm")
+        .and_then(Value::as_u64)
+        .filter(|value| *value <= 10_000)
+    else {
+        return;
+    };
+    let maximum = value
+        .pointer("/value/maxTravelUm")
+        .and_then(Value::as_u64)
+        .filter(|value| *value <= 10_000);
+    if let Ok(mut observations) = shared.observations.lock()
+        && let Some(observation) = observations.get_mut(&session.device)
+        && observation.desired()
+    {
+        session.depth_sequence = sequence;
+        observation.sequence = sequence;
+        observation.samples.insert(
+            control.into(),
+            ReceivedTravel {
+                travel,
+                maximum,
+                received: Instant::now(),
+            },
+        );
     }
 }
 fn event_session<'a>(state: &'a mut ProcessState, value: &Value) -> Option<&'a mut Session> {
@@ -2269,6 +2628,7 @@ serveDevice({id:'dev.deckweave.fixture',discover:()=>['a','b'].map(descriptor),o
             lifecycle: Arc::clone(&lifecycle),
             recovery_packages: Mutex::new(BTreeSet::new()),
             controls: Mutex::new(VecDeque::new()),
+            observations: Mutex::new(BTreeMap::new()),
         });
         let context = Arc::clone(&shared);
         let state_root = state_root.to_path_buf();
@@ -2642,11 +3002,128 @@ for await(const line of createInterface({input:process.stdin,crlfDelay:Infinity}
                 edit: 0,
                 recovery: Value::Null,
                 released: false,
+                observing: false,
+                observation_needs_stop: false,
+                last_observe: Instant::now(),
+                depth_sequence: 0,
             },
         );
         assert!(event_session(&mut state, &json!({"session":"s","generation":1})).is_none());
         assert!(event_session(&mut state, &json!({"session":"s","generation":2})).is_some());
         state.sessions.get_mut("s").unwrap().failed = true;
         assert!(event_session(&mut state, &json!({"session":"s","generation":2})).is_none());
+    }
+    #[test]
+    fn depth_samples_expire_to_unknown_and_window_leases_remain_independent() {
+        let mut observation = Observation {
+            active: true,
+            needs_stop: true,
+            ..Default::default()
+        };
+        observation
+            .leases
+            .insert("main".into(), Instant::now() - OBSERVER_LEASE);
+        observation.leases.insert("device-d".into(), Instant::now());
+        observation.samples.insert(
+            "key-1".into(),
+            ReceivedTravel {
+                travel: 3970,
+                maximum: Some(4000),
+                received: Instant::now(),
+            },
+        );
+        observation.samples.insert(
+            "key-2".into(),
+            ReceivedTravel {
+                travel: 0,
+                maximum: None,
+                received: Instant::now() - DEPTH_TTL,
+            },
+        );
+        let snapshot = observation.snapshot();
+        assert!(snapshot.enabled);
+        assert_eq!(snapshot.samples.len(), 1);
+        assert_eq!(snapshot.samples[0].travel_um, 3970);
+        assert!(!observation.leases.contains_key("main"));
+        observation.leases.clear();
+        assert_eq!(observation.snapshot().state, "stopping");
+        assert!(observation.snapshot().samples.is_empty());
+        observation.error = Some("Stop unconfirmed".into());
+        assert_eq!(observation.snapshot().state, "error");
+    }
+    #[test]
+    fn process_depth_observers_stop_on_last_window_lease_without_affecting_siblings_or_core() {
+        let (directory, package) = fixture(
+            r#"
+import {createInterface} from 'node:readline';
+const descriptor=id=>({instanceId:id,modelId:'dev.deckweave.fixture.model',name:id,identity:{confidence:'session',persistentId:null},geometry:{width:1,height:1},controls:[{id:'key-1',kind:'key',x:0,y:0,width:1,height:1,events:[],telemetry:{keyTravel:true}}],settings:[],displays:[],observation:{keyTravel:{minUm:0,maxUm:4000,staleAfterMs:600,normalTyping:true,evidence:'partial'}}});
+const sessions=new Map();
+const send=v=>process.stdout.write(JSON.stringify(v)+'\n');
+const timer=setInterval(()=>{for(const [id,s]of sessions)if(s.on){send({type:'depth',session:id,generation:s.gen-1,sequence:999,control:'key-1',value:{travelUm:9999}});send({type:'depth',session:id,generation:s.gen,sequence:++s.seq,control:'key-1',value:{travelUm:1230,maxTravelUm:3970}});}},34);timer.unref();
+for await(const line of createInterface({input:process.stdin,crlfDelay:Infinity})){
+const q=JSON.parse(line);let value={};
+if(q.type==='hello')value={protocol:1,providerId:'dev.deckweave.fixture'};
+if(q.type==='discover')value={devices:['a','b'].map(descriptor)};
+if(q.type==='open'){sessions.set(q.session,{gen:q.generation,seq:0,on:false});value={descriptor:descriptor(q.instanceId),state:{observed:{}}};}
+if(q.type==='readState')value={observed:{}};
+if(q.type==='observe'){sessions.get(q.session).on=q.enabled;value={observing:q.enabled};}
+if(q.type==='close'){sessions.delete(q.session);value={recovery:'not_needed'};}
+send({type:'result',requestId:q.requestId,...(q.session?{session:q.session,generation:q.generation}:{}),ok:true,value});
+}
+"#,
+        );
+        let root = directory.path().join("packages");
+        let bundle = root.join("dev.deckweave.fixture.dwDevice");
+        std::fs::create_dir_all(&bundle).unwrap();
+        for file in ["provider.mjs", "deckweave.device.json"] {
+            std::fs::copy(package.directory.join(file), bundle.join(file)).unwrap();
+        }
+        let host = headless_host(directory.path(), &root, &directory.path().join("state"));
+        wait_until(|| host.snapshot().discovered.len() == 2);
+        let a = host.add("dev.deckweave.fixture", "a").unwrap();
+        let b = host.add("dev.deckweave.fixture", "b").unwrap();
+        wait_until(|| {
+            host.snapshot()
+                .sessions
+                .values()
+                .filter(|s| s.state == "connected")
+                .count()
+                == 2
+        });
+        assert_eq!(host.observation(&a, "main").unwrap().state, "off");
+        let revision = host.shared.core.lock().unwrap().revision();
+        host.set_observation(&a, "main", true).unwrap();
+        host.set_observation(&a, "device-a", true).unwrap();
+        host.set_observation(&b, "device-b", true).unwrap();
+        wait_until(|| !host.observation(&a, "main").unwrap().samples.is_empty());
+        let sample = host.observation(&a, "main").unwrap();
+        assert_eq!(
+            sample.samples[0].travel_um, 1230,
+            "stale generation must not inject telemetry"
+        );
+        assert_eq!(
+            host.shared.core.lock().unwrap().revision(),
+            revision,
+            "telemetry must not write Core configuration"
+        );
+        host.stop_observer("main");
+        assert!(host.observation(&a, "device-a").unwrap().enabled);
+        {
+            let mut observations = host.shared.observations.lock().unwrap();
+            observations
+                .get_mut(&a)
+                .unwrap()
+                .leases
+                .insert("device-a".into(), Instant::now() - OBSERVER_LEASE);
+        }
+        assert!(
+            !host.observation(&a, "device-a").unwrap().enabled,
+            "expired polling cannot revive a lease"
+        );
+        wait_until(|| host.observation(&a, "device-a").unwrap().state == "off");
+        assert_eq!(host.observation(&b, "device-b").unwrap().state, "observing");
+        host.stop_observer("device-b");
+        wait_until(|| host.observation(&b, "device-b").unwrap().state == "off");
+        host.stop();
     }
 }

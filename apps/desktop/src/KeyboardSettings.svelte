@@ -4,6 +4,8 @@
   import type { Client } from './client.svelte';
   import type { Device } from './types';
   import type { ProviderInventory, ProviderSessionState } from './provider-ui';
+  import DeviceDecorations from './DeviceDecorations.svelte';
+  import DepthRing from './DepthRing.svelte';
   let { client, device }: { client: Client; device: Device } = $props();
   let status = $state<ProviderSessionState | null>(null);
   let selected = $state<string[]>([]);
@@ -16,6 +18,7 @@
   const geometry = $derived(device.provider_descriptor!.geometry);
   const mapping = $derived(keyboard?.onboardMappings);
   const actuation = $derived(keyboard?.actuation);
+  const travelCapability = $derived(definition?.observation?.keyTravel);
   const connected = $derived(status?.state === 'connected' && status.recovery?.state !== 'pending');
   const usageList = [
     ...Array.from({ length: 112 }, (_, i) => i + 4),
@@ -194,15 +197,19 @@
       {error || status?.error}
     </p>{/if}
   <div class="keyboard-selection" style:aspect-ratio={geometry.width + '/' + geometry.height}>
-    {#each geometry.controls.filter((c) => c.kind === 'key') as control (control.id)}<button
+    <DeviceDecorations {definition} {geometry} locale={ru ? 'ru' : 'en'} />
+    {#each geometry.controls.filter((c) => c.kind === 'key') as control (control.id)}{@const depth =
+        travelCapability ? client.depth(control.id, travelCapability.maxUm) : null}<button
         class:selected={selected.includes(control.id)}
+        class:depth-pressed={!!depth && depth.um >= 300}
         aria-pressed={selected.includes(control.id)}
-        title={label(control.id)}
+        title={label(control.id) +
+          (depth ? ' · ' + (depth.um / 1000).toFixed(2) + (ru ? ' мм' : ' mm') : '')}
         style:left={(control.rect[0] / geometry.width) * 100 + '%'}
         style:top={(control.rect[1] / geometry.height) * 100 + '%'}
         style:width={(control.rect[2] / geometry.width) * 100 + '%'}
         style:height={(control.rect[3] / geometry.height) * 100 + '%'}
-        onclick={() => toggle(control.id)}>{label(control.id)}</button
+        onclick={() => toggle(control.id)}><DepthRing reading={depth} />{label(control.id)}</button
       >{/each}
   </div>
   <div class="key-selection-tools">
@@ -212,6 +219,14 @@
       >{ru ? 'Выбрать все' : 'Select all'}</button
     ><button onclick={() => (selected = [])}>{ru ? 'Снять выделение' : 'Clear selection'}</button
     ><span>{ru ? 'Выбрано' : 'Selected'}: {selected.length}</span>
+    {#if travelCapability && selected.length === 1}{@const depth = client.depth(
+        selected[0],
+        travelCapability.maxUm,
+      )}<span
+        >{ru ? 'Глубина' : 'Key travel'}: {depth
+          ? (depth.um / 1000).toFixed(2) + (ru ? ' мм' : ' mm')
+          : '—'}</span
+      >{/if}
   </div>
   {#if !connected}<p>
       {ru
@@ -349,6 +364,10 @@
 </section>
 
 <style>
+  .keyboard-selection button.depth-pressed {
+    border-color: #77e2ff;
+    box-shadow: inset 0 0 9px #77e2ff40;
+  }
   .keyboard-settings {
     margin-top: 24px;
     border-top: 1px solid #ffffff20;
