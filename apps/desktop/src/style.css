@@ -1514,3 +1514,64 @@ textarea {
     gap: 15px;
   }
 }
+
+/* A wide, non-LCD keyboard uses the available stage rather than the deck's size cap. */
+.panel-stage.keyboard-stage {
+  padding: 10px 16px;
+  justify-content: flex-start;
+  overflow: auto;
+}
+.device-panel.keyboard-panel {
+  width: min(
+    calc(100cqw * var(--preview-scale, 1)),
+    calc(100cqh * var(--device-ratio) * var(--preview-scale, 1))
+  );
+  margin-inline: auto;
+  border-radius: 10px;
+  --depth-ring-size: clamp(14px, 1.8cqw, 24px);
+  --depth-ring-inset: 0 1px 0 0;
+}
+.keyboard-panel .control.physical-key {
+  padding: 3px 4px;
+  border-width: 1px;
+  border-radius: 5px;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 2px;
+}
+.device-panel.keyboard-panel .physical-key-label {
+  font-size: clamp(10px, 1.35cqw, 15px);
+  font-weight: 600;
+  line-height: 1;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.device-panel.keyboard-panel .physical-key-binding {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  max-width: calc(100% - var(--depth-ring-size) - 9px);
+  font-size: clamp(8px, 0.95cqw, 11px);
+  line-height: 1;
+}
+@container (max-width: 820px) {
+  .device-panel.keyboard-panel .physical-key-binding {
+    display: none;
+  }
+  .device-panel.keyboard-panel .physical-key-assigned {
+    display: block;
+    position: absolute;
+    bottom: 4px;
+    left: 4px;
+    font-size: 7px;
+    line-height: 1;
+    color: #91baff;
+  }
+}
+@media (max-width: 1050px) {
+  .keyboard-stage {
+    padding-inline: 10px;
+  }
+}

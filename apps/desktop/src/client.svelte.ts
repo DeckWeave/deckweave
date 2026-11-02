@@ -13,6 +13,7 @@ export class Client {
   busy = $state(false);
   observation = $state<DepthFrame>(emptyDepthFrame());
   observationBusy = $state(false);
+  depthScaleUm = $state<3200 | 4000>(3200);
   observationReceivedAt = $state(0);
   observationNow = $state(0);
   error = $state('');
@@ -33,13 +34,13 @@ export class Client {
   private observationPolling = false;
   private observationGeneration = 0;
 
-  depth(controlId: string, nominalMaxUm: number) {
+  depth(controlId: string, displayMaxUm: number = this.depthScaleUm) {
     return keyDepth(
       this.observation,
       controlId,
       this.observationReceivedAt,
       this.observationNow,
-      nominalMaxUm,
+      displayMaxUm,
     );
   }
   private adoptObservation(frame: DepthFrame) {

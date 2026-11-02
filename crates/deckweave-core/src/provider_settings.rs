@@ -241,7 +241,198 @@ pub(super) fn validate_provider_descriptor(descriptor: &ProviderDescriptor) -> R
             ));
         }
     }
+    validate_provider_presentation(&descriptor.definition, settings)?;
     Ok(())
+}
+/// Presentation only selects controls; it cannot introduce new writable settings.
+fn validate_provider_presentation(
+    definition: &serde_json::Value,
+    settings: &[serde_json::Value],
+) -> Result<()> {
+    let declared: BTreeMap<_, _> = settings
+        .iter()
+        .map(|s| (s["id"].as_str().unwrap(), s))
+        .collect();
+    let mut dependencies = BTreeMap::new();
+    for setting in settings {
+        let id = setting["id"].as_str().unwrap();
+        if let Some(presentation) = setting.get("presentation")
+            && (presentation != "slider" || setting["type"] != "number")
+        {
+            return Err(Error::new(
+                "descriptor",
+                "Only numeric settings can use slider presentation",
+            ));
+        }
+        if let Some(condition) = setting.get("visibleWhen") {
+            let reference = validate_visibility(condition, &declared)?;
+            if reference == id {
+                return Err(Error::new(
+                    "descriptor",
+                    "A setting cannot control its own visibility",
+                ));
+            }
+            dependencies.insert(id, reference);
+        }
+    }
+    for start in dependencies.keys() {
+        let mut visited = BTreeSet::new();
+        let mut current = *start;
+        while let Some(next) = dependencies.get(current) {
+            if !visited.insert(current) {
+                return Err(Error::new(
+                    "descriptor",
+                    "Setting visibility contains a cycle",
+                ));
+            }
+            current = next;
+        }
+    }
+    for group in definition
+        .get("lighting")
+        .and_then(|v| v.as_array())
+        .into_iter()
+        .flatten()
+    {
+        if let Some(condition) = group.pointer("/staticColors/visibleWhen") {
+            validate_visibility(condition, &declared)?;
+        }
+        let Some(colors) = group.get("colorChannels") else {
+            continue;
+        };
+        let colors = colors
+            .as_array()
+            .filter(|v| v.len() <= 16)
+            .ok_or_else(|| Error::new("descriptor", "Color channels must be a bounded array"))?;
+        let owned = group["settings"].as_array().ok_or_else(|| {
+            Error::new(
+                "descriptor",
+                "Color channels need a declared lighting settings group",
+            )
+        })?;
+        let mut ids = BTreeSet::new();
+        for color in colors {
+            let object = color
+                .as_object()
+                .ok_or_else(|| Error::new("descriptor", "Color channel must be an object"))?;
+            if object
+                .keys()
+                .any(|key| !["id", "label", "r", "g", "b", "visibleWhen"].contains(&key.as_str()))
+            {
+                return Err(Error::new("descriptor", "Unknown color presentation field"));
+            }
+            let id = color["id"]
+                .as_str()
+                .filter(|id| !id.trim().is_empty() && id.len() <= 128)
+                .ok_or_else(|| Error::new("descriptor", "Invalid color channel ID"))?;
+            if !ids.insert(id) {
+                return Err(Error::new("descriptor", "Duplicate color channel ID"));
+            }
+            if let Some(label) = color.get("label") {
+                let label = label
+                    .as_object()
+                    .filter(|label| !label.is_empty() && label.len() <= 2)
+                    .ok_or_else(|| {
+                        Error::new("descriptor", "Color labels must be bounded en/ru strings")
+                    })?;
+                if label.iter().any(|(locale, value)| {
+                    !["en", "ru"].contains(&locale.as_str())
+                        || value
+                            .as_str()
+                            .is_none_or(|s| s.trim().is_empty() || s.chars().count() > 120)
+                }) {
+                    return Err(Error::new(
+                        "descriptor",
+                        "Color labels must be bounded en/ru strings",
+                    ));
+                }
+            }
+            let mut channels = BTreeSet::new();
+            for component in ["r", "g", "b"] {
+                let reference = color[component].as_str().ok_or_else(|| {
+                    Error::new("descriptor", "Color component must reference a setting")
+                })?;
+                let setting = declared.get(reference).ok_or_else(|| {
+                    Error::new("descriptor", "Color component setting is not declared")
+                })?;
+                if !channels.insert(reference)
+                    || !owned.iter().any(|value| value.as_str() == Some(reference))
+                    || setting["type"] != "number"
+                    || setting["min"].as_f64() != Some(0.0)
+                    || setting["max"].as_f64() != Some(255.0)
+                    || setting
+                        .get("step")
+                        .is_some_and(|step| step.as_f64() != Some(1.0))
+                {
+                    return Err(Error::new(
+                        "descriptor",
+                        "RGB components need distinct group-owned integer settings from 0 to 255",
+                    ));
+                }
+            }
+            if let Some(condition) = color.get("visibleWhen") {
+                validate_visibility(condition, &declared)?;
+            }
+        }
+    }
+    Ok(())
+}
+fn validate_visibility<'a>(
+    condition: &'a serde_json::Value,
+    declared: &BTreeMap<&str, &serde_json::Value>,
+) -> Result<&'a str> {
+    let object = condition
+        .as_object()
+        .filter(|value| {
+            value.len() == 2 && value.contains_key("settingId") && value.contains_key("values")
+        })
+        .ok_or_else(|| {
+            Error::new(
+                "descriptor",
+                "Visibility needs settingId and bounded values",
+            )
+        })?;
+    let id = object["settingId"]
+        .as_str()
+        .ok_or_else(|| Error::new("descriptor", "Invalid visibility setting reference"))?;
+    let target = declared
+        .get(id)
+        .ok_or_else(|| Error::new("descriptor", "Visibility setting is not declared"))?;
+    if !matches!(target["type"].as_str(), Some("choice" | "boolean")) {
+        return Err(Error::new(
+            "descriptor",
+            "Visibility must reference a choice or boolean setting",
+        ));
+    }
+    let values = object["values"]
+        .as_array()
+        .filter(|values| !values.is_empty() && values.len() <= 32)
+        .ok_or_else(|| Error::new("descriptor", "Visibility needs 1 to 32 choice values"))?;
+    let mut unique = BTreeSet::new();
+    for value in values {
+        let scalar = match value {
+            serde_json::Value::Null | serde_json::Value::Bool(_) => true,
+            serde_json::Value::Number(number) => number.as_f64().is_some_and(|n| n.is_finite()),
+            serde_json::Value::String(text) => text.chars().count() <= 256,
+            _ => false,
+        };
+        let allowed = if target["type"] == "boolean" {
+            value.is_boolean()
+        } else {
+            target["choices"].as_array().is_some_and(|choices| {
+                choices
+                    .iter()
+                    .any(|choice| choice.get("value").unwrap_or(choice) == value)
+            })
+        };
+        if !scalar || !allowed || !unique.insert(value.to_string()) {
+            return Err(Error::new(
+                "descriptor",
+                "Visibility contains invalid, duplicate or undeclared choice values",
+            ));
+        }
+    }
+    Ok(id)
 }
 pub(super) fn validate_provider_settings(
     definition: &serde_json::Value,

@@ -186,6 +186,17 @@
   }
   const snapshot = $derived(client.snapshot!);
   const geometry = $derived(snapshot.geometries[device.id]);
+  const physicalKeyboard = $derived(!!device.provider_descriptor?.definition.keyboard);
+  function previewScale(value: number) {
+    void client.send((revision) => ({
+      type: 'set_preferences',
+      preferences: {
+        ...client.snapshot!.configuration.preferences,
+        preview_scale: Math.max(75, Math.min(150, value)),
+      },
+      expected_revision: revision,
+    }));
+  }
   const connection = $derived(snapshot.connections[device.id]);
   const t = $derived((key: Parameters<typeof text>[1]) => text(snapshot.configuration.locale, key));
   const page = $derived(device.profile.pages.find((p) => p.id === device.profile.active_page_id)!);
@@ -213,6 +224,9 @@
   );
   const selected = $derived(geometry.controls.find((c) => c.id === selectedId));
   const binding = $derived(selectedId ? page.bindings[selectedId] : undefined);
+  const selectedDepth = $derived(
+    travel && selected?.kind === 'key' ? client.depth(selected.id, client.depthScaleUm) : null,
+  );
   const folder = $derived(
     binding?.plan?.type === 'page'
       ? device.profile.pages.find(
@@ -597,12 +611,43 @@
             >
           </div>
         </div>
-        <button
-          class="quiet device-settings-link"
-          aria-label={t('deviceSettings')}
-          title={t('deviceSettings')}
-          onclick={() => (workspace = 'settings')}>⚙</button
-        >
+        <div class="device-preview-tools">
+          {#if physicalKeyboard}<div
+              class="preview-zoom"
+              role="group"
+              aria-label={ru ? 'Масштаб клавиатуры' : 'Keyboard zoom'}
+            >
+              <button
+                disabled={client.busy || snapshot.configuration.preferences.preview_scale <= 75}
+                aria-label={ru ? 'Уменьшить клавиатуру' : 'Zoom out keyboard'}
+                onclick={() => previewScale(snapshot.configuration.preferences.preview_scale - 25)}
+                >−</button
+              >
+              <button
+                class="zoom-fit"
+                title={ru ? 'По размеру доступной области' : 'Fit available space'}
+                disabled={client.busy}
+                onclick={() => previewScale(100)}
+                >{snapshot.configuration.preferences.preview_scale === 100
+                  ? ru
+                    ? 'По размеру'
+                    : 'Fit'
+                  : snapshot.configuration.preferences.preview_scale + '%'}</button
+              >
+              <button
+                disabled={client.busy || snapshot.configuration.preferences.preview_scale >= 150}
+                aria-label={ru ? 'Увеличить клавиатуру' : 'Zoom in keyboard'}
+                onclick={() => previewScale(snapshot.configuration.preferences.preview_scale + 25)}
+                >＋</button
+              >
+            </div>{/if}
+          <button
+            class="quiet device-settings-link"
+            aria-label={t('deviceSettings')}
+            title={t('deviceSettings')}
+            onclick={() => (workspace = 'settings')}>⚙</button
+          >
+        </div>
       </div>
       {#if profileSettings}<div class="profile-settings">
           <label
@@ -643,9 +688,10 @@
             /><button type="submit" disabled={!newProfile.trim()}>＋ {t('addProfile')}</button>
           </form>
         </div>{/if}
-      <div class="panel-stage">
+      <div class="panel-stage" class:keyboard-stage={physicalKeyboard}>
         <div
           class="device-panel"
+          class:keyboard-panel={physicalKeyboard}
           style:aspect-ratio={`${geometry.width}/${geometry.height}`}
           style:--device-ratio={geometry.width / geometry.height}
           style:--preview-scale={snapshot.configuration.preferences.preview_scale / 100}
@@ -666,7 +712,9 @@
             </div>{/if}
           {#each geometry.controls as control (control.id)}
             {@const depth =
-              travel && control.kind === 'key' ? client.depth(control.id, travel.maxUm) : null}
+              travel && control.kind === 'key'
+                ? client.depth(control.id, client.depthScaleUm)
+                : null}
             {@const assignment = page.bindings[control.id]}
             {@const feedback = assignment
               ? snapshot.feedback.find(
@@ -681,6 +729,7 @@
               class="control"
               data-control-id={control.id}
               class:key-control={control.kind === 'key'}
+              class:physical-key={physicalKeyboard && control.kind === 'key'}
               class:dial-control={control.kind === 'dial'}
               class:touch-control={control.kind === 'touch'}
               class:strip-overlay={control.kind === 'touch' && stripVisible}
@@ -719,6 +768,10 @@
                 <span class="physical-key-label">{controlLabel(control)}</span><span
                   class="physical-key-binding">{assignment?.label ?? ''}</span
                 >
+                {#if physicalKeyboard && assignment}<span
+                    class="physical-key-assigned"
+                    aria-hidden="true">●</span
+                  >{/if}
               {:else if control.kind === 'dial'}
                 <span class="dial-marker" aria-hidden="true"></span>
                 <span class="dial-number">{control.number}</span>
@@ -824,11 +877,20 @@
       <div class="inspector">
         {#if selected}
           <div class="inspector-heading">
-            <div>
+            <div class="selected-control-heading">
               <h2>
                 {binding?.label ||
                   (binding ? t(binding.plan?.type ?? binding.kind) : t('unassigned'))}
               </h2>
+              {#if travel && selected.kind === 'key'}<div class="selected-key-depth">
+                  <span>{controlLabel(selected)}</span><DepthRing
+                    reading={selectedDepth}
+                    inline
+                  /><strong
+                    >{selectedDepth ? (selectedDepth.um / 1000).toFixed(2) : '—'}
+                    {ru ? 'мм' : 'mm'}</strong
+                  ><small>{ru ? 'текущий ход' : 'current travel'}</small>
+                </div>{/if}
             </div>
             <button
               class="primary test-button"
@@ -1156,6 +1218,58 @@
   .physical-key-label {
     font-size: 12px;
     line-height: 1.1;
+  }
+  .physical-key-assigned {
+    display: none;
+  }
+  .device-preview-tools {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .preview-zoom {
+    display: flex;
+    gap: 1px;
+    border: 1px solid #464d5a;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .preview-zoom button {
+    border: 0;
+    border-radius: 0;
+    padding: 4px 7px;
+    font-size: 12px;
+    background: #292d35;
+  }
+  .preview-zoom .zoom-fit {
+    min-width: 76px;
+  }
+  .selected-control-heading {
+    min-width: 0;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .selected-key-depth {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    color: #c9f0ff;
+  }
+  .selected-key-depth > span {
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .selected-key-depth strong {
+    font-size: 16px;
+    font-variant-numeric: tabular-nums;
+  }
+  .selected-key-depth small {
+    font-size: 11px;
+    color: #a4b1bf;
   }
   .physical-key-binding {
     font-size: 9px;

@@ -309,6 +309,7 @@ async fn recover_provider_settings(
     device_id: String,
     preview_token: String,
     confirmed_instance_id: String,
+    resolution: Option<String>,
     window: WebviewWindow,
     app: tauri::AppHandle,
 ) -> Result<serde_json::Value, String> {
@@ -318,7 +319,17 @@ async fn recover_provider_settings(
         match state.inner() {
             Application::Ready {
                 device_providers, ..
-            } => device_providers.recover(&device_id, &preview_token, &confirmed_instance_id),
+            } => match resolution.as_deref() {
+                None => {
+                    device_providers.recover(&device_id, &preview_token, &confirmed_instance_id)
+                }
+                Some(resolution) => device_providers.resolve_recovery(
+                    &device_id,
+                    &preview_token,
+                    &confirmed_instance_id,
+                    Some(resolution),
+                ),
+            },
             Application::Failed(e) => Err(e.to_string()),
         }
     })

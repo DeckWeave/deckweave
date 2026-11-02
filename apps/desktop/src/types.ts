@@ -94,6 +94,18 @@ export interface DeviceExclusion {
   provider_id: string;
   hardware_key: string;
 }
+export interface ProviderCondition {
+  settingId: string;
+  values: (string | number | boolean)[];
+}
+export interface ProviderColorChannels {
+  id: string;
+  label?: { en?: string; ru?: string };
+  r: string;
+  g: string;
+  b: string;
+  visibleWhen?: ProviderCondition;
+}
 export interface ProviderSetting {
   id: string;
   label: { en?: string; ru?: string };
@@ -105,6 +117,8 @@ export interface ProviderSetting {
   group?: string;
   persistence?: 'volatile' | 'onboard';
   readback?: boolean;
+  presentation?: 'slider';
+  visibleWhen?: ProviderCondition;
 }
 export interface ProviderDefinition {
   observation?: {
@@ -154,7 +168,8 @@ export interface ProviderDefinition {
     kind?: string;
     controls?: string[];
     settings?: string[];
-    staticColors?: { settingId: string; address: string };
+    staticColors?: { settingId: string; address: string; visibleWhen?: ProviderCondition };
+    colorChannels?: ProviderColorChannels[];
   }[];
   displays?: { id: string; width: number; height: number; mime: string[] }[];
   [key: string]: unknown;

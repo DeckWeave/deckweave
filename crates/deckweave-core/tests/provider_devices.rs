@@ -27,6 +27,178 @@ fn descriptor() -> ProviderDescriptor {
         definition: serde_json::json!({"settings":[{"id":"brightness","type":"number","min":0,"max":5,"step":1},{"id":"mode","type":"choice","choices":[{"value":0,"label":{"en":"Off"}},{"value":1,"label":{"en":"On"}}]},{"id":"vibration","type":"boolean"}],"lighting":[{"id":"keys","controls":["key-42"],"staticColors":{"settingId":"staticColors","address":"controlId"}}]}),
     }
 }
+fn presented_descriptor() -> ProviderDescriptor {
+    let mut d = descriptor();
+    d.definition = serde_json::json!({
+        "settings":[
+            {"id":"effect","type":"choice","choices":[{"value":"rainbow"},{"value":"solid"}]},
+            {"id":"enabled","type":"boolean"},
+            {"id":"redAmount","type":"number","min":0,"max":255,"step":1},
+            {"id":"greenAmount","type":"number","min":0,"max":255,"step":1},
+            {"id":"blueAmount","type":"number","min":0,"max":255},
+            {"id":"pace","type":"number","min":0,"max":5,"presentation":"slider","visibleWhen":{"settingId":"enabled","values":[true]}}
+        ],
+        "lighting":[{"id":"keys","controls":["key-42"],"settings":["effect","redAmount","greenAmount","blueAmount","pace"],
+            "colorChannels":[{"id":"primary","label":{"en":"Color","ru":"Цвет"},"r":"redAmount","g":"greenAmount","b":"blueAmount","visibleWhen":{"settingId":"effect","values":["solid"]}}]}]
+    });
+    d
+}
+#[test]
+fn provider_presentation_uses_declared_generic_channels_and_preserves_optional_metadata() {
+    let mut core = Core::memory().unwrap();
+    let d = presented_descriptor();
+    let id = core
+        .register_provider_device("example.keyboard", "opaque", "Keyboard", d.clone())
+        .unwrap();
+    let saved = core
+        .snapshot()
+        .configuration
+        .devices
+        .into_iter()
+        .find(|device| device.id == id)
+        .unwrap();
+    assert_eq!(saved.provider_descriptor.unwrap().definition, d.definition);
+    assert!(
+        saved.provider_settings.is_empty(),
+        "Presentation discovery must not request hardware changes"
+    );
+}
+#[test]
+fn invalid_presentation_cannot_introduce_settings_outside_the_declared_group_or_choice_domain() {
+    let cases = [
+        (
+            "/lighting/0/colorChannels/0/r",
+            serde_json::json!("unknown"),
+        ),
+        (
+            "/lighting/0/colorChannels/0/g",
+            serde_json::json!("redAmount"),
+        ),
+        ("/lighting/0/colorChannels/0/b", serde_json::json!("pace")),
+        (
+            "/lighting/0/settings",
+            serde_json::json!(["effect", "redAmount", "greenAmount"]),
+        ),
+        (
+            "/lighting/0/colorChannels/0/visibleWhen/settingId",
+            serde_json::json!("pace"),
+        ),
+        (
+            "/lighting/0/colorChannels/0/visibleWhen/values",
+            serde_json::json!(["unsupported"]),
+        ),
+        (
+            "/lighting/0/colorChannels/0/visibleWhen/values",
+            serde_json::json!(["solid", "solid"]),
+        ),
+        (
+            "/lighting/0/colorChannels/0/visibleWhen/values",
+            serde_json::json!([]),
+        ),
+        (
+            "/lighting/0/colorChannels/0/visibleWhen/values",
+            serde_json::json!([{"script":"anything"}]),
+        ),
+        (
+            "/lighting/0/colorChannels/0/label",
+            serde_json::json!({"html":"<script>"}),
+        ),
+        ("/settings/2/max", serde_json::json!(256)),
+        ("/settings/2/min", serde_json::json!(1)),
+        ("/settings/2/step", serde_json::json!(0.5)),
+        ("/settings/1/presentation", serde_json::json!("slider")),
+        ("/settings/5/presentation", serde_json::json!("script")),
+        ("/settings/5/visibleWhen/values", serde_json::json!([1])),
+        (
+            "/settings/5/visibleWhen/settingId",
+            serde_json::json!("missing"),
+        ),
+    ];
+    for (path, value) in cases {
+        let mut d = presented_descriptor();
+        // JSON pointers cannot insert absent fields; object assignment handles the optional cases.
+        if path.ends_with("/presentation") && path.starts_with("/settings/1/") {
+            d.definition["settings"][1]["presentation"] = value;
+        } else {
+            *d.definition.pointer_mut(path).unwrap() = value;
+        }
+        let mut core = Core::memory().unwrap();
+        let revision = core.revision();
+        assert_eq!(
+            core.register_provider_device("example.keyboard", "opaque", "Keyboard", d)
+                .unwrap_err()
+                .code,
+            "descriptor",
+            "{path}"
+        );
+        assert_eq!(core.revision(), revision);
+    }
+}
+#[test]
+fn visibility_cycles_and_duplicate_color_presentations_are_rejected() {
+    let mut cycle = presented_descriptor();
+    cycle.definition["settings"][0]["visibleWhen"] =
+        serde_json::json!({"settingId":"enabled","values":[true]});
+    cycle.definition["settings"][1]["visibleWhen"] =
+        serde_json::json!({"settingId":"effect","values":["solid"]});
+    let mut duplicate = presented_descriptor();
+    let color = duplicate.definition["lighting"][0]["colorChannels"][0].clone();
+    duplicate.definition["lighting"][0]["colorChannels"]
+        .as_array_mut()
+        .unwrap()
+        .push(color);
+    for d in [cycle, duplicate] {
+        let mut core = Core::memory().unwrap();
+        assert_eq!(
+            core.register_provider_device("example.keyboard", "opaque", "Keyboard", d)
+                .unwrap_err()
+                .code,
+            "descriptor"
+        );
+    }
+}
+#[test]
+fn static_color_visibility_uses_the_declared_choice_domain_even_without_color_channels() {
+    let mut d = presented_descriptor();
+    d.definition["lighting"][0]
+        .as_object_mut()
+        .unwrap()
+        .remove("colorChannels");
+    d.definition["lighting"][0]["staticColors"] = serde_json::json!({
+        "settingId":"individualColors", "address":"controlId",
+        "visibleWhen":{"settingId":"effect","values":["solid"]}
+    });
+    Core::memory()
+        .unwrap()
+        .register_provider_device("example.keyboard", "a", "Keyboard", d.clone())
+        .unwrap();
+    for condition in [
+        serde_json::json!({"settingId":"effect","values":["unsupported"]}),
+        serde_json::json!({"settingId":"missing","values":[true]}),
+        serde_json::json!({"settingId":"pace","values":[1]}),
+        serde_json::json!({"settingId":"enabled","values":[1]}),
+        serde_json::json!({"settingId":"effect","values":[]}),
+        serde_json::json!({"settingId":"effect","values":["solid"],"evaluate":"anything"}),
+    ] {
+        let mut invalid = d.clone();
+        invalid.definition["lighting"][0]["staticColors"]["visibleWhen"] = condition;
+        let mut core = Core::memory().unwrap();
+        let revision = core.revision();
+        assert_eq!(
+            core.register_provider_device("example.keyboard", "a", "Keyboard", invalid)
+                .unwrap_err()
+                .code,
+            "descriptor"
+        );
+        assert_eq!(core.revision(), revision);
+    }
+    d.definition["lighting"][0]["staticColors"]["visibleWhen"] =
+        serde_json::json!({"settingId":"enabled","values":[true,false]});
+    Core::memory()
+        .unwrap()
+        .register_provider_device("example.keyboard", "a", "Keyboard", d)
+        .unwrap();
+}
 #[test]
 fn provider_uses_actual_geometry_profiles_and_settings_survive_restart() {
     let dir = tempfile::tempdir().unwrap();

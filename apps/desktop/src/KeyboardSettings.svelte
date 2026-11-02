@@ -6,6 +6,7 @@
   import type { ProviderInventory, ProviderSessionState } from './provider-ui';
   import DeviceDecorations from './DeviceDecorations.svelte';
   import DepthRing from './DepthRing.svelte';
+  import { recoveryErrorText } from './provider-recovery';
   let { client, device }: { client: Client; device: Device } = $props();
   let status = $state<ProviderSessionState | null>(null);
   let selected = $state<string[]>([]);
@@ -194,12 +195,12 @@
     >
   </header>
   {#if error || status?.error}<p class="connection-error" role="alert">
-      {error || status?.error}
+      {recoveryErrorText(error || status?.error, ru)}
     </p>{/if}
   <div class="keyboard-selection" style:aspect-ratio={geometry.width + '/' + geometry.height}>
     <DeviceDecorations {definition} {geometry} locale={ru ? 'ru' : 'en'} />
     {#each geometry.controls.filter((c) => c.kind === 'key') as control (control.id)}{@const depth =
-        travelCapability ? client.depth(control.id, travelCapability.maxUm) : null}<button
+        travelCapability ? client.depth(control.id, client.depthScaleUm) : null}<button
         class:selected={selected.includes(control.id)}
         class:depth-pressed={!!depth && depth.um >= 300}
         aria-pressed={selected.includes(control.id)}
@@ -221,7 +222,7 @@
     ><span>{ru ? 'Выбрано' : 'Selected'}: {selected.length}</span>
     {#if travelCapability && selected.length === 1}{@const depth = client.depth(
         selected[0],
-        travelCapability.maxUm,
+        client.depthScaleUm,
       )}<span
         >{ru ? 'Глубина' : 'Key travel'}: {depth
           ? (depth.um / 1000).toFixed(2) + (ru ? ' мм' : ' mm')

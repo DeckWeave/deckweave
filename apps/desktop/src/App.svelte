@@ -63,7 +63,6 @@
           device.provider_descriptor.definition.observation.keyTravel}<DepthObservationControl
           {client}
           {locale}
-          maxUm={travel.maxUm}
           normalTyping={travel.normalTyping}
           connected={client.snapshot?.connections[device.id]?.state === 'connected'}
         />{/if}

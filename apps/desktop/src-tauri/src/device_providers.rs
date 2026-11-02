@@ -513,11 +513,24 @@ impl Host {
         preview_token: &str,
         confirmed_instance: &str,
     ) -> Result<Value, String> {
-        self.recovery_call(
-            device_id,
-            "recover",
-            json!({"previewToken":preview_token,"confirmedInstanceId":confirmed_instance}),
-        )
+        self.resolve_recovery(device_id, preview_token, confirmed_instance, None)
+    }
+    pub fn resolve_recovery(
+        &self,
+        device_id: &str,
+        preview_token: &str,
+        confirmed_instance: &str,
+        resolution: Option<&str>,
+    ) -> Result<Value, String> {
+        let mut payload =
+            json!({"previewToken":preview_token,"confirmedInstanceId":confirmed_instance});
+        if let Some(resolution) = resolution {
+            if !["restore", "keepCurrent"].contains(&resolution) {
+                return Err("Unsupported recovery resolution".into());
+            }
+            payload["resolution"] = resolution.into();
+        }
+        self.recovery_call(device_id, "recover", payload)
     }
     fn recovery_call(
         &self,
@@ -1075,7 +1088,7 @@ enum Operation {
     Settings(String, BTreeMap<String, Value>, u64),
     Close(String),
     Observe(String, bool),
-    Recovery(String, mpsc::Sender<Result<Value, String>>, bool),
+    Recovery(String, mpsc::Sender<Result<Value, String>>, bool, bool),
 }
 struct Pending {
     operation: Operation,
@@ -1097,6 +1110,62 @@ struct Session {
     observation_needs_stop: bool,
     last_observe: Instant,
     depth_sequence: u64,
+    recovery_preview: Option<RecoveryAuthorization>,
+}
+struct RecoveryAuthorization {
+    token: String,
+    instance: String,
+    expires: Instant,
+    can_keep_current: bool,
+    restore_available: bool,
+}
+impl RecoveryAuthorization {
+    fn from_preview(value: &Value) -> Option<Self> {
+        Some(Self {
+            token: value["previewToken"]
+                .as_str()
+                .filter(|s| !s.is_empty() && s.len() <= 128)?
+                .into(),
+            instance: value["confirmedInstanceId"]
+                .as_str()
+                .filter(|s| !s.is_empty() && s.len() <= 128)?
+                .into(),
+            expires: Instant::now()
+                + Duration::from_millis(
+                    value["expiresInMs"]
+                        .as_u64()
+                        .filter(|n| *n > 0 && *n <= 60_000)?,
+                ),
+            can_keep_current: value["canKeepCurrent"].as_bool() == Some(true),
+            restore_available: value["restoreAvailable"].as_bool() != Some(false),
+        })
+    }
+    fn matches(&self, request: &Value) -> bool {
+        self.expires > Instant::now()
+            && request["previewToken"].as_str() == Some(&self.token)
+            && request["confirmedInstanceId"].as_str() == Some(&self.instance)
+    }
+}
+fn authorize_resolution(
+    preview: Option<&RecoveryAuthorization>,
+    request: &Value,
+) -> Result<(), String> {
+    match request.get("resolution").and_then(Value::as_str) {
+        Some("keepCurrent") => {
+            if !preview.is_some_and(|preview| preview.matches(request) && preview.can_keep_current)
+            {
+                return Err("Keeping current settings requires a fresh preview explicitly supporting that resolution".into());
+            }
+        }
+        None | Some("restore") => {
+            if preview.is_some_and(|preview| preview.matches(request) && !preview.restore_available)
+            {
+                return Err("The saved record cannot restore the original settings; review its supported resolution".into());
+            }
+        }
+        Some(_) => return Err("Unsupported recovery resolution".into()),
+    }
+    Ok(())
 }
 struct ProcessState {
     sessions: BTreeMap<String, Session>,
@@ -1456,7 +1525,7 @@ fn process(
                     continue;
                 };
                 let id = match request.operation {
-                    Operation::Recovery(_, reply, _) => {
+                    Operation::Recovery(_, reply, _, _) => {
                         let _ = reply.send(Err(
                             "Recovery request timed out; completion is unconfirmed".into(),
                         ));
@@ -1617,10 +1686,27 @@ fn reconcile(
             continue;
         }
         let restore = request.kind == "recover";
+        if restore
+            && let Err(error) =
+                authorize_resolution(session.recovery_preview.as_ref(), &request.payload)
+        {
+            let _ = request.reply.send(Err(error));
+            continue;
+        }
+        state
+            .sessions
+            .get_mut(&session_id)
+            .unwrap()
+            .recovery_preview = None;
         state.request(
             transport,
             request.kind,
-            Operation::Recovery(session_id.clone(), request.reply, restore),
+            Operation::Recovery(
+                session_id.clone(),
+                request.reply,
+                restore,
+                request.payload["resolution"] == "keepCurrent",
+            ),
             Some(&session_id),
             request.payload,
         )?;
@@ -1814,6 +1900,7 @@ fn reconcile(
                 observation_needs_stop: false,
                 last_observe: Instant::now(),
                 depth_sequence: 0,
+                recovery_preview: None,
             },
         );
         shared.connection(
@@ -1878,6 +1965,18 @@ fn status(
         let evidence = value.get("evidence").cloned().unwrap_or_else(
             || json!({"transport":"unknown","readback":"unknown","physical":"unknown"}),
         );
+        let mut requested_state: BTreeMap<String, Value> = old
+            .and_then(|old| serde_json::from_value(old.requested.clone()).ok())
+            .unwrap_or_default();
+        if let Some(requested) = requested {
+            deckweave_core::merge_provider_patch(&mut requested_state, requested.clone());
+        }
+        // A successful GET cannot erase the failed write that still needs explicit recovery.
+        let error = error.or_else(|| {
+            (session.failed || session.recovery["state"].as_str() == Some("pending"))
+                .then(|| old.and_then(|old| old.error.clone()))
+                .flatten()
+        });
         inventory.sessions.insert(
             session.device.clone(),
             SessionStatus {
@@ -1893,7 +1992,7 @@ fn status(
                     }
                     .into(),
                 observed,
-                requested: requested.map_or_else(|| json!({}), |requested| json!(requested)),
+                requested: json!(requested_state),
                 evidence,
                 error,
                 recovery: session.recovery.clone(),
@@ -1924,7 +2023,7 @@ fn handle(
                 | Operation::Settings(id, _, _)
                 | Operation::Close(id)
                 | Operation::Observe(id, _) => Some(id.clone()),
-                Operation::Recovery(id, _, _) => Some(id.clone()),
+                Operation::Recovery(id, _, _, _) => Some(id.clone()),
                 _ => None,
             };
             if let Some(id) = session_id.as_deref() {
@@ -1951,7 +2050,7 @@ fn handle(
                                 == session.lifecycle_epoch
                     })
                 {
-                    if let Operation::Recovery(_, reply, _) = &pending.operation {
+                    if let Operation::Recovery(_, reply, _, _) = &pending.operation {
                         let _ = reply.send(Err(
                             "Device was rebound; request a fresh recovery preview".into(),
                         ));
@@ -1988,7 +2087,7 @@ fn handle(
                     .chars()
                     .take(300)
                     .collect::<String>();
-                if let Operation::Recovery(_, reply, _) = &pending.operation {
+                if let Operation::Recovery(_, reply, _, _) = &pending.operation {
                     let _ = reply.send(Err(message));
                     return Ok(());
                 }
@@ -2027,7 +2126,11 @@ fn handle(
                         ConnectionState::Error,
                         Some(message.clone()),
                     );
-                    status(shared, session, &json!({}), None, Some(message));
+                    let requested = match &pending.operation {
+                        Operation::Settings(_, requested, _) => Some(requested),
+                        _ => None,
+                    };
+                    status(shared, session, &json!({}), requested, Some(message));
                     if matches!(pending.operation, Operation::Open(_)) {
                         state.sessions.remove(&id);
                     }
@@ -2266,7 +2369,19 @@ fn handle(
                         shared.notify(false);
                     }
                 }
-                Operation::Recovery(id, reply, restore) => {
+                Operation::Recovery(id, reply, restore, keep_current) => {
+                    if keep_current
+                        && (response["resolution"] != "keepCurrent"
+                            || response["outcome"] != "accepted_verified_current"
+                            || response["recovery"] != "completed")
+                    {
+                        let _ = reply.send(Err("Provider did not confirm keeping verified current settings; recovery remains unconfirmed".into()));
+                        return Ok(());
+                    }
+                    if !restore {
+                        state.sessions.get_mut(&id).unwrap().recovery_preview =
+                            RecoveryAuthorization::from_preview(&response);
+                    }
                     let device = state.sessions[&id].device.clone();
                     let completed = restore
                         && response.get("recovery").and_then(Value::as_str) == Some("completed")
@@ -2701,6 +2816,16 @@ for await(const line of createInterface({input:process.stdin,crlfDelay:Infinity}
                 .get(&id)
                 .is_some_and(|session| session.recovery["state"] == "pending")
         });
+        assert_eq!(host.snapshot().sessions[&id].requested["vibration"], false);
+        assert_eq!(host.snapshot().sessions[&id].observed["vibration"], true);
+        let error = host.snapshot().sessions[&id].error.clone();
+        assert!(error.is_some());
+        host.refresh(&id).unwrap();
+        wait_until(|| !shared.refresh.lock().unwrap().contains(&id));
+        // Wait for the GET acknowledgement rather than treating dequeue as completed readback.
+        wait_until(|| host.snapshot().sessions[&id].evidence["readback"] == "verified");
+        assert_eq!(host.snapshot().sessions[&id].requested["vibration"], false);
+        assert_eq!(host.snapshot().sessions[&id].error, error);
         lifecycle
             .block(crate::plugin_lifecycle::Record {
                 kind: "device".into(),
@@ -3006,6 +3131,7 @@ for await(const line of createInterface({input:process.stdin,crlfDelay:Infinity}
                 observation_needs_stop: false,
                 last_observe: Instant::now(),
                 depth_sequence: 0,
+                recovery_preview: None,
             },
         );
         assert!(event_session(&mut state, &json!({"session":"s","generation":1})).is_none());
@@ -3050,6 +3176,121 @@ for await(const line of createInterface({input:process.stdin,crlfDelay:Infinity}
         assert!(observation.snapshot().samples.is_empty());
         observation.error = Some("Stop unconfirmed".into());
         assert_eq!(observation.snapshot().state, "error");
+    }
+    #[test]
+    fn keeping_current_requires_an_advertised_fresh_matching_preview() {
+        let request =
+            json!({"previewToken":"once","confirmedInstanceId":"a","resolution":"keepCurrent"});
+        assert!(authorize_resolution(None, &request).is_err());
+        let mut authorization = RecoveryAuthorization::from_preview(&json!({"previewToken":"once","confirmedInstanceId":"a","expiresInMs":60000,"canKeepCurrent":true,"restoreAvailable":false})).unwrap();
+        assert!(authorize_resolution(Some(&authorization), &request).is_ok());
+        assert!(
+            authorize_resolution(
+                Some(&authorization),
+                &json!({"previewToken":"once","confirmedInstanceId":"a"})
+            )
+            .is_err()
+        );
+        assert!(
+            authorize_resolution(
+                Some(&authorization),
+                &json!({"previewToken":"once","confirmedInstanceId":"b","resolution":"keepCurrent"})
+            )
+            .is_err()
+        );
+        authorization.expires = Instant::now();
+        assert!(authorize_resolution(Some(&authorization), &request).is_err());
+        assert!(
+            authorize_resolution(
+                None,
+                &json!({"previewToken":"legacy","confirmedInstanceId":"a"})
+            )
+            .is_ok()
+        );
+    }
+    #[test]
+    fn process_keep_current_forwards_explicit_resolution_and_refuses_an_ignored_resolution_ack() {
+        let (directory, package) = fixture(
+            r#"
+import {createInterface} from 'node:readline';
+import fs from 'node:fs';
+const log=process.env.DECKWEAVE_PROVIDER_STATE_DIR+'/operations';
+const descriptor={instanceId:'a',modelId:'dev.deckweave.fixture.model',name:'Fixture',identity:{confidence:'session',persistentId:null},geometry:{width:1,height:1},controls:[{id:'key-1',kind:'key',x:0,y:0,width:1,height:1,events:[]}],settings:[],displays:[],recovery:{preview:true,restore:true}};
+let pending=true,calls=0;
+const state=()=>({observed:{choice:1},recovery:{state:pending?'pending':'not_needed',pending:[]}});
+for await(const line of createInterface({input:process.stdin,crlfDelay:Infinity})){
+ const q=JSON.parse(line);let value={};
+ if(q.type==='hello')value={protocol:1,providerId:'dev.deckweave.fixture'};
+ if(q.type==='discover')value={devices:[descriptor]};
+ if(q.type==='open')value={descriptor,state:state()};
+ if(q.type==='readState')value=state();
+ if(q.type==='close')value={recovery:pending?'pending':'not_needed'};
+ if(q.type==='setSettings')fs.appendFileSync(log,'SET\n');
+ if(q.type==='recoveryPreview')value={snapshotId:'legacy',previewToken:'once',confirmedInstanceId:'a',requiresConfirmation:true,expiresInMs:60000,restoreAvailable:false,canKeepCurrent:true,reason:'legacy_lighting_projection'};
+ if(q.type==='recover'){fs.appendFileSync(log,String(q.resolution)+'\n');calls++;if(calls===1)value={recovery:'completed'};else{pending=false;value={...state(),recovery:'completed',recoveryState:{state:'not_needed',pending:[]},resolution:q.resolution,outcome:'accepted_verified_current'};}}
+ process.stdout.write(JSON.stringify({type:'result',requestId:q.requestId,...(q.session?{session:q.session,generation:q.generation}:{}),ok:true,value})+'\n');
+}
+"#,
+        );
+        let root = directory.path().join("packages");
+        let bundle = root.join("dev.deckweave.fixture.dwDevice");
+        std::fs::create_dir_all(&bundle).unwrap();
+        for file in ["provider.mjs", "deckweave.device.json"] {
+            std::fs::copy(package.directory.join(file), bundle.join(file)).unwrap();
+        }
+        let state_root = directory.path().join("state");
+        let host = headless_host(directory.path(), &root, &state_root);
+        wait_until(|| !host.snapshot().discovered.is_empty());
+        let id = host.add("dev.deckweave.fixture", "a").unwrap();
+        wait_until(|| {
+            host.snapshot()
+                .sessions
+                .get(&id)
+                .is_some_and(|session| session.recovery["state"] == "pending")
+        });
+        assert!(
+            host.resolve_recovery(&id, "once", "a", Some("unknown"))
+                .is_err()
+        );
+        assert!(
+            host.resolve_recovery(&id, "once", "a", Some("keepCurrent"))
+                .is_err()
+        );
+        host.recovery_preview(&id, None).unwrap();
+        assert!(
+            host.recover(&id, "once", "a").is_err(),
+            "Legacy original data cannot be restored"
+        );
+        assert!(
+            host.resolve_recovery(&id, "once", "b", Some("keepCurrent"))
+                .is_err()
+        );
+        assert!(
+            host.resolve_recovery(&id, "once", "a", Some("keepCurrent"))
+                .unwrap_err()
+                .contains("did not confirm")
+        );
+        assert_eq!(host.snapshot().sessions[&id].recovery["state"], "pending");
+        assert!(
+            host.resolve_recovery(&id, "once", "a", Some("keepCurrent"))
+                .is_err(),
+            "Host preview permission is one-use"
+        );
+        host.recovery_preview(&id, None).unwrap();
+        let accepted = host
+            .resolve_recovery(&id, "once", "a", Some("keepCurrent"))
+            .unwrap();
+        assert_eq!(accepted["resolution"], "keepCurrent");
+        assert_eq!(
+            host.snapshot().sessions[&id].recovery["state"],
+            "not_needed"
+        );
+        assert_eq!(
+            std::fs::read_to_string(state_root.join("dev.deckweave.fixture/operations")).unwrap(),
+            "keepCurrent\nkeepCurrent\n",
+            "No implicit restore or SET may be issued"
+        );
+        host.stop();
     }
     #[test]
     fn process_depth_observers_stop_on_last_window_lease_without_affecting_siblings_or_core() {

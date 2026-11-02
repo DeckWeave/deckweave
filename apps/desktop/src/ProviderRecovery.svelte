@@ -2,6 +2,7 @@
   import { invoke } from '@tauri-apps/api/core';
   import type { Client } from './client.svelte';
   import type { Device } from './types';
+  import { recoveryErrorText } from './provider-recovery';
   type Summary = { groups?: string[]; keys?: string[]; changedBytes?: number };
   type RecordInfo = {
     snapshotId: string;
@@ -15,8 +16,12 @@
     confirmedInstanceId: string;
     requiresConfirmation: true;
     identityConfidence: string;
+    canKeepCurrent?: boolean;
+    restoreAvailable?: boolean;
+    reason?: string;
   };
   type Selection = { requiresSnapshotSelection: true; pending: RecordInfo[] };
+  type NotNeeded = { state: 'not_needed'; pending: []; requiresConfirmation: false };
   let {
     client,
     device,
@@ -65,17 +70,45 @@
     selection = [];
     confirmed = false;
     try {
-      const value = await invoke<Preview | Selection>('provider_recovery_preview', {
+      const value = await invoke<Preview | Selection | NotNeeded>('provider_recovery_preview', {
         deviceId: device.id,
         snapshotId,
       });
-      if ('requiresSnapshotSelection' in value) {
+      if (
+        value &&
+        'state' in value &&
+        value.state === 'not_needed' &&
+        value.requiresConfirmation === false
+      ) {
+        result = ru
+          ? 'Драйвер подтвердил: восстановление не требуется.'
+          : 'Device support confirmed that recovery is not needed.';
+        dialog.close();
+        await oncomplete();
+      } else if (
+        value &&
+        'requiresSnapshotSelection' in value &&
+        value.requiresSnapshotSelection === true &&
+        Array.isArray(value.pending)
+      ) {
         selection = value.pending;
-      } else {
+      } else if (
+        value &&
+        'previewToken' in value &&
+        typeof value.previewToken === 'string' &&
+        value.previewToken.length > 0 &&
+        typeof value.confirmedInstanceId === 'string' &&
+        value.confirmedInstanceId.length > 0 &&
+        value.requiresConfirmation === true
+      ) {
         preview = value;
+      } else {
+        error = ru
+          ? 'Драйвер не предоставил подтверждённый предпросмотр. Восстановление не запускалось.'
+          : 'Device support did not provide a valid preview. Recovery was not started.';
       }
     } catch (e) {
-      error = String(e);
+      error = recoveryErrorText(e, ru);
     } finally {
       busy = false;
     }
@@ -85,8 +118,8 @@
     dialog.showModal();
     void read();
   }
-  async function restore() {
-    if (!preview || !confirmed) return;
+  async function restore(resolution: 'restore' | 'keepCurrent' = 'restore') {
+    if (!preview?.previewToken || !preview.confirmedInstanceId || !confirmed) return;
     busy = true;
     error = '';
     try {
@@ -96,6 +129,7 @@
           deviceId: device.id,
           previewToken: preview.previewToken,
           confirmedInstanceId: preview.confirmedInstanceId,
+          resolution,
         },
       );
       if (
@@ -110,9 +144,14 @@
         (typeof state.recovery === 'object' &&
           ['not_needed', 'completed'].includes(state.recovery.state ?? ''))
       ) {
-        result = ru
-          ? 'Драйвер сообщил о завершении восстановления.'
-          : 'Device support reported that recovery completed.';
+        result =
+          resolution === 'keepCurrent'
+            ? ru
+              ? 'Сохранённые в устройстве изменения подтверждены чтением и приняты. Новых аппаратных записей не было.'
+              : 'Stored changes were verified and accepted. No new hardware writes were made.'
+            : ru
+              ? 'Драйвер сообщил о завершении восстановления.'
+              : 'Device support reported that recovery completed.';
         dialog.close();
         await oncomplete();
       } else {
@@ -121,7 +160,7 @@
           : 'Device support did not confirm completion. The saved snapshot remains available.';
       }
     } catch (e) {
-      error = String(e);
+      error = recoveryErrorText(e, ru);
     } finally {
       busy = false;
     }
@@ -129,17 +168,17 @@
 </script>
 
 {#if recovery?.state === 'pending'}<section class="provider-recovery" role="status">
-    <h3>{ru ? 'Требуется восстановление настроек' : 'Settings recovery required'}</h3>
+    <h3>{ru ? 'Требуется проверка предыдущей записи' : 'Previous write needs review'}</h3>
     <p>
       {ru
-        ? 'Предыдущая запись завершилась частично или её результат не подтверждён. Новые изменения заблокированы. Можно прочитать сохранённый снимок и явно восстановить выбранное устройство.'
-        : 'A previous write partially completed or could not be verified. New edits are blocked. Review the saved snapshot and explicitly restore the selected device.'}
+        ? 'Предыдущая запись завершилась частично или её результат не подтверждён. Новые изменения заблокированы. Проверьте состояние выбранного устройства и доступные способы завершить операцию.'
+        : 'A previous write partially completed or could not be verified. New edits are blocked. Review the selected device state and the available resolution options.'}
     </p>
-    <button onclick={open}>{ru ? 'Посмотреть восстановление…' : 'Review recovery…'}</button>
+    <button onclick={open}>{ru ? 'Проверить состояние…' : 'Review device state…'}</button>
   </section>{/if}
 {#if result}<p role="status">{result}</p>{/if}
 <dialog bind:this={dialog} class="recovery-dialog">
-  <h2>{ru ? 'Восстановление настроек' : 'Recover device settings'}</h2>
+  <h2>{ru ? 'Проверка настроек устройства' : 'Review device settings'}</h2>
   <p><strong>{device.name}</strong></p>
   {#if busy}<p>{ru ? 'Загрузка…' : 'Working…'}</p>{/if}
   {#if error}<p class="connection-error" role="alert">{error}</p>{/if}
@@ -159,20 +198,36 @@
       <dt>{ru ? 'Клавиши' : 'Keys'}</dt>
       <dd>{preview.summary?.keys?.join(', ') || '—'}</dd>
     </dl>
+    {#if preview.canKeepCurrent}<p class="verified-current">
+        {ru
+          ? 'Прочитанные сохранённые настройки полностью совпадают с запрошенным изменением. Можно принять их без повторной записи в устройство. История и исходный снимок сохранятся.'
+          : 'The stored settings exactly match the requested change. Accept them without writing to the keyboard again. The history and original snapshot will be retained.'}
+      </p>{/if}
+    {#if preview.restoreAvailable === false}<p>
+        {ru
+          ? 'Старый снимок не содержит достоверных исходных цветов: прежний драйвер читал вычисленное состояние подсветки. Восстановление из этого снимка недоступно.'
+          : 'The legacy snapshot does not contain reliable original colors: the old driver read projected lighting state. Restoring this snapshot is unavailable.'}
+      </p>{/if}
     <p>
       {ru
-        ? 'Постоянный серийный номер не подтверждён. Восстановление относится к устройству, которое вы сейчас явно подключили к этому экземпляру.'
-        : 'A permanent serial identity is unverified. Recovery targets the hardware you explicitly paired with this instance now.'}
+        ? 'Постоянный серийный номер не подтверждён. Действие относится к устройству, которое вы сейчас явно подключили к этому экземпляру.'
+        : 'A permanent serial identity is unverified. The action targets the hardware you explicitly paired with this instance now.'}
     </p>
     <label class="recovery-confirm"
       ><input type="checkbox" bind:checked={confirmed} />{ru
-        ? 'Подтверждаю: восстановить выбранное устройство'
-        : 'I confirm recovery of the selected device'} «{device.name}»</label
+        ? 'Подтверждаю выбранное устройство'
+        : 'I confirm the selected device'} «{device.name}»</label
     >
   {/if}
   <footer>
     <button disabled={busy} onclick={() => dialog.close()}>{ru ? 'Отмена' : 'Cancel'}</button
-    >{#if preview}<button
+    >{#if preview?.canKeepCurrent}<button
+        class="primary"
+        disabled={busy || !confirmed}
+        onclick={() => void restore('keepCurrent')}
+        >{ru ? 'Принять сохранённые изменения' : 'Accept stored changes'}</button
+      >{/if}
+    {#if preview && preview.restoreAvailable !== false}<button
         class="primary"
         disabled={busy || !confirmed}
         onclick={() => void restore()}

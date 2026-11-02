@@ -1,0 +1,47 @@
+{
+  "date": "2026-11-02",
+  "releaseSha256": "952f2fc726cecc0e1ff929babd74a51eede6de1c6bf642da4b269eabb3755198",
+  "providerBinarySha256": "ea026c8dd9d57301b1825a9bf82c0770ef751b6af64d0f9e9a20b772b6aace9a",
+  "runtime": "Windows 11 native Tauri release, guarded IO Type 84 White 1.17",
+  "ownerReport": {
+    "ordinaryTypingDuringObservation": "confirmed",
+    "depthRingsRespond": "confirmed",
+    "accuracyOfAllKeys": "not confirmed; old preview too small",
+    "previousDisplayScale": "3200 um appears as 80 percent of the old 4000 um scale"
+  },
+  "nativeUiObserved": {
+    "actionsKeyboardUsesAvailableWidth": true,
+    "scale3200And4000IsPresentationOnly": true,
+    "keyboardAndHsvHexPaletteVisibleTogetherAt1182x891": true,
+    "effectDependentControlsUseObservedDescriptorConditions": true,
+    "legacyPreviewAdvertisesNoRestoreAndVerifiedKeepCurrent": true,
+    "explicitKeepCurrentCompletesWithoutHardwareSet": true,
+    "paletteSelectionVerified": "#588bff",
+    "ordinaryTypingOfHexAndEnterVerified": "#35a8f0",
+    "hsvPointerDragVerifiedAfterRelease": "#2c74a2",
+    "staticEffectReadbackVerified": true,
+    "noErrorAfterFreshReadback": true,
+    "observationLeftEnabledWithASelected": true
+  },
+  "retainedJournalAudit": {
+    "pendingIntents": 0,
+    "newStoredReadbackRecords": 4,
+    "source": "stored-get12-0200-v1",
+    "legacyOriginalAndAcceptanceReceiptRetained": true,
+    "onlyLightingChanged": true
+  },
+  "validation": [
+    "npm run check passed including Rust, JS, UI, format and documentation",
+    "final UI layout and HEX correction: svelte-check, format, Vite and release build passed",
+    "4 lighting UI helper tests passed",
+    "native provider: 28 tests, fmt and Clippy passed",
+    "device SDK: 20 tests; template: 3 tests passed"
+  ],
+  "limits": [
+    "The website landing page and shipped JavaScript were inspected; the full official WebHID UI was not operated.",
+    "Transport/readback does not confirm visible color or power-cycle persistence.",
+    "All 84 telemetry/static-color addresses are not physically accepted; static color remains limited to the confirmed address.",
+    "Firmware, calibration, mappings and actuation were not written.",
+    "No screenshots, raw key history, mappings, USB paths or confirmation tokens retained."
+  ]
+}
