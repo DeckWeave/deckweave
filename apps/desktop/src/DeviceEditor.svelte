@@ -26,6 +26,7 @@
   import KeyLightingAlertEditor from './KeyLightingAlertEditor.svelte';
   import PlanEditor from './PlanEditor.svelte';
   import PanelEditor from './PanelEditor.svelte';
+  import ProfileEditor from './ProfileEditor.svelte';
   import TouchTest from './TouchTest.svelte';
   import PaneSplitter from './PaneSplitter.svelte';
   import LibraryOptions from './LibraryOptions.svelte';
@@ -75,7 +76,6 @@
     native: OnboardAssignment;
     generation: number | null;
   } | null>(null);
-  let newProfile = $state('');
   function preference(key: string, fallback: number) {
     try {
       const v = Number(localStorage.getItem(key));
@@ -900,9 +900,12 @@
             >
             <button
               class="quiet"
-              aria-label={t('profileSettings')}
-              title={t('profileSettings')}
-              onclick={() => (profileSettings = !profileSettings)}><Icon name="profile" /></button
+              aria-label={ru ? 'Управление профилями' : 'Manage profiles'}
+              title={ru
+                ? 'Наборы страниц и действия каждого профиля'
+                : 'Page sets and actions for each profile'}
+              onclick={() => (profileSettings = !profileSettings)}
+              ><Icon name="profile" />{ru ? 'Профили' : 'Profiles'}</button
             >
           </div>
         </div>
@@ -977,47 +980,7 @@
           >
         </div>
       </div>
-      {#if profileSettings}<div class="profile-settings">
-          <label
-            >{t('application')}<input
-              value={device.profile.application ?? ''}
-              placeholder="obs64.exe"
-              onchange={(e) => {
-                const application = e.currentTarget.value;
-                void client.send((revision) => ({
-                  type: 'profile_application',
-                  device_id: device.id,
-                  application: application || null,
-                  expected_revision: revision,
-                }));
-              }}
-            /><small>{t('applicationHint')}</small></label
-          >
-          <form
-            onsubmit={(e) => {
-              e.preventDefault();
-              if (newProfile.trim()) {
-                const name = newProfile.trim();
-                void client.send((revision) => ({
-                  type: 'add_profile',
-                  device_id: device.id,
-                  name,
-                  expected_revision: revision,
-                }));
-                newProfile = '';
-              }
-            }}
-          >
-            <input
-              aria-label={t('profileName')}
-              maxlength="80"
-              bind:value={newProfile}
-              placeholder={t('profileName')}
-            /><button type="submit" disabled={!newProfile.trim()}
-              ><Icon name="plus" />{t('addProfile')}</button
-            >
-          </form>
-        </div>{/if}
+      {#if profileSettings}<ProfileEditor {client} {device} />{/if}
       <div class="panel-stage" class:keyboard-stage={physicalKeyboard}>
         <div
           class="device-panel"

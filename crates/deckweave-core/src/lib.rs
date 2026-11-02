@@ -5,6 +5,7 @@ pub use keyboard_aliases::*;
 pub mod lighting;
 pub mod model;
 mod panels;
+mod profiles;
 mod provider_settings;
 pub use provider_settings::merge_provider_patch;
 use provider_settings::{validate_provider_descriptor, validate_provider_settings};
@@ -515,6 +516,35 @@ impl Core {
                 profile_id,
                 ..
             } => actions::select_profile(device_mut(&mut next, &device_id)?, &profile_id)?,
+            Command::RenameProfile {
+                device_id,
+                profile_id,
+                name,
+                ..
+            } => {
+                let device = device_mut(&mut next, &device_id)?;
+                profiles::require_selected(device, &profile_id)?;
+                device.profile.name = name.trim().into();
+            }
+            Command::DuplicateProfile {
+                device_id,
+                profile_id,
+                name,
+                ..
+            } => {
+                let device = device_mut(&mut next, &device_id)?;
+                profiles::require_selected(device, &profile_id)?;
+                profiles::duplicate(device, &name)?;
+            }
+            Command::DeleteProfile {
+                device_id,
+                profile_id,
+                ..
+            } => {
+                let device = device_mut(&mut next, &device_id)?;
+                profiles::require_selected(device, &profile_id)?;
+                profiles::delete(device)?;
+            }
             Command::ProfileApplication {
                 device_id,
                 application,

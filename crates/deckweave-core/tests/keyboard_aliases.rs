@@ -90,6 +90,75 @@ fn verify(core: &mut Core, operation: &KeyboardAssignmentOperation) {
         KeyboardAliasPhase::Verified
     );
 }
+
+#[test]
+fn profile_copy_and_deletion_reuse_verified_source_without_reprogramming_keyboard() {
+    let mut core = Core::memory().unwrap();
+    let device = keyboard(&mut core);
+    let operation = assign(&mut core, &device, 3, KeyboardLayer::Fn, observed());
+    verify(&mut core, &operation);
+    let source = core.keyboard_alias_routes()[0].clone();
+    core.dispatch(
+        Command::DuplicateProfile {
+            device_id: device.clone(),
+            profile_id: core
+                .snapshot()
+                .configuration
+                .devices
+                .iter()
+                .find(|d| d.id == device)
+                .unwrap()
+                .profile
+                .id
+                .clone(),
+            name: "Copy".into(),
+            expected_revision: core.revision(),
+        },
+        "test",
+    )
+    .unwrap();
+    let copy = core.keyboard_alias_routes()[0].clone();
+    assert_ne!(source.profile_id, copy.profile_id);
+    assert_ne!(source.binding_id, copy.binding_id);
+    assert_eq!(source.installation_id, copy.installation_id);
+    assert_eq!(source.alias, copy.alias);
+    assert!(!core.activate_keyboard_alias(&source, 7).unwrap());
+    assert!(core.activate_keyboard_alias(&copy, 7).unwrap());
+    core.dispatch(
+        Command::DeleteProfile {
+            device_id: device.clone(),
+            profile_id: core
+                .snapshot()
+                .configuration
+                .devices
+                .iter()
+                .find(|d| d.id == device)
+                .unwrap()
+                .profile
+                .id
+                .clone(),
+            expected_revision: core.revision(),
+        },
+        "test",
+    )
+    .unwrap();
+    let restored = core.keyboard_alias_routes()[0].clone();
+    assert_eq!(restored.profile_id, source.profile_id);
+    assert_eq!(restored.binding_id, source.binding_id);
+    let d = core
+        .snapshot()
+        .configuration
+        .devices
+        .into_iter()
+        .find(|d| d.id == device)
+        .unwrap();
+    assert_eq!(d.keyboard_aliases.len(), 1);
+    assert_eq!(
+        d.keyboard_aliases[0].installation_id,
+        operation.installation_id
+    );
+    assert_eq!(d.keyboard_aliases[0].phase, KeyboardAliasPhase::Verified);
+}
 fn legacy(core: &mut Core, device: &str, control: usize, trigger: u8) {
     core.dispatch(
         Command::SetFnBinding {

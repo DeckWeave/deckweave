@@ -54,9 +54,9 @@
         )
       : [],
   );
-  function reviewPairing(found: Discovered) {
+  function reviewPairing(found: Discovered, target = '') {
     pairing = found;
-    pairingTarget = '';
+    pairingTarget = target;
     pairingConfirmed = false;
     discoveryError = '';
     pairingDialog.showModal();
@@ -109,6 +109,19 @@
       devices[0],
   );
   const connection = $derived(device ? snapshot.connections[device.id] : null);
+  const reconnectCandidates = $derived(
+    device
+      ? inventory.discovered.filter(
+          (found) =>
+            found.provider_id === device.provider_id &&
+            !found.error &&
+            found.descriptor.modelId === device.provider_descriptor?.definition.modelId &&
+            (!found.device_id || found.device_id === device.id) &&
+            inventory.sessions[device.id]?.state !== 'connected' &&
+            connection?.state !== 'connected',
+        )
+      : [],
+  );
   const geometry = $derived(device ? snapshot.geometries[device.id] : undefined);
   const editorAvailable = $derived(
     !!device &&
@@ -240,7 +253,12 @@
             class="primary"
             disabled={discovering || !!found.error}
             onclick={() => reviewPairing(found)}
-            >{found.state === 'pairing_required'
+            >{found.state === 'pairing_required' ||
+            devices.some(
+              (d) =>
+                d.provider_id === found.provider_id &&
+                d.provider_descriptor?.definition.modelId === found.descriptor.modelId,
+            )
               ? ru
                 ? 'Подключить сохранённое'
                 : 'Rebind saved device'
@@ -410,6 +428,16 @@
             status={snapshot.hardware_settings?.[device.id]}
           />{/if}
         {#if connection.error}<p class="connection-error">{connection.error}</p>{/if}
+        {#if reconnectCandidates.length}<div class="device-lifecycle-toolbar">
+            {#each reconnectCandidates as found (found.instance_id)}<button
+                disabled={discovering}
+                onclick={() => reviewPairing(found, device!.id)}
+                ><Icon name="device" />{ru ? 'Подключить' : 'Connect'}{reconnectCandidates.length >
+                1
+                  ? ': ' + found.name
+                  : ''}</button
+              >{/each}
+          </div>{/if}
         <div class="device-lifecycle-toolbar">
           <button
             class="device-danger"

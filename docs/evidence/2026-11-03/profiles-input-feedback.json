@@ -1,0 +1,39 @@
+{
+  "date": "2026-11-03",
+  "scope": "Profiles, IO84 reconnect diagnosis, host-feedback concept",
+  "release": {
+    "path": "target/release/deckweave-desktop.exe",
+    "sha256": "96b1b06d442339e8e2ce486c988196dc1110c2cecb50576efd6c5e2f05996f89",
+    "currentBundlesVerified": true
+  },
+  "checks": {
+    "rust": {
+      "passed": 200,
+      "ignored": 3,
+      "failed": 0,
+      "command": "cargo test --workspace --locked"
+    },
+    "clippy": "passed; all targets, warnings denied",
+    "svelte": {
+      "errors": 0,
+      "warnings": 0
+    },
+    "pluginUiTests": 41,
+    "format": "passed",
+    "docs": "passed",
+    "impeccableDetector": []
+  },
+  "nativeChecks": {
+    "profiles": "Viewed compact profile manager in release without changing owner profiles",
+    "connection": "Rebound detected IO84 to existing saved device using direct Connect; no duplicate created",
+    "fnT": "Full-layer read-only reconciliation, saved F13 and Launch notepad.exe retained",
+    "programTest": "Existing Test opened one additional Untitled Notepad window",
+    "physicalFnT": "Not verified; requires a real keyboard press",
+    "hardwareWrites": "No assignment or lighting writes requested"
+  },
+  "limits": [
+    "IO84 session identity requires explicit pairing after adapter restart",
+    "Shared sound and desktop panel services are proposed, not implemented",
+    "No Goldfish review has run; concept requires product clarification and readiness confirmation"
+  ]
+}

@@ -365,6 +365,14 @@ export type Command =
       expected_revision: number;
     }
   | { type: 'add_profile'; device_id: string; name: string; expected_revision: number }
+  | {
+      type: 'rename_profile' | 'duplicate_profile';
+      device_id: string;
+      profile_id: string;
+      name: string;
+      expected_revision: number;
+    }
+  | { type: 'delete_profile'; device_id: string; profile_id: string; expected_revision: number }
   | { type: 'select_profile'; device_id: string; profile_id: string; expected_revision: number }
   | {
       type: 'profile_application';

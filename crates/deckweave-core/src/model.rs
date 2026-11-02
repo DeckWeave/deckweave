@@ -781,6 +781,23 @@ pub enum Command {
         profile_id: String,
         expected_revision: u64,
     },
+    RenameProfile {
+        device_id: String,
+        profile_id: String,
+        name: String,
+        expected_revision: u64,
+    },
+    DuplicateProfile {
+        device_id: String,
+        profile_id: String,
+        name: String,
+        expected_revision: u64,
+    },
+    DeleteProfile {
+        device_id: String,
+        profile_id: String,
+        expected_revision: u64,
+    },
     ProfileApplication {
         device_id: String,
         application: Option<String>,
@@ -928,6 +945,9 @@ impl Command {
             | Self::RenameBinding { device_id, .. }
             | Self::SetPinned { device_id, .. }
             | Self::AddProfile { device_id, .. }
+            | Self::RenameProfile { device_id, .. }
+            | Self::DuplicateProfile { device_id, .. }
+            | Self::DeleteProfile { device_id, .. }
             | Self::SelectProfile { device_id, .. }
             | Self::ProfileApplication { device_id, .. }
             | Self::AddFolder { device_id, .. }
@@ -979,6 +999,15 @@ impl Command {
                 expected_revision, ..
             }
             | Self::AddProfile {
+                expected_revision, ..
+            }
+            | Self::RenameProfile {
+                expected_revision, ..
+            }
+            | Self::DuplicateProfile {
+                expected_revision, ..
+            }
+            | Self::DeleteProfile {
                 expected_revision, ..
             }
             | Self::SelectProfile {
