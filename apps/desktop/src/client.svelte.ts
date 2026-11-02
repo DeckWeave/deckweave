@@ -1,7 +1,7 @@
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import type { Command, InputEvent, Snapshot, PluginPackage } from './types';
+import type { Binding, Command, InputEvent, Snapshot, PluginPackage } from './types';
 import { emptyDepthFrame, keyDepth, type DepthFrame } from './depth-observation';
 
 type SettingsContext = {
@@ -196,6 +196,83 @@ export class Client {
   }
   input(deviceId: string, controlId: string, event: InputEvent) {
     return this.send(() => ({ type: 'input', device_id: deviceId, control_id: controlId, event }));
+  }
+  private queuedNative(
+    make: (revision: number) => Promise<Snapshot>,
+    current: () => boolean = () => true,
+  ): Promise<boolean> {
+    const next = this.queue.then(async () => {
+      if (!this.snapshot || this.stopped || !current()) return false;
+      this.busy = true;
+      try {
+        this.adopt(await make(this.snapshot.configuration.revision));
+        this.error = '';
+        return true;
+      } catch (e) {
+        this.fail(e);
+        await this.refresh();
+        return false;
+      } finally {
+        this.busy = false;
+      }
+    });
+    this.queue = next;
+    return next;
+  }
+  assignKeyboard(
+    deviceId: string,
+    controlId: string,
+    layer: 'main' | 'fn',
+    binding: Binding | null,
+    replaceNative = false,
+    proof?: { record: number[]; generation: number },
+  ) {
+    const device = this.snapshot?.configuration.devices.find((d) => d.id === deviceId);
+    const profile = device?.profile.id;
+    const page = device?.profile.active_page_id;
+    return this.queuedNative(
+      (expectedRevision) =>
+        invoke<Snapshot>('keyboard_assign_binding', {
+          deviceId,
+          controlId,
+          layer,
+          binding,
+          expectedRevision,
+          replaceNative,
+          expectedNative: proof?.record ?? null,
+          expectedGeneration: proof?.generation ?? null,
+        }),
+      () => {
+        const current = this.snapshot?.configuration.devices.find((d) => d.id === deviceId);
+        return current?.profile.id === profile && current?.profile.active_page_id === page;
+      },
+    );
+  }
+  restoreKeyboard(deviceId: string, controlId: string, layer: 'main' | 'fn') {
+    const expectedRevision = this.snapshot?.configuration.revision;
+    if (expectedRevision === undefined) return Promise.resolve(false);
+    return this.queuedNative(() =>
+      invoke<Snapshot>('keyboard_restore_assignment', {
+        deviceId,
+        controlId,
+        layer,
+        expectedRevision,
+        confirmed: true,
+      }),
+    );
+  }
+  reconcileKeyboard(deviceId: string, controlId: string, layer: 'main' | 'fn') {
+    const expectedRevision = this.snapshot?.configuration.revision;
+    if (expectedRevision === undefined) return Promise.resolve(false);
+    return this.queuedNative(() =>
+      invoke<Snapshot>('keyboard_reconcile_assignment', {
+        deviceId,
+        controlId,
+        layer,
+        expectedRevision,
+        confirmed: true,
+      }),
+    );
   }
   async openDevice(deviceId: string) {
     try {

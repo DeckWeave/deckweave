@@ -346,7 +346,7 @@ fn future_schema_and_corrupt_payload_are_not_reset() {
         999
     );
     connection
-        .execute_batch("DROP TRIGGER IF EXISTS configuration_v2_guard; PRAGMA user_version=1; UPDATE configuration SET json='not json';")
+        .execute_batch("DROP TRIGGER IF EXISTS configuration_v3_guard; PRAGMA user_version=1; UPDATE configuration SET json='not json';")
         .unwrap();
     assert!(Core::open(&path).is_err());
     assert_eq!(

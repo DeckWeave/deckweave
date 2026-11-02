@@ -117,6 +117,11 @@ pub(crate) fn bindings(device: &Device) -> Vec<&Binding> {
     ) {
         walk(binding, &mut result);
     }
+    for profile in std::iter::once(&device.profile).chain(&device.profiles) {
+        for binding in profile.fn_bindings.values() {
+            walk(&binding.binding, &mut result);
+        }
+    }
     result
 }
 pub(crate) fn find_mut<'a>(device: &'a mut Device, id: &str) -> Option<&'a mut Binding> {
@@ -159,8 +164,12 @@ pub(crate) fn find_mut<'a>(device: &'a mut Device, id: &str) -> Option<&'a mut B
         .chain(
             std::iter::once(&mut device.profile)
                 .chain(&mut device.profiles)
-                .flat_map(|p| p.pages.iter_mut())
-                .flat_map(|p| p.bindings.values_mut()),
+                .flat_map(|p| {
+                    p.pages
+                        .iter_mut()
+                        .flat_map(|page| page.bindings.values_mut())
+                        .chain(p.fn_bindings.values_mut().map(|f| &mut f.binding))
+                }),
         )
         .find_map(|b| walk(b, id))
 }

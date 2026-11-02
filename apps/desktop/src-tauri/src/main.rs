@@ -5,6 +5,8 @@ mod device_providers;
 mod engine;
 mod extension_management;
 mod hardware;
+mod key_lighting;
+mod keyboard_assignments;
 mod plugin_lifecycle;
 mod plugin_manager;
 mod plugins;
@@ -136,6 +138,12 @@ fn dispatch_blocking(
             ) {
                 collect(binding, &mut contexts);
             }
+            for shortcut in std::iter::once(&device.profile)
+                .chain(&device.profiles)
+                .flat_map(|p| p.fn_bindings.values())
+            {
+                collect(&shortcut.binding, &mut contexts);
+            }
         }
         Some((device_id.clone(), contexts))
     } else {
@@ -177,6 +185,8 @@ fn permitted(label: &str, command: &Command) -> bool {
                 | Command::AllowHardware { .. }
                 | Command::SetDeviceHardwareSettings { .. }
                 | Command::SetProviderSettings { .. }
+                | Command::SetFnBinding { .. }
+                | Command::TestFnBinding { .. }
                 | Command::SaveLightingPreset { .. }
                 | Command::DeleteLightingPreset { .. }
                 | Command::ProfileLightingPreset { .. }
@@ -335,6 +345,151 @@ fn provider_window(window: &WebviewWindow, device_id: &str) -> Result<(), String
     }
 }
 #[tauri::command]
+async fn keyboard_assignment_status(
+    device_id: String,
+    window: WebviewWindow,
+    app: tauri::AppHandle,
+) -> Result<serde_json::Value, Error> {
+    provider_window(&window, &device_id).map_err(|e| Error::new("window", e))?;
+    blocking_application(app,move |state| match state {
+        Application::Ready {device_providers,..} => Ok(serde_json::json!({"session":device_providers.session(&device_id),"routes":keyboard_assignments::statuses(&*locked(state)?,device_providers,&device_id)})),
+        Application::Failed(e) => Err(e.clone()),
+    }).await
+}
+
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
+async fn keyboard_assign_binding(
+    device_id: String,
+    control_id: String,
+    layer: deckweave_core::KeyboardLayer,
+    binding: Option<deckweave_core::Binding>,
+    expected_revision: u64,
+    replace_native: bool,
+    expected_native: Option<[u8; 4]>,
+    expected_generation: Option<u64>,
+    window: WebviewWindow,
+    app: tauri::AppHandle,
+) -> Result<AppSnapshot, Error> {
+    provider_window(&window, &device_id).map_err(|e| Error::new("window", e))?;
+    let notify = app.clone();
+    blocking_application(app, move |state| {
+        if let Application::Ready {
+            core,
+            device_providers,
+            hardware,
+            ..
+        } = state
+        {
+            let result = keyboard_assignments::assign(
+                core,
+                device_providers,
+                keyboard_assignments::AssignmentEdit {
+                    device_id,
+                    control_id,
+                    layer,
+                    binding,
+                    expected_revision,
+                    replace_native,
+                    expected_native,
+                    expected_generation,
+                },
+            );
+            hardware.changed();
+            let _ = notify.emit("deckweave:changed", ());
+            result?;
+        }
+        live(state, locked(state)?.snapshot())
+    })
+    .await
+}
+
+#[tauri::command]
+async fn keyboard_restore_assignment(
+    device_id: String,
+    control_id: String,
+    layer: deckweave_core::KeyboardLayer,
+    expected_revision: u64,
+    confirmed: bool,
+    window: WebviewWindow,
+    app: tauri::AppHandle,
+) -> Result<AppSnapshot, Error> {
+    provider_window(&window, &device_id).map_err(|e| Error::new("window", e))?;
+    if !confirmed {
+        return Err(Error::new(
+            "keyboard_preview",
+            "Review affected profiles before restoring the keyboard assignment",
+        ));
+    }
+    let notify = app.clone();
+    blocking_application(app, move |state| {
+        if let Application::Ready {
+            core,
+            device_providers,
+            hardware,
+            ..
+        } = state
+        {
+            let result = keyboard_assignments::restore(
+                core,
+                device_providers,
+                device_id,
+                control_id,
+                layer,
+                expected_revision,
+            );
+            hardware.changed();
+            let _ = notify.emit("deckweave:changed", ());
+            result?;
+        }
+        live(state, locked(state)?.snapshot())
+    })
+    .await
+}
+
+#[tauri::command]
+async fn keyboard_reconcile_assignment(
+    device_id: String,
+    control_id: String,
+    layer: deckweave_core::KeyboardLayer,
+    expected_revision: u64,
+    confirmed: bool,
+    window: WebviewWindow,
+    app: tauri::AppHandle,
+) -> Result<AppSnapshot, Error> {
+    provider_window(&window, &device_id).map_err(|e| Error::new("window", e))?;
+    if !confirmed {
+        return Err(Error::new(
+            "keyboard_identity",
+            "Confirm the currently selected keyboard before reconciliation",
+        ));
+    }
+    let notify = app.clone();
+    blocking_application(app, move |state| {
+        if let Application::Ready {
+            core,
+            device_providers,
+            hardware,
+            ..
+        } = state
+        {
+            let result = keyboard_assignments::reconcile(
+                core,
+                device_providers,
+                device_id,
+                control_id,
+                layer,
+                expected_revision,
+            );
+            hardware.changed();
+            let _ = notify.emit("deckweave:changed", ());
+            result?;
+        }
+        live(state, locked(state)?.snapshot())
+    })
+    .await
+}
+#[tauri::command]
 async fn provider_recovery_preview(
     device_id: String,
     snapshot_id: Option<String>,
@@ -409,6 +564,7 @@ async fn open_inspector(
                 .pages
                 .iter()
                 .flat_map(|p| p.bindings.values())
+                .chain(d.profile.fn_bindings.values().map(|f| &f.binding))
                 .any(|b| b.contains(&context))
         });
     if !owned {
@@ -644,6 +800,8 @@ fn main() {
                 Err(error) => Application::Failed(error),
             });
             startup("managed");
+            app.manage(keyboard_assignments::Runtime::start(app.handle().clone()));
+            app.manage(key_lighting::Runtime::start(app.handle().clone()));
             if let Ok(core) = locked(&app.state::<Application>()) {
                 app.state::<shell::Shell>()
                     .locale(core.snapshot().configuration.locale);
@@ -704,6 +862,13 @@ fn main() {
             provider_observation,
             provider_recovery_preview,
             recover_provider_settings,
+            keyboard_assignment_status,
+            keyboard_assign_binding,
+            keyboard_restore_assignment,
+            keyboard_reconcile_assignment,
+            key_lighting::key_lighting_test,
+            key_lighting::key_lighting_stop,
+            key_lighting::key_lighting_status,
             shell::quit_application
         ])
         .build(context);
@@ -727,6 +892,12 @@ fn main() {
                     ..
                 } = state.inner()
             {
+                if let Some(runtime) = app.try_state::<keyboard_assignments::Runtime>() {
+                    runtime.stop();
+                }
+                if let Some(runtime) = app.try_state::<key_lighting::Runtime>() {
+                    runtime.stop();
+                }
                 device_providers.stop();
                 plugins.stop();
                 engine.stop();

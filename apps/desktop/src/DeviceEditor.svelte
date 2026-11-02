@@ -1,8 +1,22 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
+  import { invoke } from '@tauri-apps/api/core';
   import type { Client } from './client.svelte';
   import { text } from './i18n';
-  import type { Device, ActionKind, Control, PluginAction, Plan } from './types';
-  import { plan as createPlan } from './action-factory';
+  import type { Device, ActionKind, Binding, Control, PluginAction, Plan } from './types';
+  import { plan as createPlan, action as createAction } from './action-factory';
+  import KeyboardAssignmentSetup from './KeyboardAssignmentSetup.svelte';
+  import {
+    onboardAssignment,
+    keyboardOverlay,
+    keyboardOwner,
+    keyboardPreviewCurrent,
+    keyboardPreviewForContext,
+    type KeyboardLayer,
+    type OnboardAssignment,
+  } from './keyboard-assignments';
+  import type { ProviderSessionState } from './provider-ui';
+  import KeyLightingAlertEditor from './KeyLightingAlertEditor.svelte';
   import PlanEditor from './PlanEditor.svelte';
   import PanelEditor from './PanelEditor.svelte';
   import TouchTest from './TouchTest.svelte';
@@ -29,6 +43,20 @@
   let filter = $state<'keys' | 'dials' | 'plugins'>('keys');
   let testing = $state(false);
   let profileSettings = $state(false);
+  let actionLayer = $state<'main' | 'fn'>('main');
+  let keyboardSession = $state<ProviderSessionState | null>(null);
+  let keyboardRoutes = $state<
+    Record<string, { state: string; error?: string | null; source?: string }>
+  >({});
+  let keyboardStatusError = $state('');
+  let pendingKeyboard = $state<{
+    context: string;
+    controlId: string;
+    layer: KeyboardLayer;
+    binding: Binding;
+    native: OnboardAssignment;
+    generation: number | null;
+  } | null>(null);
   let newProfile = $state('');
   function preference(key: string, fallback: number) {
     try {
@@ -68,6 +96,14 @@
     );
   }
   function accepts(item: LibraryAction, control: Control): boolean {
+    if (physicalKeyboard && controlLabel(control).trim().toLowerCase() === 'fn') return false;
+    if (
+      physicalKeyboard &&
+      (item.type === 'folder' ||
+        (item.type === 'plan' &&
+          ['key_logic', 'dial_stack', 'dial_bindings', 'action_wheel', 'page'].includes(item.plan)))
+    )
+      return false;
     if (
       item.type === 'plugin' &&
       snapshot.configuration.preferences.disabled_plugins.includes(item.package)
@@ -187,6 +223,138 @@
   const snapshot = $derived(client.snapshot!);
   const geometry = $derived(snapshot.geometries[device.id]);
   const physicalKeyboard = $derived(!!device.provider_descriptor?.definition.keyboard);
+  const keyboardPollingContext = $derived(
+    physicalKeyboard && workspace === 'actions' ? device.id : null,
+  );
+  const keyboardEditingContext = $derived(
+    [
+      device.id,
+      device.profile.id,
+      device.profile.active_page_id,
+      actionLayer,
+      selectedId,
+      workspace,
+    ].join('\0'),
+  );
+  // One read-only session projection serves every key and the inspector. It never
+  // reads HID directly, writes a mapping, or changes the manual Read button state.
+  $effect(() => {
+    const id = keyboardPollingContext;
+    if (!id) return;
+    let disposed = false;
+    let timer: ReturnType<typeof setTimeout>;
+    keyboardSession = null;
+    keyboardRoutes = {};
+    async function poll() {
+      try {
+        const next = await invoke<{
+          session: ProviderSessionState | null;
+          routes: typeof keyboardRoutes;
+        }>('keyboard_assignment_status', { deviceId: id });
+        if (!disposed) {
+          keyboardSession = next.session;
+          keyboardRoutes = next.routes;
+          keyboardStatusError = '';
+        }
+      } catch (e) {
+        if (!disposed) keyboardStatusError = String(e);
+      }
+      if (!disposed) timer = setTimeout(() => void poll(), 1000);
+    }
+    void poll();
+    return () => {
+      disposed = true;
+      clearTimeout(timer);
+    };
+  });
+  $effect(() => {
+    const context = keyboardEditingContext;
+    untrack(() => {
+      pendingKeyboard = keyboardPreviewForContext(pendingKeyboard, context);
+    });
+  });
+  function nativeFor(controlId: string) {
+    return onboardAssignment(
+      keyboardSession,
+      device.provider_descriptor?.definition.keyboard?.onboardMappings?.settingId,
+      controlId,
+      actionLayer,
+      ru ? 'ru' : 'en',
+    );
+  }
+  function ownerFor(controlId: string) {
+    return keyboardOwner(device.keyboard_aliases, controlId, actionLayer);
+  }
+  function overlayFor(controlId: string) {
+    const owner = ownerFor(controlId);
+    return keyboardOverlay(
+      nativeFor(controlId),
+      visibleBindings[controlId],
+      owner && owner.phase !== 'released' ? owner.installed[2] : null,
+    );
+  }
+  function setKeyboard(next: Binding | null) {
+    if (!selectedId) return;
+    const controlId = selectedId;
+    const owner = ownerFor(controlId);
+    if (
+      next &&
+      (!owner ||
+        owner.phase === 'released' ||
+        (owner.provenance === 'legacy' && owner.phase === 'legacy_unverified'))
+    ) {
+      previewKeyboard(next);
+      return;
+    }
+    pendingKeyboard = null;
+    void client.assignKeyboard(device.id, controlId, actionLayer, next);
+  }
+  function previewKeyboard(next: Binding) {
+    if (!selectedId) return;
+    pendingKeyboard = {
+      context: keyboardEditingContext,
+      controlId: selectedId,
+      layer: actionLayer,
+      binding: next,
+      native: nativeFor(selectedId),
+      generation: keyboardSession?.generation ?? null,
+    };
+  }
+  function previewCurrent() {
+    const preview = pendingKeyboard;
+    return (
+      !!keyboardPreviewForContext(preview, keyboardEditingContext) &&
+      !!preview &&
+      keyboardPreviewCurrent(
+        preview.native,
+        preview.generation,
+        nativeFor(preview.controlId),
+        keyboardSession?.generation,
+      )
+    );
+  }
+  async function confirmKeyboard() {
+    const pending = pendingKeyboard;
+    if (
+      !pending ||
+      client.busy ||
+      !previewCurrent() ||
+      !pending.native.record ||
+      pending.generation === null
+    )
+      return;
+    if (
+      await client.assignKeyboard(
+        device.id,
+        pending.controlId,
+        pending.layer,
+        pending.binding,
+        true,
+        { record: pending.native.record, generation: pending.generation },
+      )
+    )
+      pendingKeyboard = null;
+  }
   function previewScale(value: number) {
     void client.send((revision) => ({
       type: 'set_preferences',
@@ -223,7 +391,17 @@
         )),
   );
   const selected = $derived(geometry.controls.find((c) => c.id === selectedId));
-  const binding = $derived(selectedId ? page.bindings[selectedId] : undefined);
+  const visibleBindings = $derived(
+    actionLayer === 'fn'
+      ? Object.fromEntries(
+          Object.entries(device.profile.fn_bindings ?? {}).map(([id, entry]) => [
+            id,
+            entry.binding,
+          ]),
+        )
+      : page.bindings,
+  );
+  const binding = $derived(selectedId ? visibleBindings[selectedId] : undefined);
   const selectedDepth = $derived(
     travel && selected?.kind === 'key' ? client.depth(selected.id, client.depthScaleUm) : null,
   );
@@ -424,6 +602,12 @@
     const controlId = selectedId;
     const pageId = page.id;
     const title = label ?? (kind ? t(kind) : '');
+    if (physicalKeyboard) {
+      setKeyboard(
+        kind ? { ...createAction(kind, title), id: binding?.id ?? createAction().id } : null,
+      );
+      return;
+    }
     if (kind === 'plugin' && binding?.plugin) {
       assignPlugin(binding.plugin, title);
       return;
@@ -440,6 +624,14 @@
   }
   function assignPlugin(plugin: PluginAction, label: string) {
     if (!selectedId) return;
+    if (physicalKeyboard) {
+      setKeyboard({
+        ...createAction('plugin', label),
+        id: binding?.id ?? createAction().id,
+        plugin,
+      });
+      return;
+    }
     const controlId = selectedId;
     const pageId = page.id;
     void client.send((revision) => ({
@@ -454,6 +646,14 @@
   }
   function assignPlan(plan: Plan, label?: string) {
     if (!selectedId) return;
+    if (physicalKeyboard) {
+      setKeyboard({
+        ...createAction('program', label ?? binding?.label ?? t(plan.type)),
+        id: binding?.id ?? createAction().id,
+        plan,
+      });
+      return;
+    }
     const controlId = selectedId;
     const pageId = page.id;
     void client.send((revision) => ({
@@ -494,6 +694,14 @@
     const controlId = selectedId;
     testing = true;
     try {
+      if (actionLayer === 'fn') {
+        await client.send(() => ({
+          type: 'test_fn_binding',
+          device_id: device.id,
+          control_id: controlId,
+        }));
+        return;
+      }
       if (device.provider_id === 'deckweave.n4' && selected?.kind === 'dial') {
         await client.input(device.id, controlId, { type: 'click' });
         return;
@@ -615,6 +823,29 @@
           {#if physicalKeyboard}<div
               class="preview-zoom"
               role="group"
+              aria-label={ru ? 'Слой клавиатуры' : 'Keyboard layer'}
+            >
+              <button
+                class:current={actionLayer === 'main'}
+                aria-pressed={actionLayer === 'main'}
+                title={ru
+                  ? 'Аппаратный слой общий для всех профилей'
+                  : 'Onboard layer is shared by every profile'}
+                onclick={() => (actionLayer = 'main')}>{ru ? 'Основной' : 'Main'}</button
+              >
+              <button
+                class:current={actionLayer === 'fn'}
+                aria-pressed={actionLayer === 'fn'}
+                title={ru
+                  ? 'Аппаратный слой общий для всех профилей'
+                  : 'Onboard layer is shared by every profile'}
+                onclick={() => (actionLayer = 'fn')}>Fn</button
+              >
+              <span class="keyboard-scope">{ru ? 'Общий слой' : 'Shared layer'}</span>
+            </div>{/if}
+          {#if physicalKeyboard}<div
+              class="preview-zoom"
+              role="group"
               aria-label={ru ? 'Масштаб клавиатуры' : 'Keyboard zoom'}
             >
               <button
@@ -715,7 +946,8 @@
               travel && control.kind === 'key'
                 ? client.depth(control.id, client.depthScaleUm)
                 : null}
-            {@const assignment = page.bindings[control.id]}
+            {@const assignment = visibleBindings[control.id]}
+            {@const keyboardView = physicalKeyboard ? overlayFor(control.id) : null}
             {@const feedback = assignment
               ? snapshot.feedback.find(
                   (f) => f.device_id === device.id && f.binding_id === assignment.id,
@@ -742,8 +974,8 @@
               style:top={`${(control.rect[1] / geometry.height) * 100}%`}
               style:width={`${(control.rect[2] / geometry.width) * 100}%`}
               style:height={`${(control.rect[3] / geometry.height) * 100}%`}
-              title={`${controlLabel(control)} · ${assignment?.label || t('unassigned')}${depth ? ' · ' + (depth.um / 1000).toFixed(2) + (ru ? ' мм' : ' mm') : ''}`}
-              aria-label={`${controlLabel(control)}: ${assignment?.label || t('unassigned')}`}
+              title={`${controlLabel(control)} · ${keyboardView?.label || assignment?.label || t('unassigned')}${depth ? ' · ' + (depth.um / 1000).toFixed(2) + (ru ? ' мм' : ' mm') : ''}`}
+              aria-label={`${controlLabel(control)}: ${keyboardView?.label || assignment?.label || t('unassigned')}`}
               aria-pressed={selectedId === control.id}
               oncontextmenu={(e) => {
                 e.preventDefault();
@@ -766,7 +998,9 @@
               <DepthRing reading={depth} />
               {#if control.kind === 'key' && !hasDisplay(control)}
                 <span class="physical-key-label">{controlLabel(control)}</span><span
-                  class="physical-key-binding">{assignment?.label ?? ''}</span
+                  class="physical-key-binding"
+                  class:host-assignment={!!assignment}
+                  >{keyboardView?.label ?? assignment?.label ?? ''}</span
                 >
                 {#if physicalKeyboard && assignment}<span
                     class="physical-key-assigned"
@@ -802,42 +1036,48 @@
           {/each}
         </div>
       </div>
-      <div class="page-row" aria-label={t('currentPage')}>
-        {#if page.parent}<button
-            title={t('back')}
+      {#if actionLayer !== 'fn'}<div class="page-row" aria-label={t('currentPage')}>
+          {#if page.parent}<button
+              title={t('back')}
+              onclick={() =>
+                void client.send((revision) => ({
+                  type: 'select_page',
+                  device_id: device.id,
+                  page_id: page.parent!,
+                  expected_revision: revision,
+                }))}>← {t('back')}</button
+            ><span>{page.name}</span>{/if}
+          {#each device.profile.pages.filter((p) => p.parent === null) as p (p.id)}<button
+              class:current={p.id === page.id}
+              title={`${t('page')} ${pageLabel(device.profile, p)}`}
+              aria-label={`${t('page')} ${pageLabel(device.profile, p)}`}
+              aria-current={p.id === page.id ? 'page' : undefined}
+              onclick={() =>
+                void client.send((revision) => ({
+                  type: 'select_page',
+                  device_id: device.id,
+                  page_id: p.id,
+                  expected_revision: revision,
+                }))}>{pageLabel(device.profile, p)}</button
+            >{/each}
+          <button
+            class="add-page"
+            title={t('addPage')}
+            aria-label={t('addPage')}
             onclick={() =>
               void client.send((revision) => ({
-                type: 'select_page',
+                type: 'add_page',
                 device_id: device.id,
-                page_id: page.parent!,
                 expected_revision: revision,
-              }))}>← {t('back')}</button
-          ><span>{page.name}</span>{/if}
-        {#each device.profile.pages.filter((p) => p.parent === null) as p (p.id)}<button
-            class:current={p.id === page.id}
-            title={`${t('page')} ${pageLabel(device.profile, p)}`}
-            aria-label={`${t('page')} ${pageLabel(device.profile, p)}`}
-            aria-current={p.id === page.id ? 'page' : undefined}
-            onclick={() =>
-              void client.send((revision) => ({
-                type: 'select_page',
-                device_id: device.id,
-                page_id: p.id,
-                expected_revision: revision,
-              }))}>{pageLabel(device.profile, p)}</button
-          >{/each}
-        <button
-          class="add-page"
-          title={t('addPage')}
-          aria-label={t('addPage')}
-          onclick={() =>
-            void client.send((revision) => ({
-              type: 'add_page',
-              device_id: device.id,
-              expected_revision: revision,
-            }))}>＋</button
-        >
-      </div>
+              }))}>＋</button
+          >
+        </div>{:else}<div class="page-row">
+          <span
+            >{ru
+              ? 'Назначения клавиатуры общие для всех профилей. Действия DeckWeave — в текущем профиле.'
+              : 'Keyboard assignments are shared by all profiles. DeckWeave actions belong to the current profile.'}</span
+          >
+        </div>{/if}
       {#if page.parent}<div class="folder-toolbar">
           <span>{t('editingFolder')}: {page.name}</span><label
             ><input
@@ -880,7 +1120,11 @@
             <div class="selected-control-heading">
               <h2>
                 {binding?.label ||
-                  (binding ? t(binding.plan?.type ?? binding.kind) : t('unassigned'))}
+                  (binding
+                    ? t(binding.plan?.type ?? binding.kind)
+                    : physicalKeyboard
+                      ? nativeFor(selected.id).label
+                      : t('unassigned'))}
               </h2>
               {#if travel && selected.kind === 'key'}<div class="selected-key-depth">
                   <span>{controlLabel(selected)}</span><DepthRing
@@ -901,10 +1145,47 @@
               onclick={() => void check()}>{testing ? t('checking') : `▷ ${t('check')}`}</button
             >
           </div>
+          {#if physicalKeyboard}<KeyboardAssignmentSetup
+              native={nativeFor(selected.id)}
+              owner={ownerFor(selected.id)}
+              {binding}
+              route={keyboardRoutes[actionLayer + ':' + selected.id] ?? null}
+              connected={keyboardSession?.state === 'connected'}
+              canReconcile={!!keyboardSession &&
+                ['connected', 'error', 'recovery_pending'].includes(keyboardSession.state)}
+              busy={client.busy}
+              {ru}
+              profileName={device.profile.name}
+              candidate={pendingKeyboard?.controlId === selected.id &&
+              pendingKeyboard.layer === actionLayer
+                ? pendingKeyboard.binding
+                : null}
+              previewNative={pendingKeyboard?.native ?? null}
+              previewCurrent={previewCurrent()}
+              affectedProfiles={[device.profile, ...device.profiles]
+                .filter((p) =>
+                  actionLayer === 'fn'
+                    ? !!p.fn_bindings?.[selected!.id]
+                    : p.pages.some((p) => !!p.bindings[selected!.id]),
+                )
+                .map((p) => p.name)}
+              onconfirm={() => void confirmKeyboard()}
+              oncancel={() => (pendingKeyboard = null)}
+              onsetup={() => {
+                if (binding) previewKeyboard(binding);
+              }}
+              onrestore={() => void client.restoreKeyboard(device.id, selected!.id, actionLayer)}
+              onreconcile={() =>
+                void client.reconcileKeyboard(device.id, selected!.id, actionLayer)}
+            />
+            {#if keyboardStatusError}<p class="connection-error" role="alert">
+                {keyboardStatusError}
+              </p>{/if}
+          {/if}
           {#if binding}
             <div class="inspector-fields">
               {#if result?.error}<p class="connection-error">{result.error}</p>{/if}
-              {#if selected.kind === 'key' || (selected.kind === 'dial' && binding.plugin?.controller !== 'Panel')}<label
+              {#if !physicalKeyboard && actionLayer !== 'fn' && (selected.kind === 'key' || (selected.kind === 'dial' && binding.plugin?.controller !== 'Panel'))}<label
                   class="pin-field"
                   ><input
                     type="checkbox"
@@ -922,6 +1203,11 @@
                   />{t('pinned')}</label
                 >{/if}
               {#if binding.plugin}
+                {#if binding.plugin.package === 'dev.deckweave.timers' && binding.plugin.action.endsWith('.countdown')}<KeyLightingAlertEditor
+                    {client}
+                    {device}
+                    {binding}
+                  />{/if}
                 {#if pluginUnavailable}<div class="unavailable-action" role="status">
                     <strong
                       >{ru ? 'Плагин действия недоступен' : 'Action plugin unavailable'}</strong
@@ -1095,7 +1381,12 @@
                 <button
                   class="text-button"
                   title={t('remove') + ' · Delete'}
-                  onclick={() => assign(null)}>{t('remove')} · Del</button
+                  onclick={() => assign(null)}
+                  >{physicalKeyboard
+                    ? ru
+                      ? 'Удалить действие из профиля'
+                      : 'Remove profile action'
+                    : t('remove')} · Del</button
                 >
               </div>
             </div>
@@ -1245,6 +1536,13 @@
   .preview-zoom .zoom-fit {
     min-width: 76px;
   }
+  .keyboard-scope {
+    align-self: center;
+    padding: 0 7px;
+    font-size: 11px;
+    color: #b4bdcb;
+    white-space: nowrap;
+  }
   .selected-control-heading {
     min-width: 0;
     display: flex;
@@ -1272,12 +1570,15 @@
     color: #a4b1bf;
   }
   .physical-key-binding {
-    font-size: 9px;
-    line-height: 1.1;
+    font-size: 10px;
+    line-height: 1.2;
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .physical-key-binding.host-assignment {
+    color: #bce6ff;
   }
   .device-mode-content {
     height: calc(100vh - 44px);

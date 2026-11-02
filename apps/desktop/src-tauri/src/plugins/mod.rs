@@ -370,6 +370,23 @@ fn slots(snapshot: &Snapshot) -> BTreeMap<String, Slot> {
     }
     let mut result = BTreeMap::new();
     for d in &snapshot.configuration.devices {
+        for (control, shortcut) in &d.profile.fn_bindings {
+            if let Some(c) = snapshot.geometries[&d.id]
+                .controls
+                .iter()
+                .find(|c| c.id == *control)
+            {
+                walk(
+                    &shortcut.binding,
+                    &d.id,
+                    "Keypad",
+                    c.number,
+                    false,
+                    &shortcut.binding.id,
+                    &mut result,
+                );
+            }
+        }
         if let Some(page) = d
             .profile
             .pages
@@ -415,8 +432,12 @@ fn slots(snapshot: &Snapshot) -> BTreeMap<String, Slot> {
                 .chain(
                     std::iter::once(&d.profile)
                         .chain(&d.profiles)
-                        .flat_map(|p| p.pages.iter())
-                        .flat_map(|p| p.bindings.values()),
+                        .flat_map(|p| {
+                            p.pages
+                                .iter()
+                                .flat_map(|page| page.bindings.values())
+                                .chain(p.fn_bindings.values().map(|f| &f.binding))
+                        }),
                 )
                 .find_map(|b| find(b, &retained.binding_id));
             if let Some(binding) = binding {
@@ -1222,10 +1243,25 @@ fn handle(
                 } else {
                     None
                 };
-                let changed = core
-                    .lock()
-                    .is_ok_and(|mut c| persist_settings(&mut c, &slot, payload, baseline));
-                if changed {
+                let previous = core.lock().ok().and_then(|mut c| {
+                    let previous = c.plugin_settings(context).unwrap_or(Value::Null);
+                    persist_settings(&mut c, &slot, payload, baseline).then_some(previous)
+                });
+                if let Some(previous) = previous {
+                    if let Some(plugin) = slot.binding.plugin.as_ref()
+                        && let Err(error) = crate::key_lighting::timer_settings_accepted(
+                            app,
+                            &slot.device,
+                            context,
+                            &plugin.package,
+                            &plugin.action,
+                            &previous,
+                            payload,
+                        )
+                        && let Ok(mut c) = core.lock()
+                    {
+                        c.action_error(&slot.device, context, &error);
+                    }
                     // Subsequent queued writes compare against the last accepted value.
                     // If the owner/PI edits settings meanwhile, a retired writer cannot clobber it.
                     let remembered = if retired {
@@ -1313,6 +1349,12 @@ fn handle(
         }
         "showOk" if pi.is_none() && slot.is_some() => {
             feedback(core, app, epoch, context, "ready", json!({}))
+        }
+        "deckweaveKeyLighting" if pi.is_none() && slot.is_some() => {
+            let slot = slot.as_ref().expect("checked slot");
+            if let Err(error) = crate::key_lighting::plugin_alert(app, &slot.device, context) {
+                feedback(core, app, epoch, context, "error", json!({"message":error}));
+            }
         }
         _ => {}
     }

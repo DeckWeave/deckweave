@@ -89,6 +89,20 @@ pub(crate) fn validate_lighting_preset(device: &Device, preset: &LightingPreset)
     validate_provider_settings(&descriptor.definition, &preset.settings)
 }
 impl Core {
+    pub fn plugin_enabled(&self, package: &str) -> bool {
+        !self
+            .config
+            .preferences
+            .disabled_plugins
+            .iter()
+            .any(|id| id == package)
+    }
+    pub fn lighting_status(&self, device: &str) -> Option<LightingStatus> {
+        self.lighting
+            .owners
+            .get(device)
+            .map(|owner| owner.status.clone())
+    }
     pub fn take_provider_outputs(&mut self) -> Vec<ProviderOutput> {
         self.lighting.outputs.drain(..).collect()
     }

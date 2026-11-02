@@ -1,0 +1,43 @@
+{
+  "date": "2026-11-02",
+  "platform": "Windows 11",
+  "device": "IO Type 84 Magnetic White",
+  "scope": "Read-only interface inventory on the currently connected device",
+  "method": {
+    "keyboardEnumeration": "GetRawInputDeviceList and GetRawInputDeviceInfoW(RIDI_DEVICENAME)",
+    "interfaceToDevnode": "CM_Get_Device_Interface_PropertyW(DEVPKEY_Device_InstanceId) then CM_Locate_DevNodeW",
+    "physicalGrouping": "CM_Get_DevNode_PropertyW(DEVPKEY_Device_ContainerId)",
+    "vendorReference": "Present IO84 MI_02 devnode, queried using Get-PnpDeviceProperty",
+    "script": "io84-input-identity-probe.ps1",
+    "scriptSha256": "b89e37847e0784ea05a3b4b8797640b471073539ef2780b7b3358db8b018070b"
+  },
+  "result": {
+    "allKeyboardCollections": 3,
+    "matchingIoKeyboardCollections": 2,
+    "unresolvedIoKeyboardCollections": 0,
+    "ioContainerGroups": 1,
+    "allIoCollectionsMatchVendorContainer": true,
+    "presentIoDevnodes": 12,
+    "presentIoDevnodeContainerGroups": 1
+  },
+  "sideEffects": {
+    "inputRegistration": false,
+    "inputEventCapture": false,
+    "hidOpen": false,
+    "deviceWrites": false,
+    "rawIdentifiersRecorded": false
+  },
+  "conclusion": "The current vendor-control interface and both current Raw Input keyboard collections resolve to the same nonempty Windows ContainerId. A source pairing implementation should consider the verified collection set, not assume one keyboard collection per device.",
+  "limits": [
+    "This does not prove which collection emits a physical F13-F24 press or release.",
+    "This does not prove ContainerId stability across reconnect, USB ports or identical devices.",
+    "No second IO84 was available for a multiple-device comparison.",
+    "No key suppression, host dispatch, Fn event, latency or hardware mapping write was tested.",
+    "Missing or ambiguous identity must remain an unavailable source rather than fall back to VID/PID-only routing."
+  ],
+  "references": [
+    "https://learn.microsoft.com/en-us/windows/win32/inputdev/about-raw-input",
+    "https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getrawinputdeviceinfoa",
+    "https://learn.microsoft.com/en-us/windows-hardware/drivers/install/devpkey-device-containerid"
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "date": "2026-11-02",
+  "mode": "controlled-key-lighting-roundtrip",
+  "device": "IO Type 84 Magnetic White 1.17",
+  "completed": true,
+  "restoredOriginal": true,
+  "originalRevision": "1a8e3749c4b56f5cebc823ab25dae6d28c94ed31486d3fca2d9ee79842cd0648",
+  "finalRevision": "1a8e3749c4b56f5cebc823ab25dae6d28c94ed31486d3fca2d9ee79842cd0648",
+  "requestedDurationMs": 2000,
+  "acceptedFrames": 21,
+  "settingsCommands": 2,
+  "changedSettingCount": 1,
+  "changedSetting": "lightingMode",
+  "ramReleased": true,
+  "physicalColourVerified": false,
+  "hardwareTtlVerified": false,
+  "timingsMs": {
+    "readOriginal": 199.268,
+    "prepareStatic": 48.621,
+    "verifyStatic": 201.469,
+    "lastRamFrameAcceptance": 0.708,
+    "releaseRam": 12.362,
+    "verifyRamRelease": 202.281,
+    "restoreOriginal": 51.55,
+    "verifyOriginal": 197.895
+  },
+  "cleanupConfirmed": true,
+  "providerSha256": "56c533ae902672260bb9280e1b5735bb85178a99b7ce30095e21d69ed7c2d0d2",
+  "keyHistorySaved": false,
+  "rawPathsSaved": false,
+  "limits": "RAM ACK proves transport acceptance only; no visual or hardware TTL inference. Key mappings, actuation, calibration and firmware were not changed."
+}

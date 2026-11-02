@@ -19,6 +19,9 @@ use std::{
     time::{Duration, Instant},
 };
 use tauri::Emitter;
+#[cfg(test)]
+#[path = "device_providers_keyboard_tests.rs"]
+mod keyboard_tests;
 
 const MAX_LINE: usize = 1024 * 1024;
 const QUEUE: usize = 128;
@@ -172,6 +175,9 @@ struct Shared {
     recovery_packages: Mutex<BTreeSet<String>>,
     controls: Mutex<VecDeque<RecoveryRequest>>,
     observations: Mutex<BTreeMap<String, Observation>>,
+    key_lighting: Mutex<BTreeMap<String, KeyLightingDevice>>,
+    keyboard_input: Mutex<BTreeMap<String, crate::keyboard_assignments::InputConfiguration>>,
+    keyboard_edits: Mutex<BTreeSet<String>>,
     // A provider process may restart while an editor awaits a terminal ACK.
     // Never reuse its session generation within this application lifetime.
     next_generation: AtomicU64,
@@ -179,8 +185,75 @@ struct Shared {
 struct RecoveryRequest {
     device: String,
     kind: &'static str,
+    generation: Option<u64>,
     payload: Value,
     reply: mpsc::Sender<Result<Value, String>>,
+}
+#[derive(Default)]
+struct KeyLightingDevice {
+    generation: u64,
+    active: Option<KeyLightingLease>,
+    retired: BTreeSet<String>,
+}
+struct KeyLightingLease {
+    id: String,
+    accepted: bool,
+    sequence: u64,
+    slots: BTreeSet<String>,
+    last_sent: Option<Instant>,
+    expires: Instant,
+    releasing: bool,
+}
+fn lighting_frame(
+    definition: &Value,
+    sequence: u64,
+    ttl_ms: u64,
+    colors: &Value,
+) -> Result<BTreeSet<String>, String> {
+    let cap = definition
+        .get("keyLighting")
+        .ok_or("Device has no experimental key lighting capability")?;
+    if cap["experimental"] != true
+        || cap["maxKeys"].as_u64().is_none_or(|n| n == 0 || n > 14)
+        || cap["maxRateHz"].as_u64().is_none_or(|n| n == 0 || n > 10)
+        || cap["maxTtlMs"]
+            .as_u64()
+            .is_none_or(|n| !(100..=3000).contains(&n))
+    {
+        return Err("Unsupported experimental key lighting capability".into());
+    }
+    if sequence == 0
+        || sequence > 9_007_199_254_740_991
+        || !(100..=cap["maxTtlMs"].as_u64().unwrap()).contains(&ttl_ms)
+    {
+        return Err("Invalid key lighting sequence or TTL".into());
+    }
+    let colors = colors
+        .as_object()
+        .ok_or("Key lighting colors must be an object")?;
+    if colors.is_empty() || colors.len() > cap["maxKeys"].as_u64().unwrap() as usize {
+        return Err("Invalid key lighting slot count".into());
+    }
+    for (id, rgb) in colors {
+        if !definition["controls"].as_array().is_some_and(|controls| {
+            controls
+                .iter()
+                .any(|c| c["id"] == *id && c["kind"] == "key")
+        }) {
+            return Err("Key lighting references an undeclared physical key".into());
+        }
+        if !rgb.as_object().is_some_and(|rgb| {
+            rgb.len() == 3
+                && ["r", "g", "b"].iter().all(|c| {
+                    rgb.get(*c)
+                        .and_then(Value::as_u64)
+                        .is_some_and(|n| n <= 255)
+                })
+        }) {
+            return Err("Invalid key lighting RGB color".into());
+        }
+    }
+    Ok(colors.keys().cloned().collect())
 }
 #[derive(Default)]
 struct DeviceEdits {
@@ -215,6 +288,9 @@ impl Host {
             recovery_packages: Mutex::new(BTreeSet::new()),
             controls: Mutex::new(VecDeque::new()),
             observations: Mutex::new(BTreeMap::new()),
+            key_lighting: Mutex::new(BTreeMap::new()),
+            keyboard_input: Mutex::new(BTreeMap::new()),
+            keyboard_edits: Mutex::new(BTreeSet::new()),
             next_generation: AtomicU64::new(0),
         });
         let repo = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -510,6 +586,319 @@ impl Host {
             paused.remove(id);
         }
     }
+    /// Terminal provider ACK only: accepted frames are queued, never claimed rendered.
+    pub fn send_key_lighting(
+        &self,
+        device_id: &str,
+        generation: u64,
+        lease_id: &str,
+        sequence: u64,
+        ttl_ms: u64,
+        colors: Value,
+    ) -> Result<Value, String> {
+        self.key_lighting_call(
+            device_id,
+            generation,
+            lease_id,
+            Some((sequence, ttl_ms, colors)),
+        )
+    }
+    pub fn release_key_lighting(
+        &self,
+        device_id: &str,
+        generation: u64,
+        lease_id: &str,
+    ) -> Result<Value, String> {
+        self.key_lighting_call(device_id, generation, lease_id, None)
+    }
+    fn key_lighting_call(
+        &self,
+        device: &str,
+        generation: u64,
+        lease: &str,
+        frame: Option<(u64, u64, Value)>,
+    ) -> Result<Value, String> {
+        if lease.is_empty() || lease.len() > 128 {
+            return Err("Invalid key lighting lease ID".into());
+        }
+        let (definition, provider) = {
+            let core = self
+                .shared
+                .core
+                .lock()
+                .map_err(|_| "Workspace unavailable")?;
+            let snapshot = core.snapshot();
+            let device = snapshot
+                .configuration
+                .devices
+                .iter()
+                .find(|d| d.id == device)
+                .ok_or("Device no longer exists")?;
+            (
+                device
+                    .provider_descriptor
+                    .as_ref()
+                    .ok_or("Device has no provider descriptor")?
+                    .definition
+                    .clone(),
+                device.provider_id.clone(),
+            )
+        };
+        let live = self.session(device).ok_or("Device is not connected")?;
+        if live.generation != generation {
+            return Err("Stale key lighting generation".into());
+        }
+        if frame.is_some()
+            && (live.state != "connected"
+                || live.recovery["state"] == "pending"
+                || !self.shared.lifecycle.allows(&format!("device:{provider}")))
+        {
+            return Err(
+                "Key lighting unavailable while disconnected or recovery is pending".into(),
+            );
+        }
+        let slots = frame
+            .as_ref()
+            .map(|(seq, ttl, colors)| lighting_frame(&definition, *seq, *ttl, colors))
+            .transpose()?;
+        let (reply, result) = mpsc::channel();
+        {
+            let mut controls = self
+                .shared
+                .controls
+                .lock()
+                .map_err(|_| "Provider queue unavailable")?;
+            let mut devices = self
+                .shared
+                .key_lighting
+                .lock()
+                .map_err(|_| "Key lighting unavailable")?;
+            if !devices.contains_key(device) && devices.len() >= 32 {
+                return Err("Too many key lighting devices".into());
+            }
+            if controls.len() >= 32 {
+                return Err("Provider control queue is full".into());
+            }
+            let output = devices.entry(device.into()).or_default();
+            if output.generation != generation {
+                *output = KeyLightingDevice {
+                    generation,
+                    ..Default::default()
+                };
+            }
+            if let Some((sequence, ttl, _)) = &frame {
+                if output.retired.contains(lease) {
+                    return Err("Key lighting lease was retired; use a new lease ID".into());
+                }
+                if let Some(active) = &output.active
+                    && (active.id != lease
+                        || active.releasing
+                        || active.sequence >= *sequence
+                        || Some(&active.slots) != slots.as_ref())
+                {
+                    return Err("Key lighting lease, sequence, or fixed slot set changed".into());
+                }
+                if output.active.is_none() {
+                    if output.retired.len() >= 128 {
+                        return Err("Key lighting lease limit reached for this session".into());
+                    }
+                    output.active = Some(KeyLightingLease {
+                        id: lease.into(),
+                        accepted: false,
+                        sequence: *sequence,
+                        slots: slots.unwrap(),
+                        last_sent: None,
+                        expires: Instant::now() + Duration::from_millis(*ttl),
+                        releasing: false,
+                    });
+                }
+            } else if !output.active.as_ref().is_some_and(|a| a.id == lease) {
+                if output.retired.contains(lease) {
+                    // This exact generation either acknowledged restoration or rejected output before it started.
+                    return Ok(
+                        json!({"released":true,"recovery":"not_needed","alreadyReleased":true}),
+                    );
+                }
+                return Err("Key lighting lease is not active".into());
+            }
+            // A newer unsent frame explicitly supersedes its waiter; releases take priority.
+            if let Some(index) = controls
+                .iter()
+                .position(|q| q.device == device && q.kind == "keyLighting")
+            {
+                let old = controls.remove(index).unwrap();
+                let _ = old.reply.send(Err(
+                    "Key lighting frame superseded before transmission".into()
+                ));
+            }
+            let active = output.active.as_mut().unwrap();
+            let (kind, payload) = if let Some((sequence, ttl, colors)) = frame {
+                active.sequence = sequence;
+                active.expires = Instant::now() + Duration::from_millis(ttl);
+                (
+                    "keyLighting",
+                    json!({"leaseId":lease,"sequence":sequence,"ttlMs":ttl,"colors":colors}),
+                )
+            } else {
+                if active.releasing {
+                    return Err("Key lighting release already pending".into());
+                }
+                active.releasing = true;
+                ("releaseKeyLighting", json!({"leaseId":lease}))
+            };
+            let request = RecoveryRequest {
+                device: device.into(),
+                generation: Some(generation),
+                kind,
+                payload,
+                reply,
+            };
+            if kind == "releaseKeyLighting" {
+                controls.push_front(request);
+            } else {
+                controls.push_back(request);
+            }
+        }
+        result
+            .recv_timeout(Duration::from_secs(7))
+            .map_err(|_| "Key lighting request timed out; completion is unconfirmed".to_string())?
+    }
+    /// Explicit keyboard operations are scoped to the sampled connection. They
+    /// never enter the ordinary settings replay queue.
+    pub fn keyboard_call(
+        &self,
+        device: &str,
+        generation: u64,
+        kind: &'static str,
+        payload: Value,
+    ) -> Result<Value, String> {
+        if !matches!(
+            kind,
+            "installKeyboardAlias"
+                | "restoreKeyboardAlias"
+                | "reconcileKeyboardAlias"
+                | "configureKeyboardInput"
+        ) {
+            return Err("Unsupported keyboard operation".into());
+        }
+        if !self.session(device).is_some_and(|s| {
+            s.generation == generation
+                && (s.state == "connected"
+                    || kind == "reconcileKeyboardAlias"
+                        && matches!(s.state.as_str(), "error" | "recovery_pending"))
+        }) {
+            return Err("Keyboard connection changed; read the selected device again".into());
+        }
+        let (reply, result) = mpsc::channel();
+        {
+            let mut queue = self
+                .shared
+                .controls
+                .lock()
+                .map_err(|_| "Keyboard queue unavailable")?;
+            if queue.len() >= 32 {
+                return Err("Keyboard request queue is full".into());
+            }
+            queue.push_back(RecoveryRequest {
+                device: device.into(),
+                kind,
+                generation: Some(generation),
+                payload,
+                reply,
+            });
+        }
+        result
+            .recv_timeout(Duration::from_secs(7))
+            .map_err(|_| "Keyboard operation timed out; completion is unconfirmed".to_string())?
+    }
+    pub fn keyboard_input(
+        &self,
+        device: &str,
+    ) -> Option<crate::keyboard_assignments::InputConfiguration> {
+        self.shared.keyboard_input.lock().ok()?.get(device).cloned()
+    }
+    pub fn keyboard_routes_ready(
+        &self,
+        device: &str,
+        routes: &[deckweave_core::KeyboardAliasRoute],
+    ) -> bool {
+        self.shared.inventory.lock().is_ok_and(|inventory| {
+            inventory.sessions.get(device).is_some_and(|session| {
+                session.state == "connected"
+                    && routes.iter().all(|route| {
+                        session.generation == route.generation
+                            && session
+                                .observed
+                                .pointer(&format!(
+                                    "/keyMappings/{}/{}/usage",
+                                    route.control_id,
+                                    route.layer.as_str()
+                                ))
+                                .and_then(Value::as_u64)
+                                == Some(u64::from(route.alias) + 91)
+                            && ["main", "fn"].iter().all(|layer| {
+                                session
+                                    .observed
+                                    .pointer(&format!("/keyboardAliases/records/{layer}"))
+                                    .and_then(Value::as_array)
+                                    .is_some_and(|r| r.len() == 128)
+                            })
+                            && ["main", "fn"]
+                                .iter()
+                                .flat_map(|layer| {
+                                    session
+                                        .observed
+                                        .pointer(&format!("/keyboardAliases/records/{layer}"))
+                                        .and_then(Value::as_array)
+                                        .into_iter()
+                                        .flatten()
+                                })
+                                .filter(|r| {
+                                    r[0] == 2 && r[2].as_u64() == Some(u64::from(route.alias) + 91)
+                                })
+                                .count()
+                                == 1
+                    })
+            })
+        })
+    }
+    pub fn set_keyboard_input(
+        &self,
+        device: &str,
+        mut configuration: crate::keyboard_assignments::InputConfiguration,
+    ) {
+        if self.keyboard_editing(device) {
+            configuration.ready = false;
+        }
+        if let Ok(mut states) = self.shared.keyboard_input.lock() {
+            states.insert(device.into(), configuration);
+        }
+    }
+    pub fn keyboard_editing(&self, device: &str) -> bool {
+        self.shared
+            .keyboard_edits
+            .lock()
+            .map_or(true, |edits| edits.contains(device))
+    }
+    pub fn begin_keyboard_edit(&self, device: &str) -> Result<KeyboardEdit<'_>, String> {
+        if !self
+            .shared
+            .keyboard_edits
+            .lock()
+            .map_err(|_| "Keyboard edit state unavailable")?
+            .insert(device.into())
+        {
+            return Err("Another keyboard operation is in progress".into());
+        }
+        self.set_keyboard_input(
+            device,
+            crate::keyboard_assignments::InputConfiguration::default(),
+        );
+        Ok(KeyboardEdit {
+            host: self,
+            device: device.into(),
+        })
+    }
     pub fn recovery_preview(
         &self,
         device_id: &str,
@@ -578,6 +967,7 @@ impl Host {
             controls.push_back(RecoveryRequest {
                 device: device.into(),
                 kind,
+                generation: None,
                 payload,
                 reply,
             });
@@ -1105,12 +1495,34 @@ enum Operation {
     Settings(String, BTreeMap<String, Value>, u64),
     Close(String),
     Observe(String, bool),
+    KeyLighting(
+        String,
+        String,
+        Option<u64>,
+        mpsc::Sender<Result<Value, String>>,
+    ),
     Recovery(String, mpsc::Sender<Result<Value, String>>, bool, bool),
+    Keyboard(String, &'static str, mpsc::Sender<Result<Value, String>>),
 }
 struct Pending {
     operation: Operation,
     sent: Instant,
     generation: Option<u64>,
+}
+pub struct KeyboardEdit<'a> {
+    host: &'a Host,
+    device: String,
+}
+impl Drop for KeyboardEdit<'_> {
+    fn drop(&mut self) {
+        if let Ok(mut edits) = self.host.shared.keyboard_edits.lock() {
+            edits.remove(&self.device);
+        }
+        self.host.set_keyboard_input(
+            &self.device,
+            crate::keyboard_assignments::InputConfiguration::default(),
+        );
+    }
 }
 struct Session {
     device: String,
@@ -1127,6 +1539,7 @@ struct Session {
     observation_needs_stop: bool,
     last_observe: Instant,
     depth_sequence: u64,
+    keyboard_sequence: u64,
     read_sequence: u64,
     recovery_preview: Option<RecoveryAuthorization>,
 }
@@ -1545,9 +1958,30 @@ fn process(
                     continue;
                 };
                 let id = match request.operation {
+                    Operation::KeyLighting(id, _, _, reply) => {
+                        let _ = reply.send(Err(
+                            "Key lighting timed out; RAM restoration is unconfirmed".into(),
+                        ));
+                        id
+                    }
                     Operation::Recovery(_, reply, _, _) => {
                         let _ = reply.send(Err(
                             "Recovery request timed out; completion is unconfirmed".into(),
+                        ));
+                        continue;
+                    }
+                    Operation::Keyboard(id, _, reply) => {
+                        if let Some(session) = state.sessions.get_mut(&id)
+                            && let Ok(mut inputs) = shared.keyboard_input.lock()
+                            && let Some(input) = inputs.get_mut(&session.device)
+                        {
+                            input.ready = false;
+                            input.error = Some(
+                                "Keyboard operation timed out; explicit recheck required".into(),
+                            );
+                        }
+                        let _ = reply.send(Err(
+                            "Keyboard operation timed out; completion is unconfirmed".into(),
                         ));
                         continue;
                     }
@@ -1599,6 +2033,8 @@ fn process(
                 None,
             );
         }
+        // Stop the transient transport before close. A close ACK alone is not a frame release ACK.
+        stop_key_lighting(shared, package, transport, &mut state)?;
         for session in state.sessions.keys().cloned().collect::<Vec<_>>() {
             if state.pending.values().any(|pending| matches!(&pending.operation,Operation::Close(existing) if existing == &session)) { continue; }
             state.request(
@@ -1649,6 +2085,212 @@ fn process(
     }
 }
 
+fn stop_key_lighting(
+    shared: &Shared,
+    package: &Package,
+    transport: &Transport,
+    state: &mut ProcessState,
+) -> Result<(), String> {
+    if let Ok(mut controls) = shared.controls.lock() {
+        controls.retain(|request| {
+            if request.generation.is_some()
+                && state.sessions.values().any(|s| s.device == request.device)
+            {
+                let _ = request.reply.send(Err(
+                    "Provider stopped; key lighting request discarded".into()
+                ));
+                false
+            } else {
+                true
+            }
+        });
+    }
+    let mut released = BTreeSet::new();
+    let deadline = Instant::now() + TIMEOUT;
+    loop {
+        for (id, session) in &state.sessions {
+            if released.contains(id) || state.pending.values().any(|p| matches!(&p.operation, Operation::KeyLighting(existing, ..) if existing == id)) { continue; }
+            let lease = shared.key_lighting.lock().ok().and_then(|devices| {
+                devices
+                    .get(&session.device)
+                    .filter(|d| d.generation == session.generation)
+                    .and_then(|d| d.active.as_ref())
+                    .map(|a| a.id.clone())
+            });
+            let Some(lease) = lease else {
+                released.insert(id.clone());
+                continue;
+            };
+            // Defer mutation until the immutable session iteration ends.
+            let (reply, _) = mpsc::channel();
+            let id = id.clone();
+            state.request(
+                transport,
+                "releaseKeyLighting",
+                Operation::KeyLighting(id.clone(), lease.clone(), None, reply),
+                Some(&id),
+                json!({"leaseId":lease}),
+            )?;
+            released.insert(id);
+            break;
+        }
+        if !state
+            .pending
+            .values()
+            .any(|p| matches!(p.operation, Operation::KeyLighting(..)))
+            && state.sessions.keys().all(|id| released.contains(id))
+        {
+            return Ok(());
+        }
+        if Instant::now() >= deadline {
+            return Err(
+                "Key lighting release timed out on stop; RAM restoration is unconfirmed".into(),
+            );
+        }
+        match transport.read.recv_timeout(Duration::from_millis(10)) {
+            Ok(PipeEvent::Message(value)) => handle(shared, package, transport, state, value)?,
+            Ok(PipeEvent::Failed(error)) => return Err(error),
+            Ok(PipeEvent::Eof) => {
+                return Err("Provider exited before key lighting release acknowledgement".into());
+            }
+            Err(mpsc::RecvTimeoutError::Timeout) => {}
+            Err(_) => {
+                return Err(
+                    "Provider pipe closed before key lighting release acknowledgement".into(),
+                );
+            }
+        }
+    }
+}
+fn reconcile_key_lighting(
+    shared: &Shared,
+    transport: &Transport,
+    state: &mut ProcessState,
+    epochs: &BTreeMap<String, u64>,
+    recovery_only: bool,
+) -> Result<(), String> {
+    let mut controls = shared
+        .controls
+        .lock()
+        .map_err(|_| "Provider queue unavailable")?;
+    let mut devices = shared
+        .key_lighting
+        .lock()
+        .map_err(|_| "Key lighting unavailable")?;
+    for (device, output) in devices.iter_mut() {
+        let Some(id) = state
+            .sessions
+            .iter()
+            .find(|(_, s)| s.device == *device && s.generation == output.generation)
+            .map(|(id, _)| id.clone())
+        else {
+            continue;
+        };
+        let session = &state.sessions[&id];
+        let current = epochs.get(device) == Some(&session.lifecycle_epoch);
+        let unavailable = !current
+            || recovery_only
+            || !session.opened
+            || session.failed
+            || session.recovery["state"] == "pending";
+        // Cancel unsent frames immediately; a fresh session must never replay them.
+        controls.retain(|request| {
+            if request.device == *device
+                && request.generation.is_some()
+                && matches!(request.kind, "keyLighting" | "releaseKeyLighting")
+                && (request.generation != Some(session.generation)
+                    || request.payload["leaseId"].as_str()
+                        != output.active.as_ref().map(|active| active.id.as_str())
+                    || unavailable && request.kind == "keyLighting")
+            {
+                let _ = request.reply.send(Err(
+                    "Key lighting session changed or is unavailable; frame discarded".into(),
+                ));
+                false
+            } else {
+                true
+            }
+        });
+        if state.pending.values().any(
+            |p| matches!(&p.operation, Operation::KeyLighting(existing, ..) if existing == &id),
+        ) {
+            continue;
+        }
+        // Release RAM ownership on expiry, disable/removal, and before ordinary settings.
+        let Some(active) = &mut output.active else {
+            continue;
+        };
+        let ordinary_edit = shared.edits.lock().is_ok_and(|edits| {
+            edits
+                .get(device)
+                .is_some_and(|edit| !edit.fields.is_empty())
+        });
+        if (unavailable || ordinary_edit || active.expires <= Instant::now()) && !active.releasing {
+            active.releasing = true;
+            controls.retain(|request| {
+                if request.device == *device && request.kind == "keyLighting" {
+                    let _ = request
+                        .reply
+                        .send(Err("Key lighting frame cancelled before release".into()));
+                    false
+                } else {
+                    true
+                }
+            });
+            let (reply, _) = mpsc::channel();
+            // Internal cleanup does not consume the bounded caller queue.
+            state.request(
+                transport,
+                "releaseKeyLighting",
+                Operation::KeyLighting(id.clone(), active.id.clone(), None, reply),
+                Some(&id),
+                json!({"leaseId":active.id}),
+            )?;
+            continue;
+        }
+        let pending_settings = state
+            .pending
+            .values()
+            .any(|p| matches!(&p.operation, Operation::Settings(existing, ..) | Operation::Keyboard(existing, ..) if existing == &id));
+        let Some(index) = controls.iter().position(|request| {
+            request.device == *device
+                && request.generation == Some(session.generation)
+                && (request.kind == "releaseKeyLighting"
+                    || !unavailable
+                        && !pending_settings
+                        && active.last_sent.is_none_or(|sent| {
+                            sent.elapsed()
+                                >= Duration::from_millis(
+                                    1000 / session
+                                        .definition
+                                        .pointer("/keyLighting/maxRateHz")
+                                        .and_then(Value::as_u64)
+                                        .unwrap_or(10)
+                                        .clamp(1, 10),
+                                )
+                        }))
+        }) else {
+            continue;
+        };
+        let request = controls.remove(index).unwrap();
+        let sequence = request.payload["sequence"].as_u64();
+        if sequence.is_some() {
+            active.last_sent = Some(Instant::now());
+        }
+        let reply = request.reply.clone();
+        if let Err(error) = state.request(
+            transport,
+            request.kind,
+            Operation::KeyLighting(id.clone(), active.id.clone(), sequence, request.reply),
+            Some(&id),
+            request.payload,
+        ) {
+            let _ = reply.send(Err(error.clone()));
+            return Err(error);
+        }
+    }
+    Ok(())
+}
 fn reconcile(
     shared: &Shared,
     package: &Package,
@@ -1666,6 +2308,74 @@ fn reconcile(
             .collect::<BTreeMap<_, _>>();
         (snapshot, epochs)
     };
+    // Alias RPCs are explicit, generation-bound operations. Do not feed them
+    // through persistent provider settings (which are a different lifecycle).
+    loop {
+        let request = {
+            let mut controls = shared
+                .controls
+                .lock()
+                .map_err(|_| "Keyboard queue unavailable")?;
+            controls
+                .iter()
+                .position(|request| {
+                    matches!(
+                        request.kind,
+                        "installKeyboardAlias"
+                            | "restoreKeyboardAlias"
+                            | "reconcileKeyboardAlias"
+                            | "configureKeyboardInput"
+                    ) && state.sessions.iter().any(|(id, session)| {
+                        session.device == request.device
+                            && !state.pending.values().any(|p| match &p.operation {
+                                Operation::Read(s, _)
+                                | Operation::Settings(s, ..)
+                                | Operation::Keyboard(s, ..)
+                                | Operation::Recovery(s, ..) => s == id,
+                                _ => false,
+                            })
+                    })
+                })
+                .and_then(|i| controls.remove(i))
+        };
+        let Some(request) = request else {
+            break;
+        };
+        let Some((id, session)) = state
+            .sessions
+            .iter()
+            .find(|(_, s)| s.device == request.device)
+        else {
+            continue;
+        };
+        if !session.opened
+            || session.failed && request.kind != "reconcileKeyboardAlias"
+            || request.generation != Some(session.generation)
+            || epochs.get(&session.device) != Some(&session.lifecycle_epoch)
+            || session
+                .definition
+                .pointer("/keyboard/aliases/version")
+                .and_then(Value::as_u64)
+                != Some(1)
+            || session.recovery["state"] == "pending" && request.kind != "reconcileKeyboardAlias"
+            || !shared
+                .lifecycle
+                .allows(&format!("device:{}", package.manifest.id))
+        {
+            let _ = request.reply.send(Err(
+                "Keyboard source is unavailable, unsupported or has pending recovery".into(),
+            ));
+            continue;
+        }
+        let id = id.clone();
+        state.request(
+            transport,
+            request.kind,
+            Operation::Keyboard(id.clone(), request.kind, request.reply),
+            Some(&id),
+            request.payload,
+        )?;
+    }
     loop {
         let request = {
             let mut controls = shared
@@ -1675,10 +2385,11 @@ fn reconcile(
             controls
                 .iter()
                 .position(|request| {
-                    state.sessions.values().any(|session| {
-                        session.device == request.device
-                            && epochs.get(&session.device) == Some(&session.lifecycle_epoch)
-                    })
+                    request.generation.is_none()
+                        && state.sessions.values().any(|session| {
+                            session.device == request.device
+                                && epochs.get(&session.device) == Some(&session.lifecycle_epoch)
+                        })
                 })
                 .and_then(|index| controls.remove(index))
         };
@@ -1740,6 +2451,7 @@ fn reconcile(
             .recovery_packages
             .lock()
             .is_ok_and(|packages| packages.contains(&package.manifest.id));
+    reconcile_key_lighting(shared, transport, state, &epochs, recovery_only)?;
     for id in state.sessions.keys().cloned().collect::<Vec<_>>() {
         let session = &state.sessions[&id];
         let gone = !snapshot
@@ -1757,6 +2469,11 @@ fn reconcile(
         let pending_recovery =
             session.recovery.get("state").and_then(Value::as_str) == Some("pending");
         let released = session.released;
+        let transient_active = shared.key_lighting.lock().is_ok_and(|devices| {
+            devices
+                .get(&session.device)
+                .is_some_and(|d| d.generation == session.generation && d.active.is_some())
+        });
         if (pending_recovery || session.failed || gone || recovery_only)
             && epochs.get(&session.device) == Some(&session.lifecycle_epoch)
             && let Ok(mut observations) = shared.observations.lock()
@@ -1771,6 +2488,10 @@ fn reconcile(
             state.request(transport, "observe", Operation::Observe(id.clone(), false), Some(&id), json!({"enabled":false}))?;
         }
         if pending_recovery && (!gone || released) {
+            continue;
+        }
+        if gone && transient_active {
+            // Rebinding/removal must finish its transient release before closing this generation.
             continue;
         }
         if gone && !state.pending.values().any(
@@ -1846,14 +2567,19 @@ fn reconcile(
                     })
                 })
                 .unwrap_or_default();
-            if !recovery_only && opened && !failed && previous_edit != edit && !changes.is_empty() && !state.pending.values().any(|request| matches!(&request.operation, Operation::Settings(existing, _, _) if existing == &id)) {
+            let transient_active = shared.key_lighting.lock().is_ok_and(|devices| {
+                devices.get(&device.id).is_some_and(|d| {
+                    d.generation == state.sessions[&id].generation && d.active.is_some()
+                })
+            });
+            if !transient_active && !recovery_only && opened && !failed && previous_edit != edit && !changes.is_empty() && !state.pending.values().any(|request| matches!(&request.operation, Operation::Settings(existing, _, _) | Operation::Keyboard(existing, ..) if existing == &id)) {
                 let id = id.clone();
                 state.request(transport, "setSettings", Operation::Settings(id.clone(), changes.clone(), edit), Some(&id), json!({"changes":changes}))?;
                 if let Ok(mut queued) = shared.edits.lock()
                     && let Some(queued) = queued.get_mut(&device.id) { queued.fields.retain(|_,(revision,_)| *revision > edit); }
             }
             // Do not start a read deadline while it is queued behind a slow hardware write.
-            let refresh = opened && !state.pending.values().any(|request| matches!(&request.operation, Operation::Settings(existing, _, _) | Operation::Read(existing, false) if existing == &id))
+            let refresh = opened && !state.pending.values().any(|request| matches!(&request.operation, Operation::Settings(existing, _, _) | Operation::Keyboard(existing, ..) | Operation::Read(existing, false) if existing == &id))
                 && shared.refresh.lock().is_ok_and(|mut refresh| refresh.remove(&device.id));
             if opened && refresh && !state.pending.values().any(|request| matches!(&request.operation, Operation::Read(existing, _) if existing == &id)) {
                 let id = id.clone();
@@ -1921,6 +2647,7 @@ fn reconcile(
                 observation_needs_stop: false,
                 last_observe: Instant::now(),
                 depth_sequence: 0,
+                keyboard_sequence: 0,
                 read_sequence: 0,
                 recovery_preview: None,
             },
@@ -2044,6 +2771,8 @@ fn handle(
                 | Operation::Close(id)
                 | Operation::Observe(id, _) => Some(id.clone()),
                 Operation::Recovery(id, _, _, _) => Some(id.clone()),
+                Operation::Keyboard(id, ..) => Some(id.clone()),
+                Operation::KeyLighting(id, ..) => Some(id.clone()),
                 _ => None,
             };
             if let Some(id) = session_id.as_deref() {
@@ -2063,17 +2792,27 @@ fn handle(
                 let Some(session) = state.sessions.get(id) else {
                     return Ok(());
                 };
-                if !matches!(pending.operation, Operation::Close(_))
-                    && !shared.core.lock().is_ok_and(|core| {
-                        core.has_device(&session.device)
-                            && core.device_lifecycle_epoch(&session.device)
-                                == session.lifecycle_epoch
-                    })
-                {
+                if !matches!(
+                    pending.operation,
+                    Operation::Close(_) | Operation::KeyLighting(_, _, None, _)
+                ) && !shared.core.lock().is_ok_and(|core| {
+                    core.has_device(&session.device)
+                        && core.device_lifecycle_epoch(&session.device) == session.lifecycle_epoch
+                }) {
                     if let Operation::Recovery(_, reply, _, _) = &pending.operation {
                         let _ = reply.send(Err(
                             "Device was rebound; request a fresh recovery preview".into(),
                         ));
+                    }
+                    if let Operation::Keyboard(_, _, reply) = &pending.operation {
+                        let _ = reply.send(Err(
+                            "Device was rebound; keyboard operation acknowledgement discarded"
+                                .into(),
+                        ));
+                    }
+                    if let Operation::KeyLighting(_, _, _, reply) = &pending.operation {
+                        let _ = reply
+                            .send(Err("Device was rebound; key lighting ACK discarded".into()));
                     }
                     state.pending.remove(value["requestId"].as_str().unwrap());
                     return Ok(());
@@ -2089,6 +2828,8 @@ fn handle(
                             | Operation::Read(..)
                             | Operation::Open(_)
                             | Operation::Observe(..)
+                            | Operation::KeyLighting(..)
+                            | Operation::Keyboard(..)
                     )
                 {
                     state.pending.remove(value["requestId"].as_str().unwrap());
@@ -2108,6 +2849,88 @@ fn handle(
                     .take(300)
                     .collect::<String>();
                 if let Operation::Recovery(_, reply, _, _) = &pending.operation {
+                    let _ = reply.send(Err(message));
+                    return Ok(());
+                }
+                if let Operation::Keyboard(id, kind, reply) = &pending.operation {
+                    if let Some(session) = state.sessions.get_mut(id) {
+                        if let Ok(mut inputs) = shared.keyboard_input.lock()
+                            && let Some(input) = inputs.get_mut(&session.device)
+                        {
+                            input.ready = false;
+                            input.error = Some(message.clone());
+                        }
+                        if *kind != "configureKeyboardInput"
+                            && matches!(
+                                value.pointer("/error/code").and_then(Value::as_str),
+                                Some(
+                                    "write_uncertain"
+                                        | "readback_mismatch"
+                                        | "recovery_pending"
+                                        | "recovery_required"
+                                )
+                            )
+                        {
+                            session.failed = true;
+                            session.recovery = json!({"state":"pending"});
+                            status(shared, session, &json!({}), None, Some(message.clone()));
+                        }
+                    }
+                    let code = value
+                        .pointer("/error/code")
+                        .and_then(Value::as_str)
+                        .unwrap_or("keyboard");
+                    let _ = reply.send(Err(format!("{code}: {message}")));
+                    return Ok(());
+                }
+                if let Operation::KeyLighting(id, _, _, reply) = &pending.operation {
+                    if let Some(session) = state.sessions.get_mut(id) {
+                        if value.pointer("/error/code").and_then(Value::as_str)
+                            == Some("key_lighting_baseline")
+                            && matches!(
+                                &pending.operation,
+                                Operation::KeyLighting(_, _, Some(_), _)
+                            )
+                            && let Ok(mut devices) = shared.key_lighting.lock()
+                            && let Some(output) = devices.get_mut(&session.device)
+                            && output.generation == session.generation
+                            && output
+                                .active
+                                .as_ref()
+                                .is_some_and(|active| !active.accepted)
+                            && let Some(active) = output.active.take()
+                        {
+                            // Native contract: this error occurs before journaling/RAM output.
+                            // Releasing a nonexistent hardware lease would fabricate recovery failure.
+                            output.retired.insert(active.id);
+                            let _ = reply.send(Err(message));
+                            return Ok(());
+                        }
+                        if let Ok(mut lighting) = shared.key_lighting.lock()
+                            && let Some(active) = lighting
+                                .get_mut(&session.device)
+                                .and_then(|d| d.active.as_mut())
+                        {
+                            active.expires = Instant::now();
+                            active.releasing =
+                                matches!(&pending.operation, Operation::KeyLighting(_, _, None, _));
+                        }
+                        if matches!(&pending.operation, Operation::KeyLighting(_, _, None, _))
+                            || matches!(
+                                value.pointer("/error/code").and_then(Value::as_str),
+                                Some(
+                                    "write_uncertain"
+                                        | "readback_mismatch"
+                                        | "recovery_pending"
+                                        | "recovery_required"
+                                )
+                            )
+                        {
+                            session.failed = true;
+                            session.recovery = json!({"state":"pending"});
+                            status(shared, session, &json!({}), None, Some(message.clone()));
+                        }
+                    }
                     let _ = reply.send(Err(message));
                     return Ok(());
                 }
@@ -2333,6 +3156,56 @@ fn handle(
                     session.edit = edit;
                     status(shared, session, &response, Some(&requested), None);
                 }
+                Operation::KeyLighting(id, lease, sequence, reply) => {
+                    let session = state.sessions.get_mut(&id).unwrap();
+                    let valid = match sequence {
+                        Some(sequence) => {
+                            response["accepted"] == true
+                                && response["leaseId"] == lease
+                                && response["sequence"].as_u64() == Some(sequence)
+                        }
+                        None => {
+                            response["released"] == true && response["recovery"] == "not_needed"
+                        }
+                    };
+                    if !valid {
+                        session.failed = true;
+                        session.recovery = json!({"state":"pending"});
+                        status(
+                            shared,
+                            session,
+                            &json!({}),
+                            None,
+                            Some(
+                                "Key lighting ACK did not confirm queued frame or RAM release"
+                                    .into(),
+                            ),
+                        );
+                        let _ = reply.send(Err(
+                            "Key lighting ACK is unconfirmed; explicit recovery may be required"
+                                .into(),
+                        ));
+                    } else {
+                        if sequence.is_some()
+                            && let Ok(mut devices) = shared.key_lighting.lock()
+                            && let Some(output) = devices.get_mut(&session.device)
+                            && output.generation == session.generation
+                            && let Some(active) = output.active.as_mut()
+                        {
+                            active.accepted = true;
+                        }
+                        if sequence.is_none()
+                            && let Ok(mut devices) = shared.key_lighting.lock()
+                            && let Some(output) = devices.get_mut(&session.device)
+                            && output.generation == session.generation
+                        {
+                            output.retired.insert(lease);
+                            output.active = None;
+                        }
+                        // ACKs never mutate persistent settings, observed colors, or physical evidence.
+                        let _ = reply.send(Ok(response));
+                    }
+                }
                 Operation::Close(id) => {
                     if let Some(session) = state.sessions.get(&id)
                         && let Ok(mut observations) = shared.observations.lock()
@@ -2399,6 +3272,48 @@ fn handle(
                         shared.notify(false);
                     }
                 }
+                Operation::Keyboard(id, kind, reply) => {
+                    let session = state.sessions.get_mut(&id).unwrap();
+                    if kind == "configureKeyboardInput" {
+                        let editing = shared
+                            .keyboard_edits
+                            .lock()
+                            .map_or(true, |edits| edits.contains(&session.device));
+                        if let Ok(mut inputs) = shared.keyboard_input.lock()
+                            && let Some(input) = inputs.get_mut(&session.device)
+                            && input.generation == session.generation
+                        {
+                            let valid =
+                                response["configurationSequence"].as_u64() == Some(input.sequence);
+                            input.ready = valid
+                                && !editing
+                                && response["sourceState"] == "available"
+                                && response["aliases"].as_u64() == Some(input.routes.len() as u64);
+                            input.error = (!input.ready && !input.routes.is_empty()).then(|| {
+                                format!(
+                                    "Keyboard input source: {}",
+                                    response["sourceState"].as_str().unwrap_or("unconfirmed")
+                                )
+                            });
+                        }
+                    }
+                    if let Some(observed) = response.get("state") {
+                        update_recovery(session, observed);
+                        if kind == "reconcileKeyboardAlias"
+                            && session.recovery["state"] != "pending"
+                        {
+                            session.failed = false;
+                            shared.connection(
+                                &session.device,
+                                session.generation,
+                                ConnectionState::Connected,
+                                None,
+                            );
+                        }
+                        status(shared, session, observed, None, None);
+                    }
+                    let _ = reply.send(Ok(response));
+                }
                 Operation::Recovery(id, reply, restore, keep_current) => {
                     if keep_current
                         && (response["resolution"] != "keepCurrent"
@@ -2420,6 +3335,12 @@ fn handle(
                             .and_then(Value::as_str)
                             != Some("pending");
                     if completed {
+                        if let Ok(mut devices) = shared.key_lighting.lock()
+                            && let Some(output) = devices.get_mut(&device)
+                            && let Some(active) = output.active.take()
+                        {
+                            output.retired.insert(active.id);
+                        }
                         for (old_id, session) in state
                             .sessions
                             .iter_mut()
@@ -2438,6 +3359,19 @@ fn handle(
                     let session = state.sessions.get_mut(&id).unwrap();
                     if restore {
                         update_recovery(session, &response);
+                        if response["kind"] == "keyLighting"
+                            && response["outcome"] == "ram_restore_acknowledged"
+                            && response["recovery"] == "completed"
+                            && response
+                                .pointer("/recoveryState/state")
+                                .and_then(Value::as_str)
+                                != Some("pending")
+                        {
+                            // RAM restoration has no fabricated full-settings readback.
+                            // Its transport ACK resolves this journal without claiming physical verification.
+                            session.recovery = json!({"state":"not_needed"});
+                            session.failed = false;
+                        }
                         if response.get("recovery").and_then(Value::as_str) == Some("completed")
                             && session.recovery.get("state").and_then(Value::as_str)
                                 != Some("pending")
@@ -2481,6 +3415,32 @@ fn handle(
         }
         Some("depth") => {
             depth(shared, state, &value);
+            Ok(())
+        }
+        Some("keyboardInputState") => {
+            if let Some(session) = event_session(state, &value)
+                && let Ok(mut inputs) = shared.keyboard_input.lock()
+                && let Some(input) = inputs.get_mut(&session.device)
+                && input.generation == session.generation
+                && value["configurationSequence"].as_u64() == Some(input.sequence)
+            {
+                input.ready = false;
+                input.error = Some(
+                    "Keyboard input source was lost; check the selected keyboard connection".into(),
+                );
+            }
+            shared.notify(false);
+            Ok(())
+        }
+        Some("keyboardAlias") => {
+            if let Err(error) = keyboard_alias_input(shared, state, &value)
+                && let Some(session) = event_session(state, &value)
+                && let Ok(mut inputs) = shared.keyboard_input.lock()
+                && let Some(input) = inputs.get_mut(&session.device)
+            {
+                input.ready = false;
+                input.error = Some(error);
+            }
             Ok(())
         }
         Some("input") => {
@@ -2586,6 +3546,69 @@ fn event_session<'a>(state: &'a mut ProcessState, value: &Value) -> Option<&'a m
     }
     Some(session)
 }
+fn keyboard_alias_input(
+    shared: &Shared,
+    state: &mut ProcessState,
+    value: &Value,
+) -> Result<(), String> {
+    let Some(session) = event_session(state, value) else {
+        return Ok(());
+    };
+    let sequence = value["sequence"]
+        .as_u64()
+        .ok_or("Keyboard input sequence missing")?;
+    if sequence != session.keyboard_sequence + 1 {
+        session.keyboard_sequence = session.keyboard_sequence.max(sequence);
+        if let Ok(mut inputs) = shared.keyboard_input.lock()
+            && let Some(input) = inputs.get_mut(&session.device)
+        {
+            input.ready = false;
+            input.error =
+                Some("Keyboard input sequence gap or replay; check the input connection".into());
+        }
+        return Err("Keyboard input sequence gap or replay; source stopped".into());
+    }
+    session.keyboard_sequence = sequence;
+    let route = {
+        let states = shared
+            .keyboard_input
+            .lock()
+            .map_err(|_| "Keyboard input state unavailable")?;
+        let Some(config) = states.get(&session.device) else {
+            return Ok(());
+        };
+        if !config.ready
+            || config.generation != session.generation
+            || value["configurationSequence"].as_u64() != Some(config.sequence)
+        {
+            return Ok(());
+        }
+        config
+            .routes
+            .iter()
+            .find(|route| {
+                Some(route.control_id.as_str()) == value["control"].as_str()
+                    && Some(route.layer.as_str()) == value["layer"].as_str()
+                    && value["trigger"].as_u64() == Some(u64::from(route.alias))
+            })
+            .cloned()
+    };
+    let Some(route) = route else {
+        return Ok(());
+    };
+    let changed = {
+        let mut core = shared.core.lock().map_err(|_| "Workspace unavailable")?;
+        if core.device_lifecycle_epoch(&session.device) != session.lifecycle_epoch {
+            return Ok(());
+        }
+        core.activate_keyboard_alias(&route, session.generation)
+            .map_err(|e| e.to_string())?
+    };
+    if changed {
+        shared.notify(true);
+    }
+    Ok(())
+}
 fn input(shared: &Shared, state: &mut ProcessState, value: &Value) -> Result<(), String> {
     let Some(session) = event_session(state, value) else {
         return Ok(());
@@ -2668,6 +3691,328 @@ fn input(shared: &Shared, state: &mut ProcessState, value: &Value) -> Result<(),
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn lighting_host_fixture() -> (tempfile::TempDir, Arc<Host>, PathBuf) {
+        let (directory, package) = fixture(
+            r#"
+import {createInterface} from 'node:readline';
+import fs from 'node:fs';
+const dir=process.env.DECKWEAVE_PROVIDER_STATE_DIR;
+const descriptor={instanceId:'a',modelId:'dev.deckweave.fixture.model',name:'RAM fixture',identity:{confidence:'session',persistentId:null},geometry:{width:2,height:1},controls:[{id:'key-1',kind:'key',x:0,y:0,width:1,height:1,events:[]},{id:'key-2',kind:'key',x:1,y:0,width:1,height:1,events:[]}],settings:[],displays:[],recovery:{preview:true,restore:true},keyLighting:{experimental:true,maxKeys:14,maxRateHz:10,maxTtlMs:3000,baseline:{lightingMode:1,colorMode:0,minBrightness:2},physical:'unverified'}};
+let pending=false;
+const reply=(q,value,error)=>process.stdout.write(JSON.stringify({type:'result',requestId:q.requestId,...(q.session?{session:q.session,generation:q.generation}:{}),ok:!error,...(error?{error}:{value})})+'\n');
+const state=()=>({observed:{},evidence:{transport:'accepted',readback:'unsupported',physical:'unverified'},recovery:{state:pending?'pending':'not_needed'}});
+for await(const line of createInterface({input:process.stdin,crlfDelay:Infinity})){
+ const q=JSON.parse(line);fs.appendFileSync(dir+'/calls',JSON.stringify(q)+'\n');let value={};
+ if(q.type==='hello')value={protocol:1,providerId:'dev.deckweave.fixture'};
+ else if(q.type==='discover')value={devices:[descriptor]};
+ else if(q.type==='open')value={descriptor,state:state()};
+ else if(q.type==='readState')value=state();
+ else if(q.type==='keyLighting'){
+   if(q.sequence===77){setTimeout(()=>reply(q,null,{code:'key_lighting_baseline',message:'Static single colour baseline required; no RAM output started'}),250);continue;}
+   if(q.sequence===99){pending=true;reply(q,null,{code:'write_uncertain',message:'RAM frame uncertainty'});continue;}
+   if(q.sequence===1){setTimeout(()=>reply(q,{accepted:true,leaseId:q.leaseId,sequence:q.sequence,experimental:true}),450);continue;}
+   value={accepted:true,leaseId:q.leaseId,sequence:q.sequence,experimental:true};
+ }
+ else if(q.type==='releaseKeyLighting')value={released:!pending,recovery:pending?'pending':'not_needed'};
+ else if(q.type==='recoveryPreview')value={previewToken:'fresh-token',confirmedInstanceId:'a',expiresInMs:60000,requiresConfirmation:true,kind:'keyLighting'};
+ else if(q.type==='recover'){pending=false;value={recovery:'completed',kind:'keyLighting',outcome:'ram_restore_acknowledged',evidence:{transport:'accepted',readback:'unsupported',physical:'unverified'}};}
+ else if(q.type==='close')value={recovery:pending?'pending':'not_needed'};
+ reply(q,value);
+}
+"#,
+        );
+        let root = directory.path().join("packages");
+        let bundle = root.join("dev.deckweave.fixture.dwDevice");
+        std::fs::create_dir_all(&bundle).unwrap();
+        for file in ["provider.mjs", "deckweave.device.json"] {
+            std::fs::copy(package.directory.join(file), bundle.join(file)).unwrap();
+        }
+        let state_root = directory.path().join("state");
+        let host = Arc::new(headless_host(directory.path(), &root, &state_root));
+        wait_until(|| host.snapshot().discovered.len() == 1);
+        (
+            directory,
+            host,
+            state_root.join("dev.deckweave.fixture/calls"),
+        )
+    }
+    fn lighting_calls(path: &Path) -> Vec<Value> {
+        std::fs::read_to_string(path)
+            .unwrap_or_default()
+            .lines()
+            .filter_map(|line| serde_json::from_str(line).ok())
+            .collect()
+    }
+    #[test]
+    fn key_lighting_singleflight_coalesces_and_release_does_not_claim_rendered_state() {
+        let (_directory, host, calls) = lighting_host_fixture();
+        let id = host.add("dev.deckweave.fixture", "a").unwrap();
+        wait_until(|| host.session(&id).is_some_and(|s| s.state == "connected"));
+        let generation = host.session(&id).unwrap().generation;
+        let colors = json!({"key-1":{"r":1,"g":2,"b":3}});
+        let first = {
+            let host = Arc::clone(&host);
+            let id = id.clone();
+            let colors = colors.clone();
+            thread::spawn(move || {
+                host.send_key_lighting(&id, generation, "lease-1", 1, 3000, colors)
+            })
+        };
+        wait_until(|| {
+            lighting_calls(&calls)
+                .iter()
+                .any(|q| q["type"] == "keyLighting" && q["sequence"] == 1)
+        });
+        let second = {
+            let host = Arc::clone(&host);
+            let id = id.clone();
+            let colors = colors.clone();
+            thread::spawn(move || {
+                host.send_key_lighting(&id, generation, "lease-1", 2, 3000, colors)
+            })
+        };
+        wait_until(|| {
+            host.shared
+                .controls
+                .lock()
+                .unwrap()
+                .iter()
+                .any(|q| q.payload["sequence"] == 2)
+        });
+        let ack = host
+            .send_key_lighting(&id, generation, "lease-1", 3, 3000, colors.clone())
+            .unwrap();
+        assert!(first.join().unwrap().unwrap()["accepted"] == true);
+        assert!(second.join().unwrap().unwrap_err().contains("superseded"));
+        assert_eq!(ack["sequence"], 3);
+        let frames: Vec<_> = lighting_calls(&calls)
+            .into_iter()
+            .filter(|q| q["type"] == "keyLighting")
+            .collect();
+        assert_eq!(
+            frames
+                .iter()
+                .map(|q| q["sequence"].as_u64().unwrap())
+                .collect::<Vec<_>>(),
+            vec![1, 3]
+        );
+        assert!(
+            host.send_key_lighting(&id, generation, "lease-1", 3, 3000, colors.clone())
+                .is_err()
+        );
+        assert!(
+            host.send_key_lighting(
+                &id,
+                generation,
+                "lease-1",
+                4,
+                3000,
+                json!({"key-2":{"r":1,"g":2,"b":3}})
+            )
+            .is_err()
+        );
+        assert!(
+            host.send_key_lighting(&id, generation + 1, "stale", 1, 3000, colors.clone())
+                .unwrap_err()
+                .contains("generation")
+        );
+        assert_eq!(host.session(&id).unwrap().observed, json!({}));
+        assert_eq!(
+            host.session(&id).unwrap().evidence["physical"],
+            "unverified"
+        );
+        assert_eq!(
+            host.release_key_lighting(&id, generation, "lease-1")
+                .unwrap()["recovery"],
+            "not_needed"
+        );
+        assert!(
+            host.send_key_lighting(&id, generation, "lease-1", 4, 3000, colors.clone())
+                .unwrap_err()
+                .contains("retired")
+        );
+        host.send_key_lighting(&id, generation, "lease-2", 5, 3000, colors)
+            .unwrap();
+        host.stop();
+        let calls = lighting_calls(&calls);
+        let release = calls
+            .iter()
+            .position(|q| q["type"] == "releaseKeyLighting" && q["leaseId"] == "lease-2")
+            .unwrap();
+        let close = calls.iter().position(|q| q["type"] == "close").unwrap();
+        assert!(
+            release < close,
+            "Stop must release RAM ownership before close"
+        );
+    }
+    #[test]
+    fn key_lighting_uncertainty_blocks_frames_and_retains_explicit_recovery() {
+        let (_directory, host, _calls) = lighting_host_fixture();
+        let id = host.add("dev.deckweave.fixture", "a").unwrap();
+        wait_until(|| host.session(&id).is_some_and(|s| s.state == "connected"));
+        let generation = host.session(&id).unwrap().generation;
+        let colors = json!({"key-1":{"r":0,"g":0,"b":255}});
+        assert!(
+            host.send_key_lighting(&id, generation, "uncertain", 99, 1000, colors.clone())
+                .is_err()
+        );
+        wait_until(|| {
+            host.session(&id)
+                .is_some_and(|s| s.recovery["state"] == "pending")
+        });
+        assert!(
+            host.send_key_lighting(&id, generation, "next", 100, 1000, colors.clone())
+                .is_err()
+        );
+        assert!(
+            host.release_key_lighting(&id, generation, "uncertain")
+                .is_err()
+        );
+        host.recovery_preview(&id, None).unwrap();
+        let result = host.recover(&id, "fresh-token", "a").unwrap();
+        assert_eq!(result["outcome"], "ram_restore_acknowledged");
+        assert_eq!(result["evidence"]["physical"], "unverified");
+        host.send_key_lighting(&id, generation, "fresh", 101, 1000, colors)
+            .unwrap();
+        host.stop();
+    }
+    #[test]
+    fn key_lighting_expiry_and_removed_instance_release_without_replay() {
+        let (_directory, host, calls) = lighting_host_fixture();
+        let id = host.add("dev.deckweave.fixture", "a").unwrap();
+        wait_until(|| host.session(&id).is_some_and(|s| s.state == "connected"));
+        let generation = host.session(&id).unwrap().generation;
+        let colors = json!({"key-1":{"r":0,"g":100,"b":0}});
+        host.send_key_lighting(&id, generation, "expires", 2, 200, colors.clone())
+            .unwrap();
+        wait_until(|| {
+            lighting_calls(&calls)
+                .iter()
+                .any(|q| q["type"] == "releaseKeyLighting" && q["leaseId"] == "expires")
+        });
+        wait_until(|| {
+            host.shared.key_lighting.lock().unwrap()[&id]
+                .active
+                .is_none()
+        });
+        host.send_key_lighting(&id, generation, "removed", 3, 3000, colors.clone())
+            .unwrap();
+        {
+            let mut core = host.shared.core.lock().unwrap();
+            let revision = core.revision();
+            core.dispatch(
+                deckweave_core::Command::RemoveDevice {
+                    device_id: id.clone(),
+                    expected_revision: revision,
+                },
+                "main",
+            )
+            .unwrap();
+        }
+        wait_until(|| host.session(&id).is_none());
+        assert!(
+            host.send_key_lighting(&id, generation, "stale", 4, 3000, colors)
+                .is_err()
+        );
+        let log = lighting_calls(&calls);
+        let release = log
+            .iter()
+            .position(|q| q["type"] == "releaseKeyLighting" && q["leaseId"] == "removed")
+            .unwrap();
+        let close = log.iter().position(|q| q["type"] == "close").unwrap();
+        assert!(release < close);
+        assert_eq!(log.iter().filter(|q| q["type"] == "keyLighting").count(), 2);
+        host.stop();
+    }
+    #[test]
+    fn key_lighting_first_baseline_rejection_never_releases_nonexistent_ram_lease() {
+        let (_directory, host, calls) = lighting_host_fixture();
+        let id = host.add("dev.deckweave.fixture", "a").unwrap();
+        wait_until(|| host.session(&id).is_some_and(|s| s.state == "connected"));
+        let generation = host.session(&id).unwrap().generation;
+        let first = {
+            let host = Arc::clone(&host);
+            let id = id.clone();
+            thread::spawn(move || {
+                host.send_key_lighting(
+                    &id,
+                    generation,
+                    "unstarted",
+                    77,
+                    1000,
+                    json!({"key-1":{"r":1,"g":2,"b":3}}),
+                )
+            })
+        };
+        wait_until(|| {
+            lighting_calls(&calls)
+                .iter()
+                .any(|q| q["type"] == "keyLighting" && q["sequence"] == 77)
+        });
+        let queued = {
+            let host = Arc::clone(&host);
+            let id = id.clone();
+            thread::spawn(move || {
+                host.send_key_lighting(
+                    &id,
+                    generation,
+                    "unstarted",
+                    78,
+                    1000,
+                    json!({"key-1":{"r":1,"g":2,"b":3}}),
+                )
+            })
+        };
+        wait_until(|| {
+            host.shared
+                .controls
+                .lock()
+                .unwrap()
+                .iter()
+                .any(|q| q.payload["sequence"] == 78)
+        });
+        let error = first.join().unwrap().unwrap_err();
+        assert!(
+            queued.join().unwrap().is_err(),
+            "Retiring an unstarted lease also cancels its queued frames"
+        );
+        assert!(error.contains("baseline required"));
+        let release = host
+            .release_key_lighting(&id, generation, "unstarted")
+            .unwrap();
+        assert_eq!(release["alreadyReleased"], true);
+        assert_eq!(host.session(&id).unwrap().state, "connected");
+        assert_ne!(host.session(&id).unwrap().recovery["state"], "pending");
+        host.stop();
+        assert!(
+            !lighting_calls(&calls)
+                .iter()
+                .any(|q| q["type"] == "releaseKeyLighting"),
+            "No RAM output existed, so neither reconcile/runtime cleanup nor shutdown may release it"
+        );
+        assert_eq!(
+            lighting_calls(&calls)
+                .iter()
+                .filter(|q| q["type"] == "keyLighting")
+                .count(),
+            1
+        );
+    }
+    #[test]
+    fn key_lighting_rejects_unbounded_and_nonphysical_frames() {
+        let definition = json!({"controls":[{"id":"key-1","kind":"key"}],"keyLighting":{"experimental":true,"maxKeys":14,"maxRateHz":10,"maxTtlMs":3000}});
+        assert!(
+            lighting_frame(&definition, 1, 100, &json!({"key-1":{"r":0,"g":255,"b":1}})).is_ok()
+        );
+        for (sequence, ttl, colors) in [
+            (0, 100, json!({"key-1":{"r":0,"g":0,"b":0}})),
+            (1, 99, json!({"key-1":{"r":0,"g":0,"b":0}})),
+            (1, 100, json!({"unknown":{"r":0,"g":0,"b":0}})),
+            (1, 100, json!({"key-1":{"r":256,"g":0,"b":0}})),
+        ] {
+            assert!(lighting_frame(&definition, sequence, ttl, &colors).is_err());
+        }
+    }
     fn wait_until(mut ready: impl FnMut() -> bool) {
         let deadline = Instant::now() + Duration::from_secs(8);
         while !ready() {
@@ -2774,6 +4119,9 @@ serveDevice({id:'dev.deckweave.fixture',discover:()=>['a','b'].map(descriptor),o
             recovery_packages: Mutex::new(BTreeSet::new()),
             controls: Mutex::new(VecDeque::new()),
             observations: Mutex::new(BTreeMap::new()),
+            key_lighting: Mutex::new(BTreeMap::new()),
+            keyboard_input: Mutex::new(BTreeMap::new()),
+            keyboard_edits: Mutex::new(BTreeSet::new()),
             next_generation: AtomicU64::new(0),
         });
         let context = Arc::clone(&shared);
@@ -3161,6 +4509,7 @@ for await(const line of createInterface({input:process.stdin,crlfDelay:Infinity}
                 observation_needs_stop: false,
                 last_observe: Instant::now(),
                 depth_sequence: 0,
+                keyboard_sequence: 0,
                 read_sequence: 0,
                 recovery_preview: None,
             },

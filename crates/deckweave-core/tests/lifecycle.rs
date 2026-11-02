@@ -233,7 +233,10 @@ fn settings_are_unspecified_until_edit_and_validated_before_commit() {
 fn migration_backs_up_v1_and_unknown_provider_remains_inert() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("state.sqlite3");
-    let mut config = Configuration::default();
+    let mut config = Configuration {
+        format_version: 2,
+        ..Configuration::default()
+    };
     config.devices[0].provider_id = "example.unavailable".into();
     config.devices[0].profile.pages[0].bindings.insert(
         "unknown-physical-key".into(),
@@ -265,7 +268,7 @@ fn migration_backs_up_v1_and_unknown_provider_remains_inert() {
     let files: Vec<_> = std::fs::read_dir(dir.path())
         .unwrap()
         .filter_map(|e| e.ok())
-        .filter(|e| e.file_name().to_string_lossy().contains("pre-v2"))
+        .filter(|e| e.file_name().to_string_lossy().contains("pre-v3"))
         .collect();
     assert_eq!(files.len(), 1);
     let backup = rusqlite::Connection::open(files[0].path()).unwrap();
@@ -279,7 +282,7 @@ fn migration_backs_up_v1_and_unknown_provider_remains_inert() {
     assert_eq!(
         conn.pragma_query_value(None, "user_version", |r| r.get::<_, i64>(0))
             .unwrap(),
-        2
+        3
     );
 }
 #[test]
@@ -378,7 +381,7 @@ fn migration_rejects_already_open_old_writer_and_preserves_unknown_json() {
     )
     .unwrap();
     let c = Core::open(&path).unwrap();
-    assert_eq!(c.snapshot().configuration.format_version, 2);
+    assert_eq!(c.snapshot().configuration.format_version, 3);
     assert!(
         old.execute(
             "UPDATE configuration SET revision=1,json=?1 WHERE id=1",
@@ -396,12 +399,12 @@ fn migration_rejects_already_open_old_writer_and_preserves_unknown_json() {
     assert_eq!(revision, 0);
     let json: serde_json::Value = serde_json::from_str(&json).unwrap();
     assert_eq!(json["reserved_future_data"], legacy["reserved_future_data"]);
-    assert_eq!(json["format_version"], 2);
+    assert_eq!(json["format_version"], 3);
     assert_eq!(
         std::fs::read_dir(dir.path())
             .unwrap()
             .filter_map(|e| e.ok())
-            .filter(|e| e.file_name().to_string_lossy().contains("pre-v2"))
+            .filter(|e| e.file_name().to_string_lossy().contains("pre-v3"))
             .count(),
         1
     );
@@ -426,7 +429,7 @@ fn pre_guard_v2_database_is_upgraded_and_future_format_is_not_rewritten() {
             .snapshot()
             .configuration
             .format_version,
-        2
+        3
     );
     let conn = rusqlite::Connection::open(&path).unwrap();
     assert!(
@@ -436,9 +439,9 @@ fn pre_guard_v2_database_is_upgraded_and_future_format_is_not_rewritten() {
         )
         .is_err()
     );
-    conn.execute_batch("DROP TRIGGER configuration_v2_guard")
+    conn.execute_batch("DROP TRIGGER configuration_v3_guard")
         .unwrap();
-    legacy["format_version"] = serde_json::json!(3);
+    legacy["format_version"] = serde_json::json!(4);
     let original = serde_json::to_string(&legacy).unwrap();
     conn.execute("UPDATE configuration SET json=?1", [&original])
         .unwrap();

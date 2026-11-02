@@ -1,0 +1,60 @@
+{
+  "date": "2026-11-02",
+  "platform": "Windows 11",
+  "device": "IO Type 84 Magnetic White",
+  "scope": "Automatic owned Fn alias installation, migration and live source setup; physical activation pending",
+  "desktopReleaseSha256": "65ec58b76a6931aad1fc669e91542e72d1f8e5739b65fb41b6015394a5f61a78",
+  "providerCommit": "1817c15",
+  "providerExeSha256": "7621ffafa92c11f6966c012122bc740f630efe3d9885738fd15de811f382ae13",
+  "providerPackageSha256": "ae1410e6fdddce5daa50de9918cb37a81fb3e64d8813b886226c5116b82a41d4",
+  "storage": {
+    "configurationFormat": 3,
+    "durablePreV3BackupCreated": true,
+    "existingFnTLaunchPreserved": true,
+    "legacyReferenceRetainedAsReleased": true,
+    "verifiedOwnerHasOriginal": true
+  },
+  "controlledHardwareOperation": {
+    "action": "install",
+    "control": "key-37",
+    "layer": "fn",
+    "alias": "F13",
+    "outcome": "installed and verified by readback",
+    "layerBlockBytes": 512,
+    "changedRecordIndicesFromBeforeTargetProof": [37],
+    "unrelatedLayerRecordsPreserved": true,
+    "retainedInstallProofs": 1,
+    "pendingAliasOperations": 0,
+    "restartAndExplicitReconcileDidNotCreateAnotherInstall": true
+  },
+  "liveChecks": {
+    "prefilledMainAndFnLabelsVisible": true,
+    "softwareTestOpenedNotepad": true,
+    "sourceAvailableAfterReadOnlyReconciliation": true,
+    "sourceStillAvailableAfterEditorInteractionSeconds": 76,
+    "initialDeviceNotificationInvalidationFixed": true,
+    "compactReplacementButtonsVisibleAt218PixelInspector": true,
+    "dragToPreviouslyUnselectedFnKeyKeepsReplacementPreview": true,
+    "cancelledOtherKeyProposalDidNotChangeHardware": true
+  },
+  "automatedChecks": {
+    "mainProjectCheck": "passed",
+    "keyboardCoreRegressionTests": 18,
+    "keyboardDesktopTransportRegressionTests": 7,
+    "keyboardUiRegressionTests": 8,
+    "finalPluginAndUiTests": 33,
+    "providerUnitTests": 57,
+    "providerProcessTests": 4,
+    "formatAndClippy": "passed"
+  },
+  "privacy": {
+    "rawMappingsRecordedHere": false,
+    "rawIdentifiersRecordedHere": false,
+    "ordinaryTypingHistoryRecorded": false
+  },
+  "remainingAcceptance": [
+    "Physically press Fn+T once: the preserved Notepad launch should activate once.",
+    "Physical Down/Up, held profile handover and rich Key Logic remain a subsequent implementation and acceptance stage.",
+    "No second IO84, physical release, visible temporary lighting or hardware timeout acceptance is claimed."
+  ]
+}

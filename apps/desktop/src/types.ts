@@ -78,6 +78,7 @@ export interface Page {
   parent: string | null;
 }
 export interface Profile {
+  fn_bindings: Record<string, { trigger: number; binding: Binding }>;
   lighting_preset: string | null;
   id: string;
   name: string;
@@ -184,6 +185,7 @@ export interface LightingPreset {
   settings: Record<string, unknown>;
 }
 export interface Device {
+  keyboard_aliases?: KeyboardAlias[];
   lighting_presets: LightingPreset[];
   manual_lighting_preset: string | null;
   provider_descriptor: ProviderDescriptor | null;
@@ -197,6 +199,30 @@ export interface Device {
   profiles: Profile[];
   pinned: Record<string, Binding>;
   default_profile: string | null;
+}
+export interface KeyboardAlias {
+  version: number;
+  operation_id: string;
+  installation_id?: string;
+  control_id: string;
+  layer: 'main' | 'fn';
+  alias: number;
+  original: number[] | null;
+  installed: number[];
+  phase:
+    | 'pending'
+    | 'verified'
+    | 'uncertain'
+    | 'conflict'
+    | 'legacy_unverified'
+    | 'restoring'
+    | 'released';
+  provenance: 'deckweave' | 'legacy';
+  outcome: string;
+  identity: string | null;
+  generation: number | null;
+  profile_id: string | null;
+  page_id: string | null;
 }
 export interface Control {
   pointer: boolean;
@@ -283,6 +309,15 @@ export interface PanelLayout {
   swipe_pages: boolean;
 }
 export type Command =
+  | {
+      type: 'set_fn_binding';
+      device_id: string;
+      control_id: string;
+      trigger: number;
+      binding: Binding | null;
+      expected_revision: number;
+    }
+  | { type: 'test_fn_binding'; device_id: string; control_id: string }
   | { type: 'set_preferences'; preferences: Preferences; expected_revision: number }
   | {
       type: 'device_preferences';

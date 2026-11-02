@@ -1,4 +1,7 @@
 mod actions;
+mod fn_actions;
+pub mod keyboard_aliases;
+pub use keyboard_aliases::*;
 pub mod lighting;
 pub mod model;
 mod panels;
@@ -74,6 +77,7 @@ pub struct Core {
     actions: actions::Runtime,
     lifecycle_epochs: BTreeMap<String, u64>,
     lighting: lighting::LightingRuntime,
+    keyboard_sessions: BTreeMap<String, keyboard_aliases::KeyboardSession>,
 }
 
 impl Core {
@@ -100,6 +104,7 @@ impl Core {
             actions: actions::Runtime::default(),
             lifecycle_epochs: BTreeMap::new(),
             lighting: lighting::LightingRuntime::default(),
+            keyboard_sessions: BTreeMap::new(),
         })
     }
 
@@ -217,6 +222,14 @@ impl Core {
     }
 
     pub fn dispatch(&mut self, command: Command, source: &str) -> Result<Snapshot> {
+        if let Command::TestFnBinding {
+            device_id,
+            control_id,
+        } = &command
+        {
+            self.test_fn_binding(device_id, control_id)?;
+            return Ok(self.snapshot());
+        }
         if let Command::ReleaseLightingEdit { device_id } = &command {
             self.release_lighting_edit(device_id, source);
             return Ok(self.snapshot());
@@ -253,7 +266,7 @@ impl Core {
             ));
         }
         let mut next = self.config.clone();
-        let manual_settings = if let Command::SetProviderSettings {
+        let mut manual_settings = if let Command::SetProviderSettings {
             device_id, changes, ..
         } = &command
         {
@@ -282,6 +295,30 @@ impl Core {
             None
         };
         match command {
+            Command::SetFnBinding {
+                device_id,
+                control_id,
+                trigger,
+                configure_hardware,
+                binding,
+                ..
+            } => {
+                if configure_hardware {
+                    return Err(Error::new(
+                        "keyboard_ownership",
+                        "Use the guarded keyboard assignment operation; no hardware change was queued",
+                    ));
+                }
+                let device = device_mut(&mut next, &device_id)?;
+                if let Some(binding) = binding {
+                    device
+                        .profile
+                        .fn_bindings
+                        .insert(control_id, FnBinding { trigger, binding });
+                } else {
+                    device.profile.fn_bindings.remove(&control_id);
+                }
+            }
             Command::SetPreferences { preferences, .. } => {
                 if preferences.disabled_plugins.len() > 4096
                     || preferences.disabled_plugins.iter().any(|id| id.len() > 256)
@@ -410,17 +447,7 @@ impl Core {
                 ..
             } => {
                 let device = device_mut(&mut next, &device_id)?;
-                let b = device
-                    .pinned
-                    .values_mut()
-                    .chain(
-                        device
-                            .profile
-                            .pages
-                            .iter_mut()
-                            .flat_map(|p| p.bindings.values_mut()),
-                    )
-                    .find(|b| b.id == binding_id)
+                let b = actions::find_mut(device, &binding_id)
                     .ok_or_else(|| Error::new("not_found", "Action not found"))?;
                 b.label = label;
             }
@@ -651,6 +678,16 @@ impl Core {
                             "Remove device before forgetting saved settings",
                         )
                     })?;
+                if next.removed_devices[index]
+                    .keyboard_aliases
+                    .iter()
+                    .any(|a| a.phase != KeyboardAliasPhase::Released)
+                {
+                    return Err(Error::new(
+                        "keyboard_ownership",
+                        "Restore or reconcile retained keyboard triggers before forgetting this device",
+                    ));
+                }
                 next.removed_devices.remove(index);
                 // Keep physical discovery exclusion: forgetting data is not permission to re-add hardware.
             }
@@ -710,14 +747,22 @@ impl Core {
                 device.manual_lighting_preset = Some(preset_id);
             }
             Command::SetProviderSettings {
-                device_id, changes, ..
+                device_id,
+                mut changes,
+                ..
             } => {
                 let device = device_mut(&mut next, &device_id)?;
+                keyboard_aliases::validate_owned_mapping_changes(device, &changes)?;
                 let descriptor = device
                     .provider_descriptor
                     .as_ref()
                     .ok_or_else(|| Error::new("provider", "No device settings descriptor"))?;
                 validate_provider_settings(&descriptor.definition, &changes)?;
+                keyboard_aliases::strip_owned_mapping_noops(device, &mut changes);
+                if changes.is_empty() {
+                    return Ok(self.snapshot());
+                }
+                manual_settings = Some((device_id.clone(), changes.clone()));
                 if changes
                     .keys()
                     .any(|id| lighting::lighting_setting(&descriptor.definition, id))
@@ -824,6 +869,7 @@ impl Core {
             | Command::CancelActions { .. }
             | Command::ReleaseLightingEdit { .. }
             | Command::ReturnToManualLighting { .. } => unreachable!(),
+            Command::TestFnBinding { .. } => unreachable!(),
         }
         next.revision = expected
             .checked_add(1)
@@ -840,6 +886,7 @@ impl Core {
             snapshot = self.snapshot();
         }
         if let Some(device) = removed_id {
+            self.keyboard_sessions.remove(&device);
             self.actions.cancel(&device);
             self.plugin_inputs.retain(|i| i.device_id != device);
             self.cancel_holds(|d, _, _| d == device);
@@ -1028,6 +1075,7 @@ impl Core {
         self.cancel_holds(|id, _, _| id == device_id);
         self.lighting.cancel_device(device_id);
         self.connections.remove(device_id);
+        self.keyboard_sessions.remove(device_id);
         self.feedback.retain(|(id, _), _| id != device_id);
         *self.lifecycle_epochs.entry(device_id.into()).or_default() += 1;
         self.sequence += 1;
@@ -1176,6 +1224,7 @@ impl Core {
         info.state = state;
         info.error = error;
         if cancel {
+            self.keyboard_sessions.remove(id);
             self.lighting.cancel_device(id);
             self.actions.cancel(id);
             self.plugin_inputs.retain(|i| i.device_id != id);
@@ -1699,6 +1748,29 @@ impl Core {
                 .map(|plugin| (device.id.clone(), plugin))
         })
     }
+    pub fn active_profile_id(&self, device: &str) -> Option<&str> {
+        self.config
+            .devices
+            .iter()
+            .find(|d| d.id == device)
+            .map(|d| d.profile.id.as_str())
+    }
+    pub fn current_plugin_profile(&self, device: &str, context: &str) -> Option<&str> {
+        let device = self.config.devices.iter().find(|d| d.id == device)?;
+        device
+            .pinned
+            .values()
+            .chain(
+                device
+                    .profile
+                    .pages
+                    .iter()
+                    .flat_map(|p| p.bindings.values()),
+            )
+            .chain(device.profile.fn_bindings.values().map(|f| &f.binding))
+            .any(|b| b.contains(context))
+            .then_some(device.profile.id.as_str())
+    }
     pub fn plugin_feedback(
         &mut self,
         context: &str,
@@ -1879,7 +1951,7 @@ fn action_control(
 }
 
 fn validate(config: &Configuration) -> Result<()> {
-    if config.format_version != 2 {
+    if config.format_version != 3 {
         return Err(Error::new(
             "schema",
             "Unsupported configuration format; file was not reset",
@@ -1927,6 +1999,7 @@ fn validate(config: &Configuration) -> Result<()> {
     }
     let mut hardware_keys = BTreeSet::new();
     for d in config.devices.iter().chain(&config.removed_devices) {
+        keyboard_aliases::validate_ledger(d)?;
         id(&d.id)?;
         let known = d.provider_descriptor.is_some()
             || ["deckweave.virtual", "deckweave.n4"].contains(&d.provider_id.as_str());
@@ -1985,6 +2058,7 @@ fn validate(config: &Configuration) -> Result<()> {
         }
         for profile in std::iter::once(&d.profile).chain(&d.profiles) {
             id(&profile.id)?;
+            fn_actions::validate(d, profile, &mut id)?;
             if profile.name.trim().is_empty()
                 || profile.name.chars().count() > 80
                 || profile

@@ -1,3 +1,4 @@
+use crate::keyboard_aliases::KeyboardAlias;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use uuid::Uuid;
@@ -240,6 +241,8 @@ impl PanelRegion {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Profile {
     #[serde(default)]
+    pub fn_bindings: BTreeMap<String, FnBinding>,
+    #[serde(default)]
     pub lighting_preset: Option<String>,
     pub id: String,
     pub name: String,
@@ -248,9 +251,26 @@ pub struct Profile {
     #[serde(default)]
     pub application: Option<String>,
 }
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct FnBinding {
+    /// Logical Windows shortcut F13..F24; not a physical Fn event.
+    pub trigger: u8,
+    pub binding: Binding,
+}
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct FnRoute {
+    pub device_id: String,
+    pub profile_id: String,
+    pub control_id: String,
+    pub binding_id: String,
+    pub trigger: u8,
+    pub lifecycle_epoch: u64,
+}
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Device {
+    #[serde(default)]
+    pub keyboard_aliases: Vec<KeyboardAlias>,
     #[serde(default)]
     pub lighting_presets: Vec<LightingPreset>,
     #[serde(default)]
@@ -304,6 +324,7 @@ impl Device {
     pub fn virtual_studio(number: usize) -> Self {
         let page_id = new_id();
         Self {
+            keyboard_aliases: vec![],
             id: new_id(),
             name: format!("Virtual Studio {number:02}"),
             hardware_settings: DeviceHardwareSettings::default(),
@@ -317,6 +338,7 @@ impl Device {
             pinned: BTreeMap::new(),
             default_profile: None,
             profile: Profile {
+                fn_bindings: BTreeMap::new(),
                 id: new_id(),
                 name: "Default".into(),
                 active_page_id: page_id.clone(),
@@ -427,12 +449,12 @@ pub struct LibraryPreferences {
 }
 
 fn format_version() -> u32 {
-    2
+    3
 }
 impl Default for Configuration {
     fn default() -> Self {
         Self {
-            format_version: 2,
+            format_version: 3,
             revision: 0,
             locale: Locale::Ru,
             preferences: Preferences::default(),
@@ -773,6 +795,20 @@ pub enum Command {
         settings: serde_json::Value,
         expected_revision: u64,
     },
+    SetFnBinding {
+        device_id: String,
+        control_id: String,
+        #[serde(default)]
+        trigger: u8,
+        #[serde(default)]
+        configure_hardware: bool,
+        binding: Option<Binding>,
+        expected_revision: u64,
+    },
+    TestFnBinding {
+        device_id: String,
+        control_id: String,
+    },
     AddDevice {
         expected_revision: u64,
     },
@@ -878,6 +914,8 @@ impl Command {
             | Self::CancelActions { device_id, .. }
             | Self::ConfigurePlugin { device_id, .. }
             | Self::PluginSettings { device_id, .. }
+            | Self::SetFnBinding { device_id, .. }
+            | Self::TestFnBinding { device_id, .. }
             | Self::RemoveDevice { device_id, .. }
             | Self::RestoreDevice { device_id, .. }
             | Self::ForgetDevice { device_id, .. }
@@ -938,6 +976,9 @@ impl Command {
             | Self::PluginSettings {
                 expected_revision, ..
             }
+            | Self::SetFnBinding {
+                expected_revision, ..
+            }
             | Self::AddDevice { expected_revision }
             | Self::AllowHardware {
                 expected_revision, ..
@@ -987,7 +1028,8 @@ impl Command {
             Self::Input { .. }
             | Self::CancelActions { .. }
             | Self::ReleaseLightingEdit { .. }
-            | Self::ReturnToManualLighting { .. } => None,
+            | Self::ReturnToManualLighting { .. }
+            | Self::TestFnBinding { .. } => None,
         }
     }
 }
