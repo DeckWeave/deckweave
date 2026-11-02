@@ -3,12 +3,17 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import type { Command, InputEvent, Snapshot, PluginPackage } from './types';
 
+type SettingsContext = {
+  device_id: string | null;
+  section: 'general' | 'devices' | 'plugins' | 'about';
+};
 export class Client {
   snapshot = $state<Snapshot | null>(null);
   busy = $state(false);
   error = $state('');
   plugins = $state<PluginPackage[]>([]);
   settingsDevice = $state<string | null>(null);
+  settingsSection = $state<SettingsContext['section']>('general');
   settingsRequest = $state(0);
   available = isTauri();
   deviceId = this.available ? getCurrentWindow().label.replace(/^device-/, '') : 'main';
@@ -24,12 +29,15 @@ export class Client {
     if (!this.available) return;
     try {
       this.unlistenPlugins = await listen('deckweave:plugins', () => void this.reloadPlugins());
-      this.unlistenSettings = await listen<string | null>('deckweave:settings', (event) => {
-        this.settingsDevice = event.payload;
+      this.unlistenSettings = await listen<SettingsContext>('deckweave:settings', (event) => {
+        this.settingsDevice = event.payload.device_id;
+        this.settingsSection = event.payload.section;
         this.settingsRequest++;
       });
       if (this.deviceId === 'main') {
-        this.settingsDevice = await invoke<string | null>('settings_context');
+        const context = await invoke<SettingsContext>('settings_context');
+        this.settingsDevice = context.device_id;
+        this.settingsSection = context.section;
         this.settingsRequest++;
       }
       this.unlisten = await listen('deckweave:changed', () => {
@@ -131,9 +139,9 @@ export class Client {
       this.fail(e);
     }
   }
-  async openSettings(deviceId: string | null = null) {
+  async openSettings(deviceId: string | null = null, section?: SettingsContext['section']) {
     try {
-      await invoke('open_settings', { deviceId });
+      await invoke('open_settings', { deviceId, section });
     } catch (e) {
       this.fail(e);
     }

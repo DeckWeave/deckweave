@@ -1,0 +1,28 @@
+{
+  "date": "2026-11-02",
+  "platform": "Windows 11 native Tauri release and isolated debug fixture",
+  "observed": {
+    "startupOpensLastDeviceEditor": true,
+    "installedPackageSearchAndTypeFilters": true,
+    "removalPreviewListsAffectedAssignment": true,
+    "removalPreviewCancelKeepsSearchContext": true,
+    "savedDevicesSeparateRestoreAndForget": true,
+    "miraboxThreeSettingsVisibleAndInitiallyUnspecified": true,
+    "ioDetectedAndExplicitlyPaired": true,
+    "ioFreshProcessExplicitRebindToExistingRecord": true,
+    "ioCardShows84KeysWithoutInventedTouchStrip": true,
+    "externalDeviceEditorOpens": true,
+    "ioLightingWorkspaceShowsReadback": true,
+    "ioStaticColorsLimitedTo1Of84": true,
+    "ioSingleKeyOnboardMappingAndActuationFieldsRender": true
+  },
+  "hardwareWritesPerformedByAgent": false,
+  "uiDestructiveOperations": "preview and cancel only; actual package deletion tested through production native smoke with isolated fixtures",
+  "notEstablished": [
+    "physical brightness, vibration or RGB effect",
+    "keyboard setting writes and power-cycle persistence",
+    "persistent per-unit identity",
+    "full external LCD/touch host support"
+  ],
+  "redaction": "No raw USB paths, key maps, typed input or screenshots retained"
+}

@@ -251,13 +251,18 @@ fn installer(app: &tauri::AppHandle, fixtures: PathBuf) {
     thread::spawn(move || {
         let result = (|| -> Result<_, String> {
             let state = app.state::<Application>();
-            let Application::Ready { plugins, .. } = state.inner() else {
+            let Application::Ready {
+                plugins,
+                device_providers,
+                ..
+            } = state.inner()
+            else {
                 return Err("Host unavailable".into());
             };
             let manager = app.state::<crate::plugin_manager::Manager>();
             let first = manager.prepare_file(&fixtures.join("v1.zip"), &plugins.packages())?;
             let package = first.id.clone();
-            manager.commit(&first.token, plugins)?;
+            manager.commit(&first.token, plugins, device_providers)?;
             let d = locked(&state)
                 .map_err(|e| e.to_string())?
                 .snapshot()
@@ -320,7 +325,7 @@ fn installer(app: &tauri::AppHandle, fixtures: PathBuf) {
             if second.installed_version.as_deref() != Some("1.0.0") {
                 return Err("Installed version not detected".into());
             }
-            manager.commit(&second.token, plugins)?;
+            manager.commit(&second.token, plugins, device_providers)?;
             wait("v2 Kept", false)?;
             for disabled in [true, false] {
                 let mut core = locked(&state).map_err(|e| e.to_string())?;
@@ -342,8 +347,179 @@ fn installer(app: &tauri::AppHandle, fixtures: PathBuf) {
                 drop(core);
                 wait("v2 Kept", disabled)?;
             }
+            let revision = locked(&state).map_err(|e| e.to_string())?.revision();
+            crate::extension_management::remove_package(&app, &package, "action", revision)?;
+            if manager.lifecycle.allows(&package)
+                || directory
+                    .join("plugins")
+                    .join(format!("{package}.sdPlugin"))
+                    .exists()
+            {
+                return Err(
+                    "Uninstall did not persist its execution gate and remove its owned package"
+                        .into(),
+                );
+            }
+            let snapshot = locked(&state).map_err(|e| e.to_string())?.snapshot();
+            let retained = &snapshot.configuration.devices[0].profile.pages[0].bindings["key-1"];
+            if retained.id != context
+                || retained.plugin.as_ref().unwrap().settings["prefix"] != "Kept"
+            {
+                return Err("Uninstall altered retained assignment".into());
+            }
+            let restarted_gate =
+                crate::plugin_lifecycle::Store::open(directory.join("plugin-lifecycle.json"));
+            if restarted_gate.allows(&package) {
+                return Err("Removal gate lost across restart".into());
+            }
+            let restore = manager.prepare_file(&fixtures.join("v2.zip"), &plugins.packages())?;
+            manager.commit(&restore.token, plugins, device_providers)?;
+            wait("v2 Kept", false)?;
+            if !manager.lifecycle.allows(&package) {
+                return Err("Explicit reinstall did not clear removal intent".into());
+            }
+            {
+                let mut core = locked(&state).map_err(|e| e.to_string())?;
+                let revision = core.revision();
+                let added = core
+                    .dispatch(
+                        Command::AddDevice {
+                            expected_revision: revision,
+                        },
+                        "smoke",
+                    )
+                    .map_err(|e| e.to_string())?;
+                let second = added.configuration.devices.last().unwrap().clone();
+                let removed = core
+                    .dispatch(
+                        Command::RemoveDevice {
+                            device_id: second.id.clone(),
+                            expected_revision: added.configuration.revision,
+                        },
+                        "smoke",
+                    )
+                    .map_err(|e| e.to_string())?;
+                if removed.configuration.devices[0].id != d.id {
+                    return Err("Removing sibling disturbed first device".into());
+                }
+                let restored = core
+                    .dispatch(
+                        Command::RestoreDevice {
+                            device_id: second.id.clone(),
+                            expected_revision: removed.configuration.revision,
+                        },
+                        "smoke",
+                    )
+                    .map_err(|e| e.to_string())?;
+                if restored.configuration.devices.last().unwrap().profile.id != second.profile.id {
+                    return Err("Restore replaced profile identity".into());
+                }
+            }
+            let mut provider_checked = false;
+            if fixtures.join("provider.zip").exists() {
+                let provider =
+                    manager.prepare_file(&fixtures.join("provider.zip"), &plugins.packages())?;
+                if provider.kind != "device" {
+                    return Err("Provider archive misclassified".into());
+                }
+                let provider_id = provider.id.clone();
+                manager.commit(&provider.token, plugins, device_providers)?;
+                let await_provider =
+                    |stage: &str,
+                     condition: &dyn Fn(&crate::device_providers::ProviderSnapshot) -> bool|
+                     -> Result<(), String> {
+                        let began = Instant::now();
+                        while began.elapsed() < Duration::from_secs(8) {
+                            let inventory = device_providers.snapshot();
+                            if condition(&inventory) {
+                                return Ok(());
+                            }
+                            thread::sleep(Duration::from_millis(50));
+                        }
+                        Err(format!(
+                            "Device-provider smoke timed out: {stage}; {}",
+                            serde_json::to_string(&device_providers.snapshot()).unwrap_or_default()
+                        ))
+                    };
+                await_provider("discovery", &|s| {
+                    s.discovered
+                        .iter()
+                        .filter(|d| d.provider_id == provider_id)
+                        .count()
+                        == 2
+                })?;
+                let a = device_providers.add(&provider_id, "mock-a")?;
+                let b = device_providers.add(&provider_id, "mock-b")?;
+                await_provider("two paired sessions", &|s| {
+                    [&a, &b]
+                        .iter()
+                        .all(|id| s.sessions.get(*id).is_some_and(|s| s.state == "connected"))
+                })?;
+                {
+                    let mut core = locked(&state).map_err(|e| e.to_string())?;
+                    let revision = core.revision();
+                    core.dispatch(
+                        Command::SetProviderSettings {
+                            device_id: b.clone(),
+                            changes: std::collections::BTreeMap::from([(
+                                "screenBrightness".into(),
+                                json!(42),
+                            )]),
+                            expected_revision: revision,
+                        },
+                        "smoke",
+                    )
+                    .map_err(|e| e.to_string())?;
+                }
+                await_provider("settings roundtrip", &|s| {
+                    s.sessions
+                        .get(&b)
+                        .is_some_and(|s| s.observed["screenBrightness"] == 42)
+                })?;
+                {
+                    let mut core = locked(&state).map_err(|e| e.to_string())?;
+                    let revision = core.revision();
+                    core.dispatch(
+                        Command::RemoveDevice {
+                            device_id: a.clone(),
+                            expected_revision: revision,
+                        },
+                        "smoke",
+                    )
+                    .map_err(|e| e.to_string())?;
+                }
+                await_provider("one instance removal", &|s| {
+                    !s.sessions.contains_key(&a)
+                        && s.sessions.get(&b).is_some_and(|s| s.state == "connected")
+                })?;
+                let revision = locked(&state).map_err(|e| e.to_string())?.revision();
+                crate::extension_management::remove_package(
+                    &app,
+                    &provider_id,
+                    "device",
+                    revision,
+                )?;
+                if manager.lifecycle.allows(&format!("device:{provider_id}")) {
+                    return Err("Provider removal gate missing".into());
+                }
+                let restore =
+                    manager.prepare_file(&fixtures.join("provider.zip"), &plugins.packages())?;
+                manager.commit(&restore.token, plugins, device_providers)?;
+                await_provider("rediscovery", &|s| {
+                    s.discovered
+                        .iter()
+                        .any(|d| d.provider_id == provider_id && d.instance_id == "mock-b")
+                })?;
+                if device_providers.add(&provider_id, "mock-b")? != b {
+                    return Err("Provider reinstall replaced device identity".into());
+                }
+                await_provider("explicit rebind", &|s| {
+                    s.sessions.get(&b).is_some_and(|s| s.state == "connected")
+                })?;
+                provider_checked = true;
+            }
             Ok(
-                json!({"package":package,"install":true,"live_update":true,"settings_retained":true,"disable_enable":true,"hardware_access":false}),
+                json!({"package":package,"install":true,"live_update":true,"settings_retained":true,"disable_enable":true,"uninstall_restore":true,"restart_gate":true,"device_remove_restore":true,"provider_lifecycle":provider_checked,"hardware_access":false}),
             )
         })();
         let report = match result {

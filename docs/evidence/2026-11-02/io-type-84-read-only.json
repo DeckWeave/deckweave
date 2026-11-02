@@ -1,0 +1,43 @@
+{
+  "observedOn": "2026-11-02",
+  "mode": "physical-read-only",
+  "providerId": "dev.deckweave.io-type-84",
+  "providerArchiveSha256": "11d69ea7c243c5c2c33dc67c4b86141c36dc697cc1c5a6c1f4d8b8625f03d7dc",
+  "knownPrototypeAndProviderProcessesBeforeProbe": "none",
+  "processCheck": "Get-Process; broader CIM query was denied",
+  "commands": ["hello", "discover", "open", "readState", "close"],
+  "ordinaryWritesBlockedByEnvironment": true,
+  "discoveredCount": 1,
+  "opened": true,
+  "descriptorAndFirmwareGuard": "matched by successful guarded open",
+  "modelId": "dev.deckweave.io-type-84.white-1-17",
+  "firmware": "1.17",
+  "identityConfidence": "session",
+  "persistentIdentityAvailable": false,
+  "physicalKeys": 84,
+  "inputEventsDeclared": 0,
+  "displayTargets": 0,
+  "scalarSettings": 11,
+  "lightingGroups": ["keys"],
+  "onboardMappingsObserved": 84,
+  "actuationKeysObserved": 84,
+  "staticColorAddressesPassingGuard": [{ "id": "key-0", "label": "Esc" }],
+  "evidence": {
+    "transport": "accepted",
+    "readback": "verified",
+    "physical": "unknown"
+  },
+  "probeRecoveryState": "not_needed",
+  "probeCloseRecovery": "not_needed",
+  "elapsedMs": [435, 436],
+  "notVerified": [
+    "hardware setting writes",
+    "physical colour output",
+    "power-cycle persistence",
+    "depth input",
+    "LED panel",
+    "host compositions",
+    "persistent per-unit identity"
+  ],
+  "redaction": "No raw USB paths, serial values, key mappings, typed input or RGB values retained"
+}

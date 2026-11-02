@@ -1,10 +1,12 @@
 //! Native workers own their HID handles. Core locks never cover USB, rendering or file I/O.
 use base64::{Engine, engine::general_purpose::STANDARD};
-use deckweave_core::{ActionKind, ConnectionState, ControlKind, Core, InputEvent, Snapshot};
+use deckweave_core::{
+    ActionKind, ConnectionState, ControlKind, Core, DeviceHardwareSettings, InputEvent, Snapshot,
+};
 use deckweave_n4::{Input, KeyVisual, RegionVisual, Renderer};
 use serde::Serialize;
 use std::{
-    collections::{BTreeMap, BTreeSet, VecDeque},
+    collections::{BTreeMap, VecDeque},
     path::PathBuf,
     sync::{
         Arc, Mutex,
@@ -28,6 +30,102 @@ pub struct LiveSnapshot {
     #[serde(flatten)]
     snapshot: Snapshot,
     key_images: Images,
+    hardware_settings: BTreeMap<String, HardwareSettingsStatus>,
+}
+
+#[derive(Clone, Default)]
+struct HardwareSettingsRuntime {
+    sent: DeviceHardwareSettings,
+    connected: bool,
+    failed: Option<(&'static str, String)>,
+}
+
+#[derive(Serialize)]
+struct SettingStatus<T: Serialize> {
+    requested: Option<T>,
+    sent: Option<T>,
+    state: &'static str,
+    error: Option<String>,
+}
+#[derive(Serialize)]
+struct HardwareSettingsStatus {
+    screen_brightness: SettingStatus<u8>,
+    dial_brightness: SettingStatus<u8>,
+    vibration: SettingStatus<bool>,
+}
+impl HardwareSettingsRuntime {
+    fn field<T: Copy + Eq + Serialize>(
+        &self,
+        name: &str,
+        requested: Option<T>,
+        sent: Option<T>,
+    ) -> SettingStatus<T> {
+        let error = self
+            .failed
+            .as_ref()
+            .filter(|(field, _)| *field == name)
+            .map(|(_, error)| error.clone());
+        let state = if requested.is_none() {
+            "unchanged"
+        } else if error.is_some() {
+            "error"
+        } else if !self.connected {
+            "offline"
+        } else if requested == sent {
+            "sent_no_readback"
+        } else {
+            "pending"
+        };
+        SettingStatus {
+            requested,
+            sent,
+            state,
+            error,
+        }
+    }
+    fn status(&self, requested: &DeviceHardwareSettings) -> HardwareSettingsStatus {
+        HardwareSettingsStatus {
+            screen_brightness: self.field(
+                "screen_brightness",
+                requested.screen_brightness,
+                self.sent.screen_brightness,
+            ),
+            dial_brightness: self.field(
+                "dial_brightness",
+                requested.dial_brightness,
+                self.sent.dial_brightness,
+            ),
+            vibration: self.field("vibration", requested.vibration, self.sent.vibration),
+        }
+    }
+    /// Only explicit configured values write. Several revisions before this poll collapse to the latest.
+    /// Called by the HID owner between complete image transfers, never under the Core lock.
+    fn send_changed(
+        &mut self,
+        requested: &DeviceHardwareSettings,
+        mut write: impl FnMut(&[u8]) -> Result<(), String>,
+    ) -> Result<bool, String> {
+        let mut changed = false;
+        macro_rules! send {
+            ($field:ident) => {
+                if let Some(value) = requested.$field
+                    && self.sent.$field != Some(value)
+                {
+                    if let Err(error) = write(&deckweave_n4::packets::$field(value)) {
+                        self.failed = Some((stringify!($field), error.clone()));
+                        return Err(error);
+                    }
+                    self.sent.$field = Some(value);
+                    self.failed = None;
+                    changed = true;
+                }
+            };
+        }
+        send!(screen_brightness);
+        send!(dial_brightness);
+        send!(vibration);
+        Ok(changed)
+    }
 }
 
 #[derive(Serialize)]
@@ -45,6 +143,7 @@ struct Shared {
     stop: AtomicBool,
     epoch: Arc<AtomicU64>,
     images: Mutex<Images>,
+    hardware_settings: Mutex<BTreeMap<String, HardwareSettingsRuntime>>,
     trace: Mutex<VecDeque<Trace>>,
     output_performance: Mutex<BTreeMap<String, OutputPerformance>>,
     output_performance_revision: AtomicU64,
@@ -63,6 +162,7 @@ impl Hardware {
             stop: AtomicBool::new(false),
             epoch: Arc::new(AtomicU64::new(1)),
             images: Mutex::new(BTreeMap::new()),
+            hardware_settings: Mutex::new(BTreeMap::new()),
             trace: Mutex::new(VecDeque::new()),
             output_performance: Mutex::new(BTreeMap::new()),
             output_performance_revision: AtomicU64::new(0),
@@ -96,9 +196,33 @@ impl Hardware {
             .lock()
             .map(|m| m.clone())
             .unwrap_or_default();
+        let hardware_settings = self
+            .shared
+            .hardware_settings
+            .lock()
+            .map(|runtime| {
+                snapshot
+                    .configuration
+                    .devices
+                    .iter()
+                    .filter(|device| device.provider_id == "deckweave.n4")
+                    .map(|device| {
+                        (
+                            device.id.clone(),
+                            runtime
+                                .get(&device.id)
+                                .cloned()
+                                .unwrap_or_default()
+                                .status(&device.hardware_settings),
+                        )
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
         LiveSnapshot {
             snapshot,
             key_images,
+            hardware_settings,
         }
     }
     pub fn stop(&self) {
@@ -137,19 +261,28 @@ impl Shared {
 
 #[cfg(windows)]
 fn supervise(shared: Arc<Shared>, directory: PathBuf) {
-    let mut known = BTreeSet::new();
-    let mut workers = vec![];
+    let mut workers: BTreeMap<String, JoinHandle<()>> = BTreeMap::new();
     let mut last_scan = Instant::now() - Duration::from_secs(3);
     let mut last_diagnostic = None;
     let mut last_diagnostic_write = Instant::now();
     while !shared.stop.load(Ordering::Relaxed) {
         if last_scan.elapsed() >= Duration::from_secs(2) {
             last_scan = Instant::now();
+            let finished: Vec<_> = workers
+                .iter()
+                .filter(|(_, worker)| worker.is_finished())
+                .map(|(identity, _)| identity.clone())
+                .collect();
+            for identity in finished {
+                if let Some(worker) = workers.remove(&identity) {
+                    let _ = worker.join();
+                }
+            }
             match deckweave_n4::discover() {
                 Ok(candidates) => {
                     let mut registration_error = None;
                     for candidate in candidates {
-                        if known.contains(&candidate.identity) {
+                        if workers.contains_key(&candidate.identity) {
                             continue;
                         }
                         let registered =
@@ -158,18 +291,34 @@ fn supervise(shared: Arc<Shared>, directory: PathBuf) {
                                 .lock()
                                 .map_err(|e| e.to_string())
                                 .and_then(|mut c| {
+                                    if c.is_hardware_removed("deckweave.n4", &candidate.identity) {
+                                        return Ok(None);
+                                    }
                                     c.register_n4(&candidate.identity)
+                                        .map(|id| {
+                                            let epoch = c.device_lifecycle_epoch(&id);
+                                            Some((id, epoch))
+                                        })
                                         .map_err(|e| e.to_string())
                                 });
                         match registered {
-                            Ok(id) => {
-                                known.insert(candidate.identity.clone());
+                            Ok(Some((id, lifecycle_epoch))) => {
+                                let identity = candidate.identity.clone();
                                 let context = Arc::clone(&shared);
-                                workers.push(thread::spawn(move || {
-                                    device_worker(context, id, candidate.identity)
-                                }));
+                                workers.insert(
+                                    identity,
+                                    thread::spawn(move || {
+                                        device_worker(
+                                            context,
+                                            id,
+                                            candidate.identity,
+                                            lifecycle_epoch,
+                                        )
+                                    }),
+                                );
                                 shared.notify(true);
                             }
+                            Ok(None) => {}
                             Err(e) => registration_error = Some(e),
                         }
                     }
@@ -194,7 +343,7 @@ fn supervise(shared: Arc<Shared>, directory: PathBuf) {
         }
         // Bounded diagnostic data, no image blobs, no serial numbers or USB paths.
         let performance_revision = shared.output_performance_revision.load(Ordering::Relaxed);
-        if !known.is_empty()
+        if !workers.is_empty()
             && let Ok(mut snapshot) = shared.core.lock().map(|c| c.snapshot())
             && diagnostic_due(
                 last_diagnostic,
@@ -230,7 +379,7 @@ fn supervise(shared: Arc<Shared>, directory: PathBuf) {
         }
         shared.wait(Duration::from_secs(1));
     }
-    for worker in workers {
+    for (_, worker) in workers {
         let _ = worker.join();
     }
 }
@@ -274,7 +423,7 @@ fn redact_settings(value: &mut serde_json::Value) {
 fn supervise(_: Arc<Shared>, _: PathBuf) {}
 
 #[cfg(windows)]
-fn device_worker(shared: Arc<Shared>, id: String, identity: String) {
+fn device_worker(shared: Arc<Shared>, id: String, identity: String, lifecycle_epoch: u64) {
     let renderer = match Renderer::new() {
         Ok(r) => r,
         Err(e) => {
@@ -284,12 +433,28 @@ fn device_worker(shared: Arc<Shared>, id: String, identity: String) {
     };
     let mut generation = 0;
     while !shared.stop.load(Ordering::Relaxed) {
+        if !device_present(&shared, &id, lifecycle_epoch) {
+            break;
+        }
         match deckweave_n4::Connection::open(&identity) {
             Ok(connection) => {
                 generation += 1;
                 shared.connection(&id, generation, ConnectionState::Connected, None);
-                let result = session(&shared, &id, generation, &connection, &renderer);
+                let result = session(
+                    &shared,
+                    &id,
+                    generation,
+                    lifecycle_epoch,
+                    &connection,
+                    &renderer,
+                );
+                if let Ok(mut settings) = shared.hardware_settings.lock()
+                    && let Some(settings) = settings.get_mut(&id)
+                {
+                    settings.connected = false;
+                }
                 shared.connection(&id, generation, ConnectionState::Offline, result.err());
+                shared.notify(false);
             }
             Err(deckweave_n4::OpenError::Offline) => {
                 shared.connection(&id, generation, ConnectionState::Offline, None)
@@ -300,6 +465,21 @@ fn device_worker(shared: Arc<Shared>, id: String, identity: String) {
         }
         shared.wait(Duration::from_secs(1));
     }
+    if let Ok(mut images) = shared.images.lock() {
+        images.remove(&id);
+    }
+    if let Ok(mut settings) = shared.hardware_settings.lock() {
+        settings.remove(&id);
+    }
+    shared.notify(false);
+}
+
+#[cfg(windows)]
+fn device_present(shared: &Shared, id: &str, lifecycle_epoch: u64) -> bool {
+    shared
+        .core
+        .lock()
+        .is_ok_and(|core| core.has_device(id) && core.device_lifecycle_epoch(id) == lifecycle_epoch)
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -649,6 +829,7 @@ fn session(
     shared: &Shared,
     id: &str,
     generation: u64,
+    lifecycle_epoch: u64,
     connection: &deckweave_n4::Connection,
     renderer: &Renderer,
 ) -> Result<(), String> {
@@ -666,18 +847,29 @@ fn session(
     let mut preview_dirty = false;
     let mut last_preview = Instant::now() - Duration::from_millis(33);
     let mut last_metrics = Instant::now();
-    let mut geometry = shared
-        .core
-        .lock()
-        .map_err(|e| e.to_string())?
-        .snapshot()
-        .geometries[id]
-        .clone();
+    let mut settings = HardwareSettingsRuntime {
+        connected: true,
+        ..Default::default()
+    };
+    if let Ok(mut states) = shared.hardware_settings.lock() {
+        states.insert(id.into(), settings.clone());
+    }
+    let snapshot = shared.core.lock().map_err(|e| e.to_string())?.snapshot();
+    let Some(mut geometry) = snapshot.geometries.get(id).cloned() else {
+        return Ok(());
+    };
+    drop(snapshot);
     while !shared.stop.load(Ordering::Relaxed) {
+        if !device_present(shared, id, lifecycle_epoch) {
+            return Ok(());
+        }
         let pending = shared.epoch.load(Ordering::Relaxed) != epoch
             || next_frame(&target, &sent, last_key).is_some();
         let read_started = Instant::now();
         let count = connection.read_timeout(&mut buffer, input_timeout_ms(pending))?;
+        if !device_present(shared, id, lifecycle_epoch) {
+            return Ok(());
+        }
         if pending {
             performance.pending_input_reads.record(read_started);
         } else {
@@ -697,13 +889,11 @@ fn session(
             ) && shared.epoch.load(Ordering::Relaxed) != epoch
             {
                 let started = Instant::now();
-                geometry = shared
-                    .core
-                    .lock()
-                    .map_err(|e| e.to_string())?
-                    .snapshot()
-                    .geometries[id]
-                    .clone();
+                let snapshot = shared.core.lock().map_err(|e| e.to_string())?.snapshot();
+                let Some(current_geometry) = snapshot.geometries.get(id) else {
+                    return Ok(());
+                };
+                geometry = current_geometry.clone();
                 performance.snapshots.record(started);
             }
             let (control, event) = {
@@ -763,7 +953,31 @@ fn session(
             let started = Instant::now();
             let snapshot = shared.core.lock().map_err(|e| e.to_string())?.snapshot();
             performance.snapshots.record(started);
-            geometry = snapshot.geometries[id].clone();
+            let Some(current_geometry) = snapshot.geometries.get(id) else {
+                return Ok(());
+            };
+            geometry = current_geometry.clone();
+            let Some(device) = snapshot
+                .configuration
+                .devices
+                .iter()
+                .find(|device| device.id == id)
+            else {
+                return Ok(());
+            };
+            let settings_result =
+                settings.send_changed(&device.hardware_settings, |report| connection.write(report));
+            if let Ok(mut states) = shared.hardware_settings.lock() {
+                states.insert(id.into(), settings.clone());
+            }
+            match settings_result {
+                Ok(true) => shared.notify(false),
+                Ok(false) => {}
+                Err(error) => {
+                    shared.notify(false);
+                    return Err(error);
+                }
+            }
             target = desired(&snapshot, id);
             epoch = current;
             if let Some(frame) = target.first()
@@ -901,6 +1115,111 @@ fn translate(input: &Input) -> (Option<String>, Option<InputEvent>) {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn unconfigured_hardware_never_writes_and_changed_fields_do_not_repeat() {
+        use super::*;
+        let mut runtime = HardwareSettingsRuntime {
+            connected: true,
+            ..Default::default()
+        };
+        assert!(
+            !runtime
+                .send_changed(&DeviceHardwareSettings::default(), |_| panic!(
+                    "opening settings must not write"
+                ))
+                .unwrap()
+        );
+        assert_eq!(
+            runtime
+                .status(&DeviceHardwareSettings::default())
+                .screen_brightness
+                .state,
+            "unchanged"
+        );
+        let wanted = DeviceHardwareSettings {
+            screen_brightness: Some(80),
+            dial_brightness: Some(25),
+            vibration: Some(false),
+        };
+        let mut reports = vec![];
+        assert!(
+            runtime
+                .send_changed(&wanted, |report| {
+                    reports.push(report.to_vec());
+                    Ok(())
+                })
+                .unwrap()
+        );
+        assert_eq!(reports.len(), 3);
+        assert_eq!(&reports[0][6..9], b"LIG");
+        assert_eq!(&reports[1][6..11], b"LBLIG");
+        assert_eq!(&reports[2][6..11], b"QUCMD");
+        assert!(
+            !runtime
+                .send_changed(&wanted, |_| panic!("unchanged values must not repeat"))
+                .unwrap()
+        );
+        let status = runtime.status(&wanted);
+        assert_eq!(status.screen_brightness.state, "sent_no_readback");
+        assert_eq!(status.vibration.sent, Some(false));
+        let latest = DeviceHardwareSettings {
+            screen_brightness: Some(95),
+            ..wanted.clone()
+        };
+        let mut writes = 0;
+        runtime
+            .send_changed(&latest, |report| {
+                writes += 1;
+                assert_eq!(&report[6..9], b"LIG");
+                Ok(())
+            })
+            .unwrap();
+        assert_eq!(writes, 1);
+    }
+    #[test]
+    fn partial_hardware_failure_keeps_requested_values_and_does_not_claim_readback() {
+        use super::*;
+        let wanted = DeviceHardwareSettings {
+            screen_brightness: Some(60),
+            dial_brightness: Some(20),
+            vibration: Some(true),
+        };
+        let mut runtime = HardwareSettingsRuntime {
+            connected: true,
+            ..Default::default()
+        };
+        let mut writes = 0;
+        assert!(
+            runtime
+                .send_changed(&wanted, |_| {
+                    writes += 1;
+                    if writes == 2 {
+                        Err("unplugged".into())
+                    } else {
+                        Ok(())
+                    }
+                })
+                .is_err()
+        );
+        assert_eq!(writes, 2, "abort before writing unrelated remaining fields");
+        let status = runtime.status(&wanted);
+        assert_eq!(status.screen_brightness.state, "sent_no_readback");
+        assert_eq!(status.dial_brightness.state, "error");
+        assert_eq!(status.dial_brightness.sent, None);
+        assert_eq!(status.dial_brightness.requested, Some(20));
+        assert_eq!(status.vibration.state, "pending");
+        runtime.connected = false;
+        assert_eq!(runtime.status(&wanted).screen_brightness.state, "offline");
+        let reconnected = HardwareSettingsRuntime {
+            connected: true,
+            ..Default::default()
+        };
+        assert_eq!(
+            reconnected.status(&wanted).screen_brightness.state,
+            "pending",
+            "old successful transfer is not evidence for a new session"
+        );
+    }
     #[test]
     fn diagnostics_publish_late_metrics_without_another_core_event_or_hot_idle_writes() {
         use std::time::Duration;

@@ -25,6 +25,8 @@ export type Plan =
   | { type: 'page'; page_id: string }
   | { type: 'profile'; profile_id: string }
   | { type: 'back' }
+  | { type: 'lighting_preset'; preset_id: string; temporary_ms: number | null }
+  | { type: 'lighting_return' }
   | { type: 'launch'; program: string; args: string[] }
   | { type: 'hotkey'; keys: string[] }
   | { type: 'sequence'; steps: { delay_ms: number; action: Binding }[] }
@@ -76,13 +78,84 @@ export interface Page {
   parent: string | null;
 }
 export interface Profile {
+  lighting_preset: string | null;
   id: string;
   name: string;
   active_page_id: string;
   pages: Page[];
   application: string | null;
 }
+export interface DeviceHardwareSettings {
+  screen_brightness?: number;
+  dial_brightness?: number;
+  vibration?: boolean;
+}
+export interface DeviceExclusion {
+  provider_id: string;
+  hardware_key: string;
+}
+export interface ProviderSetting {
+  id: string;
+  label: { en?: string; ru?: string };
+  type: 'boolean' | 'number' | 'choice';
+  min?: number;
+  max?: number;
+  step?: number;
+  choices?: (string | number | { value: string | number; label?: { en?: string; ru?: string } })[];
+  group?: string;
+  persistence?: 'volatile' | 'onboard';
+  readback?: boolean;
+}
+export interface ProviderDefinition {
+  keyboard?: {
+    onboardMappings?: {
+      settingId: string;
+      address: string;
+      layers: string[];
+      bindingFormat: string;
+      readback?: boolean;
+      persistence?: string;
+    };
+    actuation?: {
+      settingId: string;
+      address: string;
+      minUm: number;
+      maxUm: number;
+      stepUm: number;
+      rapidMinUm?: number;
+      fields?: string[];
+      readback?: boolean;
+      persistence?: string;
+    };
+  };
+  controls?: { id: string; label?: string | { en?: string; ru?: string } }[];
+  settings: ProviderSetting[];
+  lighting?: {
+    id: string;
+    label?: { en?: string; ru?: string };
+    kind?: string;
+    controls?: string[];
+    settings?: string[];
+    staticColors?: { settingId: string; address: string };
+  }[];
+  displays?: { id: string; width: number; height: number; mime: string[] }[];
+  [key: string]: unknown;
+}
+export interface ProviderDescriptor {
+  geometry: Snapshot['geometries'][string];
+  definition: ProviderDefinition;
+}
+export interface LightingPreset {
+  id: string;
+  name: string;
+  settings: Record<string, unknown>;
+}
 export interface Device {
+  lighting_presets: LightingPreset[];
+  manual_lighting_preset: string | null;
+  provider_descriptor: ProviderDescriptor | null;
+  provider_settings: Record<string, unknown>;
+  hardware_settings: DeviceHardwareSettings;
   id: string;
   name: string;
   provider_id: string;
@@ -100,6 +173,17 @@ export interface Control {
   number: number;
 }
 export interface Snapshot {
+  lighting: Record<
+    string,
+    {
+      source: string;
+      manual_editing: boolean;
+      temporary: boolean;
+      preset_id: string | null;
+      error: string | null;
+    }
+  >;
+  hardware_settings?: Record<string, import('./device-settings-i18n').N4SettingsStatus>;
   connections: Record<
     string,
     {
@@ -116,7 +200,14 @@ export interface Snapshot {
     string,
     Record<string, { page_id: string; binding_id: string | null; data_url: string }>
   >;
-  configuration: { revision: number; locale: Locale; preferences: Preferences; devices: Device[] };
+  configuration: {
+    revision: number;
+    locale: Locale;
+    preferences: Preferences;
+    devices: Device[];
+    removed_devices: Device[];
+    device_exclusions: DeviceExclusion[];
+  };
   geometries: Record<
     string,
     {
@@ -235,7 +326,44 @@ export type Command =
       settings: Record<string, unknown>;
       expected_revision: number;
     }
+  | {
+      type: 'save_lighting_preset';
+      device_id: string;
+      preset: LightingPreset;
+      expected_revision: number;
+    }
+  | {
+      type: 'delete_lighting_preset' | 'select_lighting_preset';
+      device_id: string;
+      preset_id: string;
+      expected_revision: number;
+    }
+  | {
+      type: 'profile_lighting_preset';
+      device_id: string;
+      preset_id: string | null;
+      expected_revision: number;
+    }
+  | { type: 'release_lighting_edit' | 'return_to_manual_lighting'; device_id: string }
+  | {
+      type: 'set_provider_settings';
+      device_id: string;
+      changes: Record<string, unknown>;
+      expected_revision: number;
+    }
   | { type: 'add_device'; expected_revision: number }
+  | {
+      type: 'remove_device' | 'restore_device' | 'forget_device';
+      device_id: string;
+      expected_revision: number;
+    }
+  | { type: 'allow_hardware'; provider_id: string; hardware_key: string; expected_revision: number }
+  | {
+      type: 'set_device_hardware_settings';
+      device_id: string;
+      settings: DeviceHardwareSettings;
+      expected_revision: number;
+    }
   | { type: 'rename_device'; device_id: string; name: string; expected_revision: number }
   | {
       type: 'configure_control';

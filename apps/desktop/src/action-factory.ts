@@ -4,6 +4,8 @@ export const planTypes = [
   'page',
   'profile',
   'back',
+  'lighting_preset',
+  'lighting_return',
   'launch',
   'hotkey',
   'sequence',
@@ -33,7 +35,14 @@ export function plan(type: Plan['type'], device: Device): Plan {
     case 'profile':
       return { type, profile_id: device.profile.id };
     case 'back':
+    case 'lighting_return':
       return { type };
+    case 'lighting_preset':
+      return {
+        type,
+        preset_id: device.lighting_presets[0]?.id ?? '0'.repeat(32),
+        temporary_ms: null,
+      };
     case 'launch':
       return { type, program: 'notepad.exe', args: [] };
     case 'hotkey':

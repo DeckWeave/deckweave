@@ -1,9 +1,14 @@
 mod actions;
+pub mod lighting;
 pub mod model;
 mod panels;
+mod provider_settings;
+pub use provider_settings::merge_provider_patch;
+use provider_settings::{validate_provider_descriptor, validate_provider_settings};
 pub mod store;
 pub use actions::Effect;
 
+use lighting::validate_lighting_preset;
 pub use model::*;
 use panels::relative_point;
 use serde::Serialize;
@@ -67,6 +72,8 @@ pub struct Core {
     provider_error: Option<String>,
     plugin_inputs: VecDeque<PluginInput>,
     actions: actions::Runtime,
+    lifecycle_epochs: BTreeMap<String, u64>,
+    lighting: lighting::LightingRuntime,
 }
 
 impl Core {
@@ -91,6 +98,8 @@ impl Core {
             provider_error: None,
             plugin_inputs: VecDeque::new(),
             actions: actions::Runtime::default(),
+            lifecycle_epochs: BTreeMap::new(),
+            lighting: lighting::LightingRuntime::default(),
         })
     }
 
@@ -130,6 +139,7 @@ impl Core {
             }
         }
         Snapshot {
+            lighting: self.lighting.statuses(),
             configuration,
             geometries: self
                 .config
@@ -200,15 +210,25 @@ impl Core {
     }
     pub fn editor_closed(&mut self, label: &str) {
         self.editors.remove(label);
+        self.release_lighting_source(label);
         self.cancel_holds(|_, _, held| held.source == label);
         self.actions.cancel_source(label);
         self.sequence += 1;
     }
 
     pub fn dispatch(&mut self, command: Command, source: &str) -> Result<Snapshot> {
+        if let Command::ReleaseLightingEdit { device_id } = &command {
+            self.release_lighting_edit(device_id, source);
+            return Ok(self.snapshot());
+        }
+        if let Command::ReturnToManualLighting { device_id } = &command {
+            self.return_to_manual_lighting(device_id)?;
+            return Ok(self.snapshot());
+        }
         if let Command::CancelActions { device_id } = &command {
             self.plugin_inputs.retain(|i| i.device_id != *device_id);
             self.actions.cancel(device_id);
+            self.cancel_device_temporary_lighting(device_id);
             self.cancel_holds(|device, _, _| device == device_id);
             self.sequence += 1;
             return Ok(self.snapshot());
@@ -233,6 +253,29 @@ impl Core {
             ));
         }
         let mut next = self.config.clone();
+        let manual_settings = if let Command::SetProviderSettings {
+            device_id, changes, ..
+        } = &command
+        {
+            Some((device_id.clone(), changes.clone()))
+        } else {
+            None
+        };
+        let manual_preset = if let Command::SelectLightingPreset {
+            device_id,
+            preset_id,
+            ..
+        } = &command
+        {
+            Some((device_id.clone(), preset_id.clone()))
+        } else {
+            None
+        };
+        let removed_id = if let Command::RemoveDevice { device_id, .. } = &command {
+            Some(device_id.clone())
+        } else {
+            None
+        };
         let panel_edit = if let Command::SetPanelLayout { device_id, .. } = &command {
             Some(device_id.clone())
         } else {
@@ -296,6 +339,16 @@ impl Core {
                 ..
             } => {
                 let d = device_mut(&mut next, &device_id)?;
+                if layout.is_some()
+                    && d.provider_descriptor
+                        .as_ref()
+                        .is_some_and(|desc| desc.geometry.surface_pixels == [0, 0])
+                {
+                    return Err(Error::new(
+                        "panel",
+                        "This provider does not expose a configurable display surface",
+                    ));
+                }
                 let page = d
                     .profile
                     .pages
@@ -409,7 +462,10 @@ impl Core {
                 let mut profile = template.profile;
                 profile.name = name.trim().into();
                 profile.pages[0].bindings.clear();
-                profile.pages[0].panel = Some(PanelLayout::dial_slots(&device.provider_id));
+                profile.pages[0].panel = device
+                    .provider_descriptor
+                    .is_none()
+                    .then(|| PanelLayout::dial_slots(&device.provider_id));
                 if device.default_profile.is_none() {
                     device.default_profile = Some(device.profile.id.clone());
                 }
@@ -459,7 +515,10 @@ impl Core {
                     .insert(control_id, enter);
                 device.profile.pages.push(Page {
                     close_after_action: false,
-                    panel: Some(PanelLayout::dial_slots(&device.provider_id)),
+                    panel: device
+                        .provider_descriptor
+                        .is_none()
+                        .then(|| PanelLayout::dial_slots(&device.provider_id)),
                     id,
                     name,
                     parent: Some(parent),
@@ -523,6 +582,163 @@ impl Core {
                 }
                 next.devices
                     .push(Device::virtual_studio(next.devices.len() + 1));
+            }
+            Command::AllowHardware {
+                provider_id,
+                hardware_key,
+                ..
+            } => {
+                if next.removed_devices.iter().any(|d| {
+                    d.provider_id == provider_id && d.hardware_key.as_deref() == Some(&hardware_key)
+                }) {
+                    return Err(Error::new(
+                        "device_removed",
+                        "Restore the saved device to keep its settings",
+                    ));
+                }
+                let before = next.device_exclusions.len();
+                next.device_exclusions
+                    .retain(|e| e.provider_id != provider_id || e.hardware_key != hardware_key);
+                if next.device_exclusions.len() == before {
+                    return Err(Error::new("not_found", "Removed hardware not found"));
+                }
+            }
+            Command::RemoveDevice { device_id, .. } => {
+                let index = next
+                    .devices
+                    .iter()
+                    .position(|d| d.id == device_id)
+                    .ok_or_else(|| Error::new("not_found", "Device not found"))?;
+                let device = next.devices.remove(index);
+                if let Some(key) = &device.hardware_key {
+                    let exclusion = DeviceExclusion {
+                        provider_id: device.provider_id.clone(),
+                        hardware_key: key.clone(),
+                    };
+                    if !next.device_exclusions.contains(&exclusion) {
+                        next.device_exclusions.push(exclusion);
+                    }
+                }
+                if next.preferences.last_device.as_deref() == Some(&device_id) {
+                    next.preferences.last_device = None;
+                }
+                next.removed_devices.push(device);
+            }
+            Command::RestoreDevice { device_id, .. } => {
+                if next.devices.len() >= 32 {
+                    return Err(Error::new("limit", "At most 32 active devices"));
+                }
+                let index = next
+                    .removed_devices
+                    .iter()
+                    .position(|d| d.id == device_id)
+                    .ok_or_else(|| Error::new("not_found", "Saved device not found"))?;
+                let device = next.removed_devices.remove(index);
+                next.device_exclusions.retain(|e| {
+                    !(e.provider_id == device.provider_id
+                        && Some(e.hardware_key.as_str()) == device.hardware_key.as_deref())
+                });
+                next.devices.push(device);
+            }
+            Command::ForgetDevice { device_id, .. } => {
+                let index = next
+                    .removed_devices
+                    .iter()
+                    .position(|d| d.id == device_id)
+                    .ok_or_else(|| {
+                        Error::new(
+                            "not_found",
+                            "Remove device before forgetting saved settings",
+                        )
+                    })?;
+                next.removed_devices.remove(index);
+                // Keep physical discovery exclusion: forgetting data is not permission to re-add hardware.
+            }
+            Command::SaveLightingPreset {
+                device_id, preset, ..
+            } => {
+                let device = device_mut(&mut next, &device_id)?;
+                validate_lighting_preset(device, &preset)?;
+                if let Some(existing) = device
+                    .lighting_presets
+                    .iter_mut()
+                    .find(|p| p.id == preset.id)
+                {
+                    *existing = preset;
+                } else {
+                    device.lighting_presets.push(preset);
+                }
+            }
+            Command::DeleteLightingPreset {
+                device_id,
+                preset_id,
+                ..
+            } => {
+                let device = device_mut(&mut next, &device_id)?;
+                let before = device.lighting_presets.len();
+                device.lighting_presets.retain(|p| p.id != preset_id);
+                if before == device.lighting_presets.len() {
+                    return Err(Error::new("not_found", "Lighting preset not found"));
+                }
+            }
+            Command::ProfileLightingPreset {
+                device_id,
+                preset_id,
+                ..
+            } => {
+                let device = device_mut(&mut next, &device_id)?;
+                if preset_id
+                    .as_ref()
+                    .is_some_and(|id| !device.lighting_presets.iter().any(|p| &p.id == id))
+                {
+                    return Err(Error::new("not_found", "Lighting preset not found"));
+                }
+                device.profile.lighting_preset = preset_id;
+            }
+            Command::SelectLightingPreset {
+                device_id,
+                preset_id,
+                ..
+            } => {
+                let device = device_mut(&mut next, &device_id)?;
+                let preset = device
+                    .lighting_presets
+                    .iter()
+                    .find(|p| p.id == preset_id)
+                    .ok_or_else(|| Error::new("not_found", "Lighting preset not found"))?;
+                device.provider_settings.extend(preset.settings.clone());
+                device.manual_lighting_preset = Some(preset_id);
+            }
+            Command::SetProviderSettings {
+                device_id, changes, ..
+            } => {
+                let device = device_mut(&mut next, &device_id)?;
+                let descriptor = device
+                    .provider_descriptor
+                    .as_ref()
+                    .ok_or_else(|| Error::new("provider", "No device settings descriptor"))?;
+                validate_provider_settings(&descriptor.definition, &changes)?;
+                if changes
+                    .keys()
+                    .any(|id| lighting::lighting_setting(&descriptor.definition, id))
+                {
+                    device.manual_lighting_preset = None;
+                }
+                merge_provider_patch(&mut device.provider_settings, changes);
+            }
+            Command::SetDeviceHardwareSettings {
+                device_id,
+                settings,
+                ..
+            } => {
+                let device = device_mut(&mut next, &device_id)?;
+                if device.provider_id != "deckweave.n4" {
+                    return Err(Error::new(
+                        "settings",
+                        "Hardware settings are not supported by this provider",
+                    ));
+                }
+                device.hardware_settings = settings;
             }
             Command::RenameDevice {
                 device_id, name, ..
@@ -604,13 +820,36 @@ impl Core {
                     }
                 }
             }
-            Command::Input { .. } | Command::CancelActions { .. } => unreachable!(),
+            Command::Input { .. }
+            | Command::CancelActions { .. }
+            | Command::ReleaseLightingEdit { .. }
+            | Command::ReturnToManualLighting { .. } => unreachable!(),
         }
         next.revision = expected
             .checked_add(1)
             .ok_or_else(|| Error::new("limit", "Revision overflow"))?;
         validate(&next)?;
         let mut snapshot = self.commit(next, expected)?;
+        if let Some((device, changes)) = manual_settings {
+            self.manual_provider_change(&device, changes, source)?;
+            snapshot = self.snapshot();
+        }
+        if let Some((device, preset)) = manual_preset {
+            let changes = self.lighting_preset_settings(&device, &preset)?;
+            self.manual_provider_change(&device, changes, source)?;
+            snapshot = self.snapshot();
+        }
+        if let Some(device) = removed_id {
+            self.actions.cancel(&device);
+            self.plugin_inputs.retain(|i| i.device_id != device);
+            self.cancel_holds(|d, _, _| d == device);
+            self.connections.remove(&device);
+            self.lighting.cancel_device(&device);
+            *self.lifecycle_epochs.entry(device.clone()).or_default() += 1;
+            self.editors.remove(&format!("device-{device}"));
+            self.sequence += 1;
+            snapshot = self.snapshot();
+        }
         if let Some(device) = panel_edit {
             self.cancel_holds(|d, _, held| d == device && held.control.kind == ControlKind::Touch);
             self.actions.cancel_panel_gestures(&device);
@@ -622,7 +861,14 @@ impl Core {
 
     fn commit(&mut self, next: Configuration, expected: u64) -> Result<Snapshot> {
         self.store.save(&next, expected)?;
+        let old_profiles: BTreeMap<_, _> = self
+            .config
+            .devices
+            .iter()
+            .map(|d| (d.id.clone(), d.profile.id.clone()))
+            .collect();
         self.config = next;
+        self.lighting_profile_changes(&old_profiles);
         let ids: BTreeSet<_> = self
             .config
             .devices
@@ -633,12 +879,220 @@ impl Core {
                     .map(move |b| (d.id.clone(), b.id.clone()))
             })
             .collect();
+        self.cancel_holds(|device, _, held| {
+            held.binding
+                .as_ref()
+                .is_some_and(|b| !ids.contains(&(device.into(), b.id.clone())))
+        });
+        self.plugin_inputs.retain(|i| {
+            ids.contains(&(i.device_id.clone(), i.owner_id.clone()))
+                || matches!(i.event.as_str(), "deckweaveCancel" | "panelCancel")
+        });
+        self.actions.cancel_obsolete(&ids);
+        let obsolete: BTreeSet<_> = self.lighting_obsolete_owners(&ids);
+        self.cancel_lighting_owners(&obsolete);
         self.feedback.retain(|key, _| ids.contains(key));
         self.sequence += 1;
         Ok(self.snapshot())
     }
 
+    /// Cancel only controls/plans that depend on a package, retaining saved assignments.
+    pub fn cancel_package(&mut self, package: &str) {
+        fn depends(binding: &Binding, package: &str) -> bool {
+            binding
+                .plugin
+                .as_ref()
+                .is_some_and(|p| p.package == package)
+                || binding.children().iter().any(|b| depends(b, package))
+        }
+        let owners: BTreeSet<_> = self
+            .config
+            .devices
+            .iter()
+            .flat_map(|d| {
+                actions::bindings(d)
+                    .into_iter()
+                    .filter(|b| depends(b, package))
+                    .map(|b| (d.id.clone(), b.id.clone()))
+            })
+            .collect();
+        self.cancel_holds(|d, _, h| {
+            h.binding.as_ref().is_some_and(|b| depends(b, package))
+                || h.binding
+                    .as_ref()
+                    .is_some_and(|b| owners.contains(&(d.into(), b.id.clone())))
+        });
+        self.plugin_inputs.retain(|i| {
+            !depends(&i.binding, package)
+                && !owners.contains(&(i.device_id.clone(), i.owner_id.clone()))
+        });
+        self.actions.cancel_owners(&owners);
+        self.cancel_lighting_owners(&owners);
+        self.sequence += 1;
+    }
+    pub fn device_lifecycle_epoch(&self, id: &str) -> u64 {
+        self.lifecycle_epochs.get(id).copied().unwrap_or(0)
+    }
+    /// Explicitly attach retained configuration to a newly identified instance.
+    /// Discovery cannot call this operation implicitly.
+    pub fn rebind_provider_device(
+        &mut self,
+        device_id: &str,
+        provider_id: &str,
+        hardware_key: &str,
+        descriptor: ProviderDescriptor,
+    ) -> Result<String> {
+        validate_provider_descriptor(&descriptor)?;
+        if hardware_key.is_empty()
+            || hardware_key.len() > 4096
+            || ["deckweave.n4", "deckweave.virtual"].contains(&provider_id)
+        {
+            return Err(Error::new("identity", "Invalid external provider identity"));
+        }
+        if self
+            .connections
+            .get(device_id)
+            .is_some_and(|c| c.state == ConnectionState::Connected)
+        {
+            return Err(Error::new(
+                "connected",
+                "Disconnect the existing device before rebinding its settings",
+            ));
+        }
+        let target = self
+            .config
+            .devices
+            .iter()
+            .chain(&self.config.removed_devices)
+            .find(|d| d.id == device_id)
+            .ok_or_else(|| Error::new("not_found", "Saved device not found"))?;
+        if target.provider_id != provider_id {
+            return Err(Error::new(
+                "provider",
+                "Saved device belongs to another provider",
+            ));
+        }
+        let old_model = target
+            .provider_descriptor
+            .as_ref()
+            .and_then(|d| d.definition["modelId"].as_str());
+        let new_model = descriptor.definition["modelId"].as_str();
+        if old_model.is_none_or(|id| id.is_empty()) || old_model != new_model {
+            return Err(Error::new(
+                "model",
+                "Saved device and selected hardware must have the same declared model",
+            ));
+        }
+        if self
+            .config
+            .devices
+            .iter()
+            .chain(&self.config.removed_devices)
+            .any(|d| {
+                d.id != device_id
+                    && d.provider_id == provider_id
+                    && d.hardware_key.as_deref() == Some(hardware_key)
+            })
+        {
+            return Err(Error::new(
+                "identity",
+                "Selected hardware is already assigned to another saved device",
+            ));
+        }
+        let old_key = target.hardware_key.clone();
+        let mut next = self.config.clone();
+        let expected = next.revision;
+        if let Some(index) = next.removed_devices.iter().position(|d| d.id == device_id) {
+            if next.devices.len() >= 32 {
+                return Err(Error::new("limit", "At most 32 active devices"));
+            }
+            let device = next.removed_devices.remove(index);
+            next.devices.push(device);
+        }
+        let target = device_mut(&mut next, device_id)?;
+        target.hardware_key = Some(hardware_key.into());
+        target.provider_descriptor = Some(descriptor);
+        // Explicit rebind resolves the old instance's removal intent and permits the selected identity.
+        next.device_exclusions.retain(|e| {
+            e.provider_id != provider_id
+                || e.hardware_key != hardware_key
+                    && Some(e.hardware_key.as_str()) != old_key.as_deref()
+        });
+        next.revision = expected
+            .checked_add(1)
+            .ok_or_else(|| Error::new("limit", "Revision overflow"))?;
+        validate(&next)?;
+        self.commit(next, expected)?;
+        self.actions.cancel(device_id);
+        self.plugin_inputs.retain(|i| i.device_id != device_id);
+        self.cancel_holds(|id, _, _| id == device_id);
+        self.lighting.cancel_device(device_id);
+        self.connections.remove(device_id);
+        self.feedback.retain(|(id, _), _| id != device_id);
+        *self.lifecycle_epochs.entry(device_id.into()).or_default() += 1;
+        self.sequence += 1;
+        Ok(device_id.into())
+    }
+    pub fn register_provider_device(
+        &mut self,
+        provider_id: &str,
+        hardware_key: &str,
+        name: &str,
+        descriptor: ProviderDescriptor,
+    ) -> Result<String> {
+        if ["deckweave.n4", "deckweave.virtual"].contains(&provider_id) {
+            return Err(Error::new("provider", "Built-in provider IDs are reserved"));
+        }
+        if self.is_hardware_removed(provider_id, hardware_key) {
+            return Err(Error::new(
+                "device_removed",
+                "Restore the saved device first",
+            ));
+        }
+        if let Some(device) = self.config.devices.iter().find(|d| {
+            d.provider_id == provider_id && d.hardware_key.as_deref() == Some(hardware_key)
+        }) {
+            if serde_json::to_value(&device.provider_descriptor)?
+                != serde_json::to_value(Some(&descriptor))?
+            {
+                return Err(Error::new(
+                    "descriptor",
+                    "Device descriptor changed; explicit migration is required",
+                ));
+            }
+            return Ok(device.id.clone());
+        }
+        let mut next = self.config.clone();
+        let expected = next.revision;
+        let mut device = Device::virtual_studio(1);
+        device.name = name.into();
+        device.provider_id = provider_id.into();
+        device.hardware_key = Some(hardware_key.into());
+        device.provider_descriptor = Some(descriptor);
+        device.profile.pages[0].bindings.clear();
+        let id = device.id.clone();
+        next.devices.push(device);
+        next.revision += 1;
+        validate(&next)?;
+        self.commit(next, expected)?;
+        Ok(id)
+    }
+    pub fn has_device(&self, id: &str) -> bool {
+        self.config.devices.iter().any(|d| d.id == id)
+    }
+    pub fn is_hardware_removed(&self, provider: &str, hardware_key: &str) -> bool {
+        self.config
+            .device_exclusions
+            .iter()
+            .any(|e| e.provider_id == provider && e.hardware_key == hardware_key)
+    }
     pub fn register_n4(&mut self, hardware_key: &str) -> Result<String> {
+        if self.is_hardware_removed("deckweave.n4", hardware_key) {
+            return Err(Error::new(
+                "device_removed",
+                "Device was removed; restore it from Saved devices",
+            ));
+        }
         if let Some(device) = self.config.devices.iter().find(|d| {
             d.provider_id == "deckweave.n4" && d.hardware_key.as_deref() == Some(hardware_key)
         }) {
@@ -722,6 +1176,7 @@ impl Core {
         info.state = state;
         info.error = error;
         if cancel {
+            self.lighting.cancel_device(id);
             self.actions.cancel(id);
             self.plugin_inputs.retain(|i| i.device_id != id);
             self.cancel_holds(|device, _, _| device == id);
@@ -803,6 +1258,11 @@ impl Core {
             .iter()
             .find(|d| d.id == device_id)
             .ok_or_else(|| Error::new("not_found", "Device not found"))?;
+        if device.provider_descriptor.is_none()
+            && !["deckweave.virtual", "deckweave.n4"].contains(&device.provider_id.as_str())
+        {
+            return Err(Error::new("provider", "Device support is unavailable"));
+        }
         let key = (device_id.to_owned(), control_id.to_owned());
         if let InputEvent::Swipe { right } = event {
             if self
@@ -846,7 +1306,12 @@ impl Core {
             .find(|p| p.id == device.profile.active_page_id)
             .ok_or_else(|| Error::new("data", "Active page is missing"))?;
         let geometry = device_geometry(device);
-        let [sx, sy, sw, sh] = geometry.surface;
+        // Input coordinates can exist without any LCD/output surface.
+        let [sx, sy, sw, sh] = if geometry.surface[2] > 0.0 && geometry.surface[3] > 0.0 {
+            geometry.surface
+        } else {
+            [0.0, 0.0, geometry.width, geometry.height]
+        };
         let bounds = [
             (control.rect[0] - sx) / sw,
             (control.rect[1] - sy) / sh,
@@ -1316,8 +1781,8 @@ fn device_mut<'a>(config: &'a mut Configuration, id: &str) -> Result<&'a mut Dev
         .ok_or_else(|| Error::new("not_found", "Device not found"))
 }
 
-fn require_control(provider: &str, id: &str) -> Result<Control> {
-    geometry_for(provider)
+fn require_control(device: &Device, id: &str) -> Result<Control> {
+    device_base_geometry(device)
         .controls
         .into_iter()
         .find(|c| c.id == id)
@@ -1330,7 +1795,7 @@ fn configured_control(device: &Device, page_id: &str, control: &str) -> Result<S
         .iter()
         .find(|p| p.id == page_id)
         .ok_or_else(|| Error::new("not_found", "Page not found"))?;
-    if !page_geometry(&device.provider_id, page)
+    if !device_page_geometry(device, page)
         .controls
         .iter()
         .any(|c| c.id == control)
@@ -1414,6 +1879,12 @@ fn action_control(
 }
 
 fn validate(config: &Configuration) -> Result<()> {
+    if config.format_version != 2 {
+        return Err(Error::new(
+            "schema",
+            "Unsupported configuration format; file was not reset",
+        ));
+    }
     if config.revision > 9_007_199_254_740_991 {
         return Err(Error::new(
             "limit",
@@ -1433,21 +1904,68 @@ fn validate(config: &Configuration) -> Result<()> {
     if config.devices.len() > 32 {
         return Err(Error::new("limit", "Too many devices"));
     }
+    if config.removed_devices.len() > 1024 || config.device_exclusions.len() > 4096 {
+        return Err(Error::new("limit", "Too many saved device records"));
+    }
+    let mut exclusions = BTreeSet::new();
+    for e in &config.device_exclusions {
+        if e.provider_id.is_empty()
+            || e.provider_id.len() > 256
+            || e.hardware_key.len() > 4096
+            || !exclusions.insert((&e.provider_id, &e.hardware_key))
+        {
+            return Err(Error::new("identity", "Invalid discovery exclusion"));
+        }
+        if config.devices.iter().any(|d| {
+            d.provider_id == e.provider_id && d.hardware_key.as_deref() == Some(&e.hardware_key)
+        }) {
+            return Err(Error::new(
+                "identity",
+                "Active device is excluded from discovery",
+            ));
+        }
+    }
     let mut hardware_keys = BTreeSet::new();
-    for d in &config.devices {
+    for d in config.devices.iter().chain(&config.removed_devices) {
         id(&d.id)?;
-        if !["deckweave.virtual", "deckweave.n4"].contains(&d.provider_id.as_str()) {
-            return Err(Error::new("provider", "Unsupported provider in this build"));
+        let known = d.provider_descriptor.is_some()
+            || ["deckweave.virtual", "deckweave.n4"].contains(&d.provider_id.as_str());
+        if d.provider_id.is_empty() || d.provider_id.len() > 256 {
+            return Err(Error::new("provider", "Invalid provider ID"));
+        }
+        if d.hardware_settings
+            .screen_brightness
+            .is_some_and(|v| v > 100)
+            || d.hardware_settings.dial_brightness.is_some_and(|v| v > 100)
+        {
+            return Err(Error::new(
+                "settings",
+                "Brightness must be between 0 and 100",
+            ));
         }
         match (d.provider_id.as_str(), d.hardware_key.as_deref()) {
             ("deckweave.virtual", None) => {}
-            ("deckweave.n4", Some(key)) if valid_n4_identity(key) && hardware_keys.insert(key) => {}
+            ("deckweave.n4", Some(key))
+                if valid_n4_identity(key) && hardware_keys.insert((&d.provider_id, key)) => {}
+            (_, key)
+                if !known
+                    && key.is_none_or(|key| {
+                        key.len() <= 4096 && hardware_keys.insert((&d.provider_id, key))
+                    }) => {}
+            (_, Some(key))
+                if d.provider_descriptor.is_some()
+                    && key.len() <= 4096
+                    && hardware_keys.insert((&d.provider_id, key)) => {}
             _ => {
                 return Err(Error::new(
                     "identity",
                     "Invalid or duplicate hardware identity",
                 ));
             }
+        }
+        if let Some(descriptor) = &d.provider_descriptor {
+            validate_provider_descriptor(descriptor)?;
+            validate_provider_settings(&descriptor.definition, &d.provider_settings)?;
         }
         if d.name.trim().is_empty() || d.name.chars().count() > 80 {
             return Err(Error::new(
@@ -1457,6 +1975,13 @@ fn validate(config: &Configuration) -> Result<()> {
         }
         if d.profiles.len() > 31 {
             return Err(Error::new("limit", "Too many profiles"));
+        }
+        if d.lighting_presets.len() > 64 {
+            return Err(Error::new("limit", "At most 64 lighting presets"));
+        }
+        for preset in &d.lighting_presets {
+            id(&preset.id)?;
+            validate_lighting_preset(d, preset)?;
         }
         for profile in std::iter::once(&d.profile).chain(&d.profiles) {
             id(&profile.id)?;
@@ -1527,7 +2052,7 @@ fn validate(config: &Configuration) -> Result<()> {
                         }
                         for dial in &r.dials {
                             if !dials.insert(dial)
-                                || require_control(&d.provider_id, dial)?.kind != ControlKind::Dial
+                                || (known && require_control(d, dial)?.kind != ControlKind::Dial)
                             {
                                 return Err(Error::new(
                                     "panel",
@@ -1537,15 +2062,18 @@ fn validate(config: &Configuration) -> Result<()> {
                         }
                     }
                 }
-                let geometry = page_geometry(&d.provider_id, page);
+                let geometry = device_page_geometry(d, page);
                 for (control, binding) in &page.bindings {
-                    if !geometry.controls.iter().any(|c| c.id == *control) {
+                    if known && !geometry.controls.iter().any(|c| c.id == *control) {
                         return Err(Error::new(
                             "panel",
                             "Binding does not belong to this page's geometry",
                         ));
                     }
                     actions::validate_binding(binding, 0, &mut id)?;
+                    if !known {
+                        continue;
+                    }
                     let kind = geometry
                         .controls
                         .iter()
@@ -1557,7 +2085,11 @@ fn validate(config: &Configuration) -> Result<()> {
             }
         }
         for (control, binding) in &d.pinned {
-            let kind = require_control(&d.provider_id, control)?.kind;
+            if !known {
+                actions::validate_binding(binding, 0, &mut id)?;
+                continue;
+            }
+            let kind = require_control(d, control)?.kind;
             if kind == ControlKind::Touch {
                 return Err(Error::new(
                     "pinned",

@@ -40,6 +40,8 @@ for (const version of [1, 2]) {
   const archive = (await readdir(path.join(bundle, 'dist'))).find((name) => name.endsWith('.zip'));
   await cp(path.join(bundle, 'dist', archive), path.join(fixtures, `v${version}.zip`));
 }
+const providerArchive = process.env.DECKWEAVE_SMOKE_DEVICE_ARCHIVE;
+if (providerArchive) await cp(path.resolve(providerArchive), path.join(fixtures, 'provider.zip'));
 const binary = path.join(
   root,
   'target/debug',
@@ -84,7 +86,11 @@ if (
   !report.install ||
   !report.live_update ||
   !report.settings_retained ||
-  !report.disable_enable
+  !report.disable_enable ||
+  !report.uninstall_restore ||
+  !report.restart_gate ||
+  !report.device_remove_restore ||
+  (providerArchive && !report.provider_lifecycle)
 )
   process.exitCode = 1;
 console.log(`Isolated data: ${data}`);

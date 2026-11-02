@@ -2,7 +2,7 @@
 
 * **Author:** Codex, incorporating the owner's requirements, source audit and six independent EGM reviews.
 * **Date:** 2026-11-02.
-* **Status:** Proposed revision for owner alignment. The owner confirmed readiness for the independent review. All six reviews of the [frozen original](review/reviewed_target.txt) completed; their [consolidated report](review/goldfish_review_report.md) is separate. **This revised text has not itself been independently reviewed and is not an accepted implementation design.** No production code, hardware settings or running applications were changed by this review.
+* **Status:** Owner aligned with this concept and authorized implementation on 2026-11-02 ("Давай делать!"). All six reviews of the [frozen original](review/reviewed_target.txt) completed; the [report](review/goldfish_review_report.md) records their findings. This revised concept was not independently re-reviewed; implementation and evidence are tracked separately.
 
 ## Overview
 
@@ -134,7 +134,7 @@ Use narrow IO transport/codec/mapping/recovery modules with provenance, not its 
 
 ## Key Decisions & Staging for Next Steps
 
-The owner's readiness, stack, action/device extensibility, independent instances, IO integration and three Mirabox controls are established requirements. The proposed defaults above resolve technical choices without repeating readiness or firmware permission questions. They remain proposed until the owner aligns on this revised concept.
+The owner's readiness, stack, action/device extensibility, independent instances, IO integration and three Mirabox controls are established requirements. The proposed defaults above resolve technical choices without repeating readiness or firmware permission questions. The owner aligned with this revised concept and requested implementation on 2026-11-02.
 
 1. **Current lifecycle/UI first.** Add source inventory and dependency information, action-package uninstall/disconnect, package-wide execution intent, interrupted-operation reconciliation and saved device restoration. Preserve existing cancellation/execution primitives. Make the action-removal and one-device flows reviewable in today's UI before broadening hardware. Define migration/rollback before incompatible saved-state writes.
 2. **Mirabox settings.** Add capability-based settings to its existing worker, wiring vibration, screen brightness and dial backlight brightness separately through proven builders. Verify software invariants; request only remaining physical observations that software cannot establish.

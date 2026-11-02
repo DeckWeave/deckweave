@@ -3,6 +3,7 @@
   import { onDestroy } from 'svelte';
   import type { Client } from './client.svelte';
   import { text } from './i18n';
+  import type { PluginPackage } from './types';
   let { client }: { client: Client } = $props();
   type Entry = {
     id: string;
@@ -13,6 +14,7 @@
   };
   type Asset = { id: number; name: string; size: number; version: string };
   type Preview = {
+    kind: 'action' | 'device';
     token: string;
     id: string;
     name: string;
@@ -39,6 +41,136 @@
   let flowOpen = $state(false),
     installing = $state(false);
   let dialog = $state<HTMLDialogElement>();
+  type Installed = PluginPackage & {
+    kind: 'action' | 'device';
+    source: 'managed' | 'repository' | 'elgato';
+    sources: { kind: string; version: string; active: boolean }[];
+    blocked: boolean;
+    available: boolean;
+    phase: string | null;
+  };
+  type RemovalPreview = {
+    kind: 'action' | 'device';
+    devices: string[];
+    id: string;
+    name: string;
+    source: string;
+    revision: number;
+    dependencies: {
+      device: string;
+      profile: string;
+      page: string;
+      control: string;
+      action: string;
+      saved_device: boolean;
+    }[];
+  };
+  let inventory = $state<Installed[]>([]);
+  let kindFilter = $state('all');
+  let installedKind = $state<'action' | 'device'>('action');
+  let lifecycleHistory = $state<{ id: string; phase: string; error: string | null }[]>([]);
+  let management = $state<Installed | null>(null);
+  let removalPreview = $state<RemovalPreview | null>(null);
+  let managementOpen = $state(false);
+  let managementDialog = $state<HTMLDialogElement>();
+  let managementInvoker: HTMLButtonElement | undefined;
+  let inventoryGeneration = 0;
+  $effect(() => {
+    client.plugins;
+    void loadInventory();
+  });
+  $effect(() => {
+    if (managementOpen && managementDialog && !managementDialog.open) managementDialog.showModal();
+    else if (!managementOpen && managementDialog?.open) {
+      managementDialog.close();
+      if (managementInvoker?.isConnected) managementInvoker.focus({ preventScroll: true });
+      managementInvoker = undefined;
+    }
+  });
+  const installedResults = $derived(
+    inventory.filter(
+      (p) =>
+        (kindFilter === 'all' || p.kind === kindFilter) &&
+        `${p.name} ${p.id}`.toLocaleLowerCase().includes(search.toLocaleLowerCase()),
+    ),
+  );
+  async function loadInventory() {
+    const generation = ++inventoryGeneration;
+    try {
+      const items = await invoke<Installed[]>('plugin_inventory');
+      if (!disposed && generation === inventoryGeneration) inventory = items;
+    } catch (e) {
+      if (!disposed && generation === inventoryGeneration) error = String(e);
+    }
+  }
+  function sourceLabel(source: string) {
+    return t(
+      source === 'managed'
+        ? 'sourceManaged'
+        : source === 'elgato'
+          ? 'sourceElgato'
+          : 'sourceRepository',
+    );
+  }
+  async function loadHistory() {
+    try {
+      lifecycleHistory = await invoke('plugin_lifecycle_history');
+    } catch (e) {
+      error = String(e);
+    }
+  }
+  function askRemove(entry: Installed, invoker: HTMLButtonElement) {
+    if (busy) return;
+    management = entry;
+    managementInvoker = invoker;
+    removalPreview = null;
+    managementOpen = true;
+    void run(async (current) => {
+      const value = await invoke<RemovalPreview>('plugin_removal_preview', {
+        id: entry.id,
+        kind: entry.kind,
+      });
+      if (current()) removalPreview = value;
+    });
+  }
+  function closeManagement() {
+    if (installing) return;
+    operation++;
+    busy = false;
+    managementOpen = false;
+    management = null;
+    removalPreview = null;
+    error = '';
+    notice = '';
+  }
+  function removePlugin() {
+    if (!removalPreview || !management) return;
+    const item = removalPreview;
+    void run(async (current) => {
+      installing = true;
+      try {
+        await invoke('plugin_remove', {
+          id: item.id,
+          kind: item.kind,
+          expectedRevision: item.revision,
+        });
+        await client.reloadPlugins();
+        await loadInventory();
+        if (current())
+          notice = t(item.source === 'managed' ? 'pluginRemoved' : 'pluginDisconnected');
+      } finally {
+        installing = false;
+      }
+    });
+  }
+  function reconnect(entry: Installed) {
+    void run(async (current) => {
+      await invoke('plugin_reconnect', { id: entry.id, kind: entry.kind });
+      await client.reloadPlugins();
+      await loadInventory();
+      if (current()) notice = t('pluginRestored');
+    });
+  }
   $effect(() => {
     if (flowOpen && dialog && !dialog.open) dialog.showModal();
     else if (!flowOpen && dialog?.open) {
@@ -157,6 +289,7 @@
   function install() {
     if (!preview) return;
     const token = preview.token;
+    installedKind = preview.kind;
     void run(async (current) => {
       installing = true;
       try {
@@ -164,7 +297,8 @@
         if (!current()) return;
         preview = null;
         await client.reloadPlugins();
-        if (current()) notice = t('installSuccess');
+        if (current())
+          notice = t(installedKind === 'device' ? 'deviceInstallSuccess' : 'installSuccess');
       } finally {
         installing = false;
       }
@@ -193,16 +327,17 @@
         }}>{t('installedPlugins')}</button
       >{/if}
   </div>
-  {#if browsing}<input
-      class="plugin-search"
-      placeholder={t('searchPlugins')}
-      aria-label={t('searchPlugins')}
-      bind:value={search}
-      oninput={() => (limit = 30)}
-    />{/if}
+  <input
+    class="plugin-search"
+    placeholder={t(browsing ? 'searchPlugins' : 'searchInstalled')}
+    aria-label={t(browsing ? 'searchPlugins' : 'searchInstalled')}
+    bind:value={search}
+    oninput={() => (limit = 30)}
+  />
 </div>
-{#if busy && !flowOpen}<p role="status">{t('pluginLoading')}</p>{/if}
-{#if error && !flowOpen}<p class="connection-error" role="alert">{error}</p>{/if}
+{#if busy && !flowOpen && !managementOpen}<p role="status">{t('pluginLoading')}</p>{/if}
+{#if error && !flowOpen && !managementOpen}<p class="connection-error" role="alert">{error}</p>{/if}
+{#if notice && !flowOpen && !managementOpen}<p role="status">{notice}</p>{/if}
 {#if browsing}
   <p class="settings-intro">{t('catalogueHint')}</p>
   <div class="installed-plugins">
@@ -228,17 +363,38 @@
     >{/if}
 {:else}
   <p class="settings-intro">{t('pluginCatalogHint')}</p>
+  <label
+    >{t('extensionType')}<select bind:value={kindFilter}
+      ><option value="all">{t('allExtensions')}</option><option value="action"
+        >{t('extensionTypeActions')}</option
+      ><option value="device">{t('extensionTypeDevices')}</option></select
+    ></label
+  >
+
   <div class="installed-plugins">
-    {#each client.plugins as pack (pack.id)}<article>
+    {#if !installedResults.length}<p>{t('noInstalledPlugins')}</p>{/if}
+    {#each installedResults as pack (`${pack.kind}:${pack.id}`)}<article>
         <span class="package-symbol">◈</span>
         <div>
           <h3>{pack.name}</h3>
           <p>
-            {pack.version} · {pack.resource_only
-              ? t('resourcePackage')
-              : `${t('actions')}: ${pack.actions.filter((a) => a.visible).length}`}
+            {pack.version} · {pack.kind === 'device'
+              ? t('extensionTypeDevices')
+              : pack.resource_only
+                ? t('resourcePackage')
+                : `${t('actions')}: ${pack.actions.filter((a) => a.visible).length}`}
           </p>
           <code class="package-id">{pack.id}</code>
+          <p class="plugin-source">{sourceLabel(pack.source)}</p>
+          {#if pack.blocked}<p class="pill">{t('unavailable')}</p>
+            {#if !pack.available}<p>{t('reinstallHint')}</p>{/if}
+            {#if pack.phase !== 'removed'}<p class="connection-error">{t('removalPending')}</p>{/if}
+          {/if}
+          {#if pack.sources.length > 1}<details>
+              <summary>{t('sourceCopies')}</summary>{#each pack.sources as source}<p>
+                  {sourceLabel(source.kind)} · {source.version}
+                </p>{/each}
+            </details>{/if}
           {#if pack.error}<p class="connection-error">{pack.error}</p>{/if}
           {#if pack.actions.length && pack.actions.every((a) => !a.visible)}<p>
               {t('hiddenVendorActions')}
@@ -250,17 +406,48 @@
                 </p>{/each}
             </details>{/if}
         </div>
-        {#if !pack.resource_only && pack.actions.some((a) => a.visible)}<label class="plugin-enable"
-            ><input
-              type="checkbox"
-              checked={!config.preferences.disabled_plugins.includes(pack.id)}
-              onchange={(e) => enabled(pack.id, e.currentTarget.checked)}
-              aria-label={`${t('pluginEnabled')}: ${pack.name}`}
-            />{t('pluginEnabled')}</label
-          >
-        {:else}<span class="pill">{t(pack.error ? 'unavailable' : 'available')}</span>{/if}
+        <div class="package-operations">
+          {#if pack.kind === 'action' && !pack.blocked && !pack.resource_only && pack.actions.some((a) => a.visible)}<label
+              class="plugin-enable"
+              ><input
+                type="checkbox"
+                checked={!config.preferences.disabled_plugins.includes(pack.id)}
+                onchange={(e) => enabled(pack.id, e.currentTarget.checked)}
+                aria-label={`${t('pluginEnabled')}: ${pack.name}`}
+              />{t('pluginEnabled')}</label
+            >
+          {:else if !pack.blocked}<span class="pill"
+              >{t(pack.error ? 'unavailable' : 'available')}</span
+            >{/if}
+          {#if pack.blocked}
+            {#if pack.phase !== 'removed'}<button
+                disabled={busy}
+                onclick={(e) => askRemove(pack, e.currentTarget)}>{t('retry')}</button
+              >{/if}
+            {#if pack.available}<button disabled={busy} onclick={() => reconnect(pack)}
+                >{t('reconnectPlugin')}</button
+              >{/if}
+          {:else}<button
+              class="quiet"
+              disabled={busy}
+              onclick={(e) => askRemove(pack, e.currentTarget)}
+              >{t(pack.source === 'managed' ? 'uninstallPlugin' : 'disconnectPlugin')}</button
+            >{/if}
+        </div>
       </article>{/each}
   </div>
+  <details
+    class="device-diagnostics"
+    ontoggle={(e) => {
+      if (e.currentTarget.open) void loadHistory();
+    }}
+  >
+    <summary>{t('diagnostics')}</summary>{#each lifecycleHistory.slice().reverse() as event}<p>
+        <code>{event.id}</code> · {event.phase}{#if event.error}<span class="connection-error">
+            · {event.error}</span
+          >{/if}
+      </p>{/each}
+  </details>
 {/if}
 
 <dialog
@@ -286,7 +473,11 @@
     {#if error}<p class="connection-error" role="alert">{error}</p>{/if}
     {#if notice}<p role="status">{notice}</p>
     {:else if preview}
-      <p>{preview.version} · {t('actions')}: {preview.actions}</p>
+      <p>
+        {preview.version} · {preview.kind === 'device'
+          ? t('extensionTypeDevices')
+          : `${t('actions')}: ${preview.actions}`}
+      </p>
       <p><code>{preview.id}</code></p>
       {#if preview.installed_version}<p>
           {t('installedVersion')}: {preview.installed_version} → {preview.version}
@@ -309,7 +500,12 @@
     {/if}
   </div>
   <footer>
-    {#if notice}<button class="primary" onclick={closeFlow}>{t('done')}</button>
+    {#if notice}{#if installedKind === 'device'}<button
+          onclick={() => {
+            closeFlow();
+            void client.openSettings(null, 'devices');
+          }}>{t('devices')}</button
+        >{/if}<button class="primary" onclick={closeFlow}>{t('done')}</button>
     {:else}
       <button disabled={installing} onclick={closeFlow}>{t('cancelInstall')}</button>
       {#if preview}<button class="primary" disabled={busy} onclick={install}
@@ -326,7 +522,83 @@
   </footer>
 </dialog>
 
+<dialog
+  class="install-dialog"
+  bind:this={managementDialog}
+  aria-labelledby="plugin-removal-title"
+  oncancel={(e) => {
+    e.preventDefault();
+    closeManagement();
+  }}
+>
+  <header>
+    <div>
+      <p>{t(management?.source === 'managed' ? 'removalTitle' : 'disconnectTitle')}</p>
+      <h2 id="plugin-removal-title">{management?.name}</h2>
+    </div>
+    <button class="quiet" disabled={installing} aria-label={t('close')} onclick={closeManagement}
+      >✕</button
+    >
+  </header>
+  <div class="dialog-body" aria-busy={busy}>
+    {#if busy}<p role="status">{t('pluginLoading')}</p>{/if}
+    {#if error}<p class="connection-error" role="alert">{error}</p>{/if}
+    {#if notice}<p role="status">{notice}</p>
+    {:else}
+      <p>{t(management?.source === 'managed' ? 'removalHint' : 'disconnectHint')}</p>
+      {#if management?.source !== 'managed'}<p>{t('removalHint')}</p>{/if}
+      {#if removalPreview}
+        {#if removalPreview.kind === 'device'}<h3>
+            {t('affectedDevices')} ({removalPreview.devices.length})
+          </h3>
+          <ul>
+            {#each removalPreview.devices as name}<li>{name}</li>{/each}
+          </ul>{:else}
+          <h3>{t('removalUses')} ({removalPreview.dependencies.length})</h3>
+          {#if !removalPreview.dependencies.length}<p>{t('removalNoUses')}</p>{/if}
+          <ul class="dependency-list">
+            {#each removalPreview.dependencies as use}<li>
+                <strong>{use.action}</strong><small
+                  >{use.device} → {use.profile} → {use.page} · {use.control}</small
+                >
+              </li>{/each}
+          </ul>
+        {/if}
+      {/if}
+    {/if}
+  </div>
+  <footer>
+    {#if notice}<button class="primary" onclick={closeManagement}>{t('done')}</button>{:else}<button
+        disabled={installing}
+        onclick={closeManagement}>{t('cancelInstall')}</button
+      ><button class="danger" disabled={busy || !removalPreview} onclick={removePlugin}
+        >{t(management?.source === 'managed' ? 'removalConfirm' : 'disconnectConfirm')}</button
+      >{/if}
+  </footer>
+</dialog>
+
 <style>
+  .package-operations {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+  }
+  .dependency-list {
+    padding-left: 20px;
+  }
+  .dependency-list li {
+    margin: 10px 0;
+  }
+  .dependency-list small {
+    display: block;
+    color: #aeb7c9;
+    margin-top: 3px;
+  }
+  .danger {
+    background: #853d4c;
+    color: #fff;
+  }
   .plugin-toolbar {
     display: flex;
     flex-wrap: wrap;

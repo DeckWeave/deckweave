@@ -1,8 +1,10 @@
 # Action plugins and open-source workflow
 
-The application remains a development release for Windows 11. The action SDK is
-usable today; the external **hardware provider SDK is not implemented**. N4 is
-built in. Do not present the action template as a USB/device-driver template.
+The application remains a development release for Windows 11. Action plugins and
+device support are separate package kinds. The external device process SDK,
+template and host are implemented provisionally; N4 remains built in. See
+[device workflow and acceptance](DEVICE-EXTENSIONS.md) and the
+[provider boundary](PROVIDER-CONTRACT.md). The action template does not drive USB.
 
 ## Repositories and quick start
 
@@ -49,7 +51,8 @@ and catalogue controls remain visible while scrolling. [Native UI verification](
 is used; source code is not built automatically. Missing releases, API limits,
 protected manifests, unsupported platforms and incomplete bundles show errors.
 Catalogue inclusion alone is not proof of full DeckWeave compatibility. Hardware
-providers and resource-only archives are not supported by this action installer.
+providers are installed from their own local `.dwDevice` ZIPs, not from the
+OpenDeck action catalogue. Resource-only archives are not assignable actions.
 
 Managed copies go to the application's app-data `plugins/<id>.sdPlugin`.
 They take precedence over the repository development bundles and locally installed

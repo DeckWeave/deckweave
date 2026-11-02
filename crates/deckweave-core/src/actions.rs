@@ -66,6 +66,22 @@ impl Runtime {
             }
         }
     }
+    pub fn cancel_obsolete(&mut self, valid: &BTreeSet<(String, String)>) {
+        self.tasks
+            .retain(|t| valid.contains(&(t.device.clone(), t.owner.clone())));
+        self.singles
+            .retain(|t| valid.contains(&(t.device.clone(), t.owner.clone())));
+        self.effects
+            .retain(|t| valid.contains(&(t.device_id.clone(), t.binding_id.clone())));
+    }
+    pub fn cancel_owners(&mut self, owners: &BTreeSet<(String, String)>) {
+        self.tasks
+            .retain(|t| !owners.contains(&(t.device.clone(), t.owner.clone())));
+        self.singles
+            .retain(|t| !owners.contains(&(t.device.clone(), t.owner.clone())));
+        self.effects
+            .retain(|t| !owners.contains(&(t.device_id.clone(), t.binding_id.clone())));
+    }
     pub fn cancel(&mut self, device: &str) {
         self.tasks.retain(|t| t.device != device);
         self.singles.retain(|t| t.device != device);
@@ -210,6 +226,7 @@ impl Core {
         }
         self.actions.now = now;
         let sequence = self.sequence;
+        self.advance_lighting(now);
         let held: Vec<_> = self
             .held
             .iter()
@@ -634,6 +651,21 @@ impl Core {
                             "action",
                         )?;
                     }
+                    Plan::LightingPreset {
+                        preset_id,
+                        temporary_ms,
+                    } => {
+                        self.request_lighting_preset_owned(
+                            device,
+                            preset_id,
+                            *temporary_ms,
+                            "action",
+                            Some(owner),
+                        )?;
+                    }
+                    Plan::LightingReturn => {
+                        self.return_to_manual_lighting(device)?;
+                    }
                     Plan::Back => {
                         let d = self
                             .config
@@ -930,6 +962,18 @@ fn validate_binding_inner(
                         "Invalid Key Logic thresholds or branches",
                     ));
                 }
+            }
+            Plan::LightingPreset {
+                preset_id,
+                temporary_ms,
+            } if preset_id.len() != 32
+                || !preset_id.bytes().all(|b| b.is_ascii_hexdigit())
+                || temporary_ms.is_some_and(|ms| ms == 0 || ms > 86400000) =>
+            {
+                return Err(Error::new(
+                    "lighting",
+                    "Invalid lighting preset reference or duration",
+                ));
             }
             Plan::Launch { program, args } => {
                 if program.trim().is_empty()

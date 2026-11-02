@@ -1,0 +1,12 @@
+{
+  "device_remove_restore": true,
+  "disable_enable": true,
+  "hardware_access": false,
+  "install": true,
+  "live_update": true,
+  "package": "dev.deckweave.installsmoke",
+  "provider_lifecycle": true,
+  "restart_gate": true,
+  "settings_retained": true,
+  "uninstall_restore": true
+}

@@ -27,12 +27,12 @@
 
 ## Фаза 3 — Hardware provider и N4
 
-Цель: тот же сценарий на железе. Трудоёмкость M. Статус: [~] Код/tray/internal contract реализованы; остаются внешнее provider SDK и физическая приёмка D2–D4/reconnect/новых жестов. [NEXT](NEXT.md), [доказательства](RUNTIME-PROGRESS.md).
+Цель: тот же сценарий на железе. Трудоёмкость M. Статус: [~] N4 input/output/tray приняты; внешний process SDK предварительный, IO прошёл физическое чтение. Остаются аппаратная приёмка новых записей/света и стабилизация внешнего LCD/touch. [NEXT](NEXT.md), [результат](DEVICE-EXTENSIONS.md).
 
 Контекст: назначения и input router проверены на виртуальном provider. Старые низкоуровневые N4 codec/fixtures используются выборочно с сохранением происхождения.
 
-- [~] Internal provider boundary/capabilities/lifecycle описаны и реализованы для N4; внешний SDK после второго adapter ([providers](../modules/providers.md), [контракт](PROVIDER-CONTRACT.md)).
-- [~] N4 transport/framebuffer/reconnect и независимость от окон реализованы; оставшаяся физическая приёмка отдельно ([providers](../modules/providers.md), [панели](../modules/panels.md), [приёмка](ACCEPTANCE-NEXT.md)).
+- [~] Internal N4 и provisional external process boundary/capabilities/lifecycle, mock/IO SDK/шаблон реализованы; контракт не заморожен ([providers](../modules/providers.md), [контракт](PROVIDER-CONTRACT.md)).
+- [x] N4 transport/framebuffer/reconnect и независимость от окон реализованы и приняты; новые настройки требуют отдельного наблюдения ([providers](../modules/providers.md), [панели](../modules/panels.md), [приёмка](DEVICE-EXTENSIONS.md)).
 - [x] Tray/фоновая работа, повторное открытие runtime и завершение процессов проверены ([desktop](../modules/desktop.md), [evidence](evidence/2026-11-01/runtime-window-lifecycle-ui.json)).
 
 Сделано: отдельный transport crate, автообнаружение/постоянная identity, workers с generation, down/up/Click/rotation adapter, bounded key renderer, общие JPEG preview/output, очистка held и автоматические regression tests. На подключённом PID 1021 успешно переданы 10 начальных кадров, изменение Counter и два перехода страниц (32 кадра без reconnect/error). Закрытие редактора оставляет соединение активным. Эти результаты не закрывают аппаратную приёмку: [следующая проверка владельцем](N4-ACCEPTANCE.md).

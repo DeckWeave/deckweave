@@ -9,7 +9,7 @@ use std::{
     fs,
     io::{Cursor, Read, Write},
     path::{Path, PathBuf},
-    sync::Mutex,
+    sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
 use tauri::{Emitter, Manager as _};
@@ -37,6 +37,7 @@ pub struct Asset {
 }
 #[derive(Clone, Serialize)]
 pub struct Preview {
+    pub kind: String,
     pub token: String,
     pub id: String,
     pub name: String,
@@ -53,14 +54,18 @@ struct Pending {
     created: Instant,
 }
 pub struct Manager {
-    directory: PathBuf,
+    pub(crate) directory: PathBuf,
     pending: Mutex<BTreeMap<String, Pending>>,
     catalogue: Mutex<Option<(Instant, Vec<Entry>)>>,
-    install: Mutex<()>,
+    pub(crate) install: Mutex<()>,
+    pub(crate) lifecycle: Arc<crate::plugin_lifecycle::Store>,
 }
 impl Manager {
     pub fn new(directory: PathBuf) -> Self {
         Self {
+            lifecycle: Arc::new(crate::plugin_lifecycle::Store::open(
+                directory.join("plugin-lifecycle.json"),
+            )),
             directory,
             pending: Mutex::new(BTreeMap::new()),
             catalogue: Mutex::new(None),
@@ -186,26 +191,66 @@ impl Manager {
         {
             return Err("Plugin identity conflicts with an installed package's letter case".into());
         }
-        let package = plugins::catalog::read_package(bundle.clone(), id.clone());
-        if let Some(error) = package.error {
-            return Err(format!("Unsupported plugin: {error}"));
-        }
-        if package.resource_only || package.actions.is_empty() {
-            return Err("This archive does not contain a supported action plugin".into());
-        }
-        let token = uuid::Uuid::new_v4().simple().to_string();
-        let preview = Preview {
-            token: token.clone(),
-            id: id.clone(),
-            name: package.name,
-            version: package.version,
-            actions: package.actions.len(),
-            sha256: format!("{:x}", Sha256::digest(bytes)),
-            source,
-            installed_version: packages
+        let (kind, name, version, actions) = if bundle.extension().is_some_and(|e| e == "dwDevice")
+        {
+            let manifest = crate::device_providers::inspect_package(&bundle)?;
+            if manifest.id != id {
+                return Err("Device manifest identity mismatch".into());
+            }
+            ("device".to_owned(), manifest.name, manifest.version, 0)
+        } else {
+            let package = plugins::catalog::read_package(bundle.clone(), id.clone());
+            if let Some(error) = package.error {
+                return Err(format!("Unsupported plugin: {error}"));
+            }
+            if package.resource_only || package.actions.is_empty() {
+                return Err("This archive does not contain a supported action plugin".into());
+            }
+            (
+                "action".to_owned(),
+                package.name,
+                package.version,
+                package.actions.len(),
+            )
+        };
+        let installed_version = if kind == "device" {
+            let roots = [
+                self.directory.join("device-plugins"),
+                PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../device-plugins"),
+            ];
+            let mut installed = None;
+            for root in roots {
+                if let Ok(existing) =
+                    crate::device_providers::inspect_package(&root.join(format!("{id}.dwDevice")))
+                {
+                    if existing.id != id {
+                        return Err(
+                            "Device identity conflicts with an installed package's letter case"
+                                .into(),
+                        );
+                    }
+                    installed = Some(existing.version);
+                    break;
+                }
+            }
+            installed
+        } else {
+            packages
                 .iter()
                 .find(|p| p.id == id)
-                .map(|p| p.version.clone()),
+                .map(|p| p.version.clone())
+        };
+        let token = uuid::Uuid::new_v4().simple().to_string();
+        let preview = Preview {
+            kind,
+            token: token.clone(),
+            id: id.clone(),
+            name,
+            version,
+            actions,
+            sha256: format!("{:x}", Sha256::digest(bytes)),
+            source,
+            installed_version,
         };
         let mut pending = self.pending.lock().map_err(|_| "Installer unavailable")?;
         pending.retain(|_, p| p.created.elapsed() < Duration::from_secs(600));
@@ -228,15 +273,52 @@ impl Manager {
             pending.remove(token);
         }
     }
-    pub fn commit(&self, token: &str, host: &plugins::Host) -> Result<Preview, String> {
+    pub fn commit(
+        &self,
+        token: &str,
+        host: &plugins::Host,
+        devices: &crate::device_providers::Host,
+    ) -> Result<Preview, String> {
         let _lock = self.install.lock().map_err(|_| "Installer unavailable")?;
+        // Do not replace an installation while its durable removal intent is unreadable.
+        self.lifecycle.records()?;
         let mut pending = self.take_pending(token)?;
-        if let Err(error) = host.pause(&pending.preview.id) {
-            let _ = host.reload(&pending.preview.id);
+        let device = pending.preview.kind == "device";
+        let stopped = if device {
+            devices.pause_package(&pending.preview.id)
+        } else {
+            host.pause(&pending.preview.id)
+        };
+        if let Err(error) = stopped {
+            if device {
+                devices.resume_package(&pending.preview.id);
+            } else {
+                let _ = host.reload(&pending.preview.id);
+            }
             return Err(error);
         }
         let result = self.publish(&mut pending);
-        let resumed = host.reload(&pending.preview.id);
+        if result.is_ok() {
+            // A reviewed explicit installation is the only install path that clears removal.
+            let restored = self.lifecycle.reconnect(&if device {
+                format!("device:{}", pending.preview.id)
+            } else {
+                pending.preview.id.clone()
+            });
+            if let Err(error) = restored {
+                pending.directory.disable_cleanup(true);
+                return Err(format!(
+                    "Package published but activation was not recorded: {error}. Previous files retained at {}",
+                    pending.directory.path().join("previous").display()
+                ));
+            }
+        }
+        let resumed = if device {
+            devices.resume_package(&pending.preview.id);
+            Ok(())
+        } else {
+            host.reload(&pending.preview.id)
+        };
         result?;
         resumed?;
         Ok(pending.preview)
@@ -254,9 +336,16 @@ impl Manager {
         Ok(pending)
     }
     fn publish(&self, pending: &mut Pending) -> Result<(), String> {
-        let root = self.directory.join("plugins");
+        let device = pending.preview.kind == "device";
+        let root = self
+            .directory
+            .join(if device { "device-plugins" } else { "plugins" });
         fs::create_dir_all(&root).map_err(|e| e.to_string())?;
-        let destination = root.join(format!("{}.sdPlugin", pending.preview.id));
+        let destination = root.join(format!(
+            "{}.{}",
+            pending.preview.id,
+            if device { "dwDevice" } else { "sdPlugin" }
+        ));
         if fs::symlink_metadata(&destination)
             .is_ok_and(|m| m.file_type().is_symlink() || !m.is_dir())
         {
@@ -311,7 +400,7 @@ fn download(url: &str, limit: u64) -> Result<Vec<u8>, String> {
     }
     Ok(bytes)
 }
-fn valid_id(id: &str) -> bool {
+pub(crate) fn valid_id(id: &str) -> bool {
     id.len() <= 200
         && id.contains('.')
         && id.split('.').all(|part| {
@@ -460,22 +549,39 @@ fn extract(bytes: &[u8], root: &Path) -> Result<(PathBuf, String), String> {
         if total > MAX_TOTAL || file.size() > MAX_ARCHIVE {
             return Err("Unpacked archive exceeds limits".into());
         }
-        if path.file_name().is_some_and(|s| s == "manifest.json") {
-            candidates.push(path.parent().unwrap_or(Path::new("")).to_path_buf());
+        if path
+            .file_name()
+            .is_some_and(|s| s == "manifest.json" || s == "deckweave.device.json")
+        {
+            candidates.push(path.clone());
         }
         paths.push(path);
     }
     let candidates: Vec<_> = candidates
         .into_iter()
-        .filter(|p| p.as_os_str().is_empty() || p.extension().is_some_and(|e| e == "sdPlugin"))
+        .filter(|p| {
+            let parent = p.parent().unwrap_or(Path::new(""));
+            parent.as_os_str().is_empty()
+                || parent
+                    .extension()
+                    .is_some_and(|e| e == "sdPlugin" || e == "dwDevice")
+        })
         .collect();
     if candidates.len() != 1 {
-        return Err("Archive must contain exactly one .sdPlugin bundle".into());
+        return Err("Archive must contain exactly one action or device bundle".into());
     }
-    let prefix = &candidates[0];
+    let manifest_path = &candidates[0];
+    let prefix = manifest_path.parent().unwrap_or(Path::new(""));
+    let device = manifest_path
+        .file_name()
+        .is_some_and(|s| s == "deckweave.device.json");
+    let suffix = if device { "dwDevice" } else { "sdPlugin" };
+    if !prefix.as_os_str().is_empty() && prefix.extension().is_none_or(|e| e != suffix) {
+        return Err("Bundle type differs from manifest type".into());
+    }
     let manifest_index = paths
         .iter()
-        .position(|p| p == &prefix.join("manifest.json"))
+        .position(|p| p == manifest_path)
         .ok_or("Missing manifest")?;
     let manifest: Value = {
         let file = zip.by_index(manifest_index).map_err(|e| e.to_string())?;
@@ -488,11 +594,15 @@ fn extract(bytes: &[u8], root: &Path) -> Result<(PathBuf, String), String> {
     let id = prefix
         .file_stem()
         .and_then(|s| s.to_str())
-        .filter(|_| prefix.extension().is_some_and(|e| e == "sdPlugin"))
-        .or(manifest["UUID"].as_str())
+        .filter(|_| prefix.extension().is_some_and(|e| e == suffix))
+        .or(manifest[if device { "id" } else { "UUID" }].as_str())
         .ok_or("Bare plugin manifest needs UUID")?
         .to_string();
-    if !valid_id(&id) || manifest["UUID"].as_str().is_some_and(|v| v != id) {
+    if !valid_id(&id)
+        || manifest[if device { "id" } else { "UUID" }]
+            .as_str()
+            .is_some_and(|v| v != id)
+    {
         return Err("Invalid or conflicting plugin identity".into());
     }
     let platform = if cfg!(target_os = "macos") {
@@ -508,7 +618,7 @@ fn extract(bytes: &[u8], root: &Path) -> Result<(PathBuf, String), String> {
     {
         return Err("Plugin does not support this operating system".into());
     }
-    let bundle = root.join(format!("{id}.sdPlugin"));
+    let bundle = root.join(format!("{id}.{suffix}"));
     fs::create_dir(&bundle).map_err(|e| e.to_string())?;
     for (i, path) in paths.iter().enumerate() {
         let Ok(relative) = path.strip_prefix(prefix) else {
@@ -664,13 +774,18 @@ pub async fn plugin_commit(
     allowed(&window)?;
     tauri::async_runtime::spawn_blocking(move || {
         let state = app.state::<crate::Application>();
-        let crate::Application::Ready { plugins, .. } = state.inner() else {
+        let crate::Application::Ready {
+            plugins,
+            device_providers,
+            ..
+        } = state.inner()
+        else {
             return Err("Plugin host unavailable".into());
         };
         let preview = app
             .try_state::<Manager>()
             .ok_or("Installer unavailable")?
-            .commit(&token, plugins)?;
+            .commit(&token, plugins, device_providers)?;
         let _ = app.emit("deckweave:plugins", ());
         Ok(preview)
     })
@@ -725,6 +840,55 @@ mod tests {
             ),
             ("dev.example.test.sdPlugin/settings.html", b"<p>Test</p>"),
         ])
+    }
+    #[test]
+    fn device_archives_use_the_same_preview_but_separate_owned_installation() {
+        let root = tempfile::tempdir().unwrap();
+        let manager = Manager::new(root.path().into());
+        let manifest=serde_json::to_vec(&json!({"kind":"device","protocol":1,"id":"dev.example.keyboard","name":"Keyboard fixture","version":"1.0.0","runtime":"node","entry":"provider.mjs","platforms":["windows","macos","linux"],"models":["dev.example.keyboard.model"]})).unwrap();
+        let bytes = archive(&[
+            (
+                "dev.example.keyboard.dwDevice/deckweave.device.json",
+                &manifest,
+            ),
+            (
+                "dev.example.keyboard.dwDevice/provider.mjs",
+                b"throw Error('preview must never execute');",
+            ),
+        ]);
+        let preview = manager
+            .prepare(&bytes, "device.zip".into(), None, &[])
+            .unwrap();
+        assert_eq!(preview.kind, "device");
+        assert_eq!(preview.actions, 0);
+        assert!(!root.path().join("device-plugins").exists());
+        let mut pending = manager.take_pending(&preview.token).unwrap();
+        manager.publish(&mut pending).unwrap();
+        assert!(!root.path().join("plugins").exists());
+        assert!(
+            root.path()
+                .join("device-plugins/dev.example.keyboard.dwDevice/provider.mjs")
+                .is_file()
+        );
+        let next = manager
+            .prepare(&bytes, "device.zip".into(), None, &[])
+            .unwrap();
+        assert_eq!(next.installed_version.as_deref(), Some("1.0.0"));
+        let mixed = archive(&[
+            (
+                "dev.example.keyboard.dwDevice/deckweave.device.json",
+                &manifest,
+            ),
+            (
+                "dev.example.test.sdPlugin/manifest.json",
+                &super::tests::manifest("1"),
+            ),
+        ]);
+        assert!(
+            manager
+                .prepare(&mixed, "mixed.zip".into(), None, &[])
+                .is_err()
+        );
     }
     #[test]
     fn preview_cancel_single_use_and_expiry_never_publish_a_bundle() {

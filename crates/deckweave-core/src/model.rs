@@ -81,6 +81,11 @@ pub enum Plan {
         profile_id: String,
     },
     Back,
+    LightingPreset {
+        preset_id: String,
+        temporary_ms: Option<u64>,
+    },
+    LightingReturn,
     Launch {
         program: String,
         #[serde(default)]
@@ -234,6 +239,8 @@ impl PanelRegion {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Profile {
+    #[serde(default)]
+    pub lighting_preset: Option<String>,
     pub id: String,
     pub name: String,
     pub active_page_id: String,
@@ -244,6 +251,16 @@ pub struct Profile {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Device {
+    #[serde(default)]
+    pub lighting_presets: Vec<LightingPreset>,
+    #[serde(default)]
+    pub manual_lighting_preset: Option<String>,
+    #[serde(default)]
+    pub provider_descriptor: Option<ProviderDescriptor>,
+    #[serde(default)]
+    pub provider_settings: BTreeMap<String, serde_json::Value>,
+    #[serde(default)]
+    pub hardware_settings: DeviceHardwareSettings,
     pub id: String,
     pub name: String,
     pub provider_id: String,
@@ -258,12 +275,42 @@ pub struct Device {
     pub default_profile: Option<String>,
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct LightingPreset {
+    pub id: String,
+    pub name: String,
+    pub settings: BTreeMap<String, serde_json::Value>,
+}
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct ProviderDescriptor {
+    pub geometry: Geometry,
+    pub definition: serde_json::Value,
+}
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
+pub struct DeviceHardwareSettings {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub screen_brightness: Option<u8>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dial_brightness: Option<u8>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub vibration: Option<bool>,
+}
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+pub struct DeviceExclusion {
+    pub provider_id: String,
+    pub hardware_key: String,
+}
 impl Device {
     pub fn virtual_studio(number: usize) -> Self {
         let page_id = new_id();
         Self {
             id: new_id(),
             name: format!("Virtual Studio {number:02}"),
+            hardware_settings: DeviceHardwareSettings::default(),
+            provider_descriptor: None,
+            provider_settings: BTreeMap::new(),
+            lighting_presets: vec![],
+            manual_lighting_preset: None,
             provider_id: "deckweave.virtual".into(),
             hardware_key: None,
             profiles: vec![],
@@ -285,6 +332,7 @@ impl Device {
                     ]),
                 }],
                 application: None,
+                lighting_preset: None,
             },
         }
     }
@@ -292,11 +340,17 @@ impl Device {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Configuration {
+    #[serde(default = "format_version")]
+    pub format_version: u32,
     pub revision: u64,
     pub locale: Locale,
     #[serde(default)]
     pub preferences: Preferences,
     pub devices: Vec<Device>,
+    #[serde(default)]
+    pub removed_devices: Vec<Device>,
+    #[serde(default)]
+    pub device_exclusions: Vec<DeviceExclusion>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -372,13 +426,19 @@ pub struct LibraryPreferences {
     pub show_development: bool,
 }
 
+fn format_version() -> u32 {
+    2
+}
 impl Default for Configuration {
     fn default() -> Self {
         Self {
+            format_version: 2,
             revision: 0,
             locale: Locale::Ru,
             preferences: Preferences::default(),
             devices: vec![Device::virtual_studio(1)],
+            removed_devices: vec![],
+            device_exclusions: vec![],
         }
     }
 }
@@ -480,13 +540,17 @@ pub fn geometry_for(provider: &str) -> Geometry {
 }
 
 pub fn page_geometry(provider: &str, page: &Page) -> Geometry {
-    let mut geometry = geometry_for(provider);
+    compose_page_geometry(geometry_for(provider), page, true)
+}
+fn compose_page_geometry(mut geometry: Geometry, page: &Page, deck_layout: bool) -> Geometry {
     if let Some(panel) = &page.panel {
-        geometry.surface[3] = geometry.surface[2] * 128.0 / 800.0;
-        geometry.height = 464.0;
-        for c in &mut geometry.controls {
-            if c.kind == ControlKind::Dial {
-                c.rect[1] = 370.0;
+        if deck_layout {
+            geometry.surface[3] = geometry.surface[2] * 128.0 / 800.0;
+            geometry.height = 464.0;
+            for c in &mut geometry.controls {
+                if c.kind == ControlKind::Dial {
+                    c.rect[1] = 370.0;
+                }
             }
         }
         geometry.controls.retain(|c| c.kind != ControlKind::Touch);
@@ -523,15 +587,39 @@ pub fn page_geometry(provider: &str, page: &Page) -> Geometry {
     }
     geometry
 }
+pub fn device_base_geometry(device: &Device) -> Geometry {
+    device
+        .provider_descriptor
+        .as_ref()
+        .map_or_else(|| geometry_for(&device.provider_id), |d| d.geometry.clone())
+}
+pub fn device_page_geometry(device: &Device, page: &Page) -> Geometry {
+    if device.provider_descriptor.is_some() {
+        compose_page_geometry(device_base_geometry(device), page, false)
+    } else {
+        page_geometry(&device.provider_id, page)
+    }
+}
 pub fn device_geometry(device: &Device) -> Geometry {
+    if device.provider_descriptor.is_none()
+        && !["deckweave.virtual", "deckweave.n4"].contains(&device.provider_id.as_str())
+    {
+        return Geometry {
+            width: 1.0,
+            height: 1.0,
+            surface: [0.0, 0.0, 1.0, 1.0],
+            surface_pixels: [1, 1],
+            controls: vec![],
+        };
+    }
     device
         .profile
         .pages
         .iter()
         .find(|p| p.id == device.profile.active_page_id)
         .map_or_else(
-            || geometry_for(&device.provider_id),
-            |p| page_geometry(&device.provider_id, p),
+            || device_base_geometry(device),
+            |p| device_page_geometry(device, p),
         )
 }
 
@@ -688,6 +776,59 @@ pub enum Command {
     AddDevice {
         expected_revision: u64,
     },
+    AllowHardware {
+        provider_id: String,
+        hardware_key: String,
+        expected_revision: u64,
+    },
+    RemoveDevice {
+        device_id: String,
+        expected_revision: u64,
+    },
+    RestoreDevice {
+        device_id: String,
+        expected_revision: u64,
+    },
+    ForgetDevice {
+        device_id: String,
+        expected_revision: u64,
+    },
+    SaveLightingPreset {
+        device_id: String,
+        preset: LightingPreset,
+        expected_revision: u64,
+    },
+    DeleteLightingPreset {
+        device_id: String,
+        preset_id: String,
+        expected_revision: u64,
+    },
+    ProfileLightingPreset {
+        device_id: String,
+        preset_id: Option<String>,
+        expected_revision: u64,
+    },
+    SelectLightingPreset {
+        device_id: String,
+        preset_id: String,
+        expected_revision: u64,
+    },
+    ReleaseLightingEdit {
+        device_id: String,
+    },
+    ReturnToManualLighting {
+        device_id: String,
+    },
+    SetProviderSettings {
+        device_id: String,
+        changes: BTreeMap<String, serde_json::Value>,
+        expected_revision: u64,
+    },
+    SetDeviceHardwareSettings {
+        device_id: String,
+        settings: DeviceHardwareSettings,
+        expected_revision: u64,
+    },
     RenameDevice {
         device_id: String,
         name: String,
@@ -737,6 +878,17 @@ impl Command {
             | Self::CancelActions { device_id, .. }
             | Self::ConfigurePlugin { device_id, .. }
             | Self::PluginSettings { device_id, .. }
+            | Self::RemoveDevice { device_id, .. }
+            | Self::RestoreDevice { device_id, .. }
+            | Self::ForgetDevice { device_id, .. }
+            | Self::SaveLightingPreset { device_id, .. }
+            | Self::DeleteLightingPreset { device_id, .. }
+            | Self::ProfileLightingPreset { device_id, .. }
+            | Self::SelectLightingPreset { device_id, .. }
+            | Self::ReleaseLightingEdit { device_id }
+            | Self::ReturnToManualLighting { device_id }
+            | Self::SetProviderSettings { device_id, .. }
+            | Self::SetDeviceHardwareSettings { device_id, .. }
             | Self::RenameDevice { device_id, .. }
             | Self::ConfigureControl { device_id, .. }
             | Self::AddPage { device_id, .. }
@@ -787,6 +939,36 @@ impl Command {
                 expected_revision, ..
             }
             | Self::AddDevice { expected_revision }
+            | Self::AllowHardware {
+                expected_revision, ..
+            }
+            | Self::RemoveDevice {
+                expected_revision, ..
+            }
+            | Self::RestoreDevice {
+                expected_revision, ..
+            }
+            | Self::ForgetDevice {
+                expected_revision, ..
+            }
+            | Self::SaveLightingPreset {
+                expected_revision, ..
+            }
+            | Self::DeleteLightingPreset {
+                expected_revision, ..
+            }
+            | Self::ProfileLightingPreset {
+                expected_revision, ..
+            }
+            | Self::SelectLightingPreset {
+                expected_revision, ..
+            }
+            | Self::SetProviderSettings {
+                expected_revision, ..
+            }
+            | Self::SetDeviceHardwareSettings {
+                expected_revision, ..
+            }
             | Self::RenameDevice {
                 expected_revision, ..
             }
@@ -802,7 +984,10 @@ impl Command {
             | Self::SetLocale {
                 expected_revision, ..
             } => Some(*expected_revision),
-            Self::Input { .. } | Self::CancelActions { .. } => None,
+            Self::Input { .. }
+            | Self::CancelActions { .. }
+            | Self::ReleaseLightingEdit { .. }
+            | Self::ReturnToManualLighting { .. } => None,
         }
     }
 }
@@ -848,6 +1033,7 @@ pub struct PressedControl {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Snapshot {
+    pub lighting: BTreeMap<String, crate::lighting::LightingStatus>,
     pub configuration: Configuration,
     pub geometries: BTreeMap<String, Geometry>,
     pub connections: BTreeMap<String, DeviceRuntime>,

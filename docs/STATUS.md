@@ -4,6 +4,8 @@
 
 ## Что реализовано
 
+- Управление пакетами действий и поддержки устройств: source-aware удаление/отключение, предварительный список зависимостей, сохранение назначений, durable gate после перезапуска. Remove/Restore/Forget экземпляров, явный rebind без потери профилей. Mirabox: вибрация, яркость экранов и подсветки крутилок. Внешний process host, SDK/шаблон, typed registry; локальный IO Type 84 с отдельным workspace штатной подсветки и Main/Fn/RT. [Как пользоваться, ограничения и физическая приёмка](DEVICE-EXTENSIONS.md).
+
 - Запуск и левый клик tray сразу открывают последний редактор устройства; общие настройки отдельно. В Plugins — обычное включение каждого пакета, установка ZIP / открытых streamDeckPlugin и поиск/архивы релизов из каталога OpenDeck. Обновление назначенного плагина перезапускает его контексты без перезапуска приложения и сохраняет настройки. [Установка и границы](EXTENSIONS.md), [проверка](evidence/2026-11-02/plugin-manager.json).
 
 - Настройка состава/порядка библиотеки рядом с поиском, скрытие служебных Elgato actions и отдельный учёт ресурсов. Action SDK, генератор и проверяемый реестр; новые Audio, Monitor и Timers, профиль Tools на Mirabox. [Результат, проверки и замеры](EXTENSIONS-RESULT.md), [как расширять](EXTENSIONS.md), [только оставшаяся физическая приёмка](EXTENSIONS-ACCEPTANCE.md).
@@ -21,7 +23,11 @@
 
 ## Проверки и доказательства
 
-Общий check: Svelte без ошибок/предупреждений, format, production web, Rust fmt/clippy с запретом предупреждений, 96 Rust-тестов, 19 JS-тестов приложения и документация. Native release: `npm run build`; бинарник `target/release/deckweave-desktop.exe`.
+Общий check: Svelte без ошибок/предупреждений, format, production web, Rust fmt/clippy с запретом предупреждений, 138 Rust-тестов, 22 JS-теста приложения и документация. Дополнительный opt-in тест с настоящим соседним device SDK запущен отдельно и прошёл; обычный suite его пропускает. Native release: `npm run build`; бинарник `target/release/deckweave-desktop.exe`.
+
+Native lifecycle smoke с изолированной базой и двумя mock instances прошёл: установка/обновление/отключение/удаление/повторная установка, настройки, restart gate и remove/restore экземпляров. [Результат](evidence/2026-11-02/device-extension-lifecycle-smoke.json). IO Type 84 прошёл guarded read-only discover/open/read/close на реальной клавиатуре без SET. Подтверждены 84 записи Main/Fn/actuation и только один адрес индивидуального цвета; неподтверждённые адреса отключены в UI. Физические эффекты и стойкость настроек ещё не приняты.
+
+В native UI проверены поиск/подтверждение удаления, сохранённые устройства, параметры Mirabox, реальное обнаружение и явное повторное сопоставление IO, вкладка освещения и поля выбранной клавиши. [Зафиксированные наблюдения](evidence/2026-11-02/device-extension-ui.json). Пустой общий блок над настройками клавиатуры убран; recovery/error остаются доступны.
 
 Через Windows UI проверены native Panel drag, оригинальный PI своего плагина с немедленным сохранением и выполнением, Switch A/B/A на одной кнопке, оригинальный PI установленного OnAirClock и смена 24/12 часов. Закрытие всех окон, повторное открытие runtime и завершение всего собственного дерева Edge проверены исполнением. Подробности: [журнал результата](RUNTIME-PROGRESS.md), [совместимость](PLUGIN-COMPATIBILITY.md), [историческая аппаратная приёмка](N4-ACCEPTANCE.md).
 
@@ -31,6 +37,6 @@ OBS: собственный plugin по obs-websocket 5; challenge authenticatio
 
 Физическая приёмка новых touch координат/жестов, D2–D4 и reconnect подтверждена владельцем 2026-11-02: [результат](ACCEPTANCE-NEXT.md). Замечания к редактору и читаемости изображения разобраны в [изменениях интерфейса](EDITOR-REFINEMENT.md).
 
-SDK действий уже доступен: [workflow](EXTENSIONS.md). Внешний hardware process provider/SDK драйверов ещё не реализован: N4 встроен, граница описана в [provider contract](PROVIDER-CONTRACT.md). Установка архивов и пакетов из каталога OpenDeck доступна; прямой установки из Elgato Marketplace, импорта профилей Elgato/старого проекта, полного SDK resources/app monitoring и pixel-perfect всех feedback styles нет. Редактор профилей/папок пока покрывает создание и навигацию, не полный CRUD и все удобства Elgato. Packaging/runtime distribution, длительные нагрузочные прогоны и macOS/Linux не завершены. IO84/MX4/Android и sync groups остаются отложенными по принятым решениям.
+SDK действий доступен: [workflow](EXTENSIONS.md). Внешний hardware process host/SDK реализован предварительно; LCD output и touch events внешних providers ещё не подключены. N4 встроен и работает по прежнему полному пути: [provider contract](PROVIDER-CONTRACT.md). Установка архивов и пакетов из каталога OpenDeck доступна; прямой установки из Elgato Marketplace, импорта профилей Elgato/старого проекта, полного SDK resources/app monitoring и pixel-perfect всех feedback styles нет. Редактор профилей/папок пока покрывает создание и навигацию, не полный CRUD и все удобства Elgato. Packaging/runtime distribution, длительные нагрузочные прогоны и macOS/Linux не завершены. IO84 прошёл первое read-only подключение; фактическая запись/видимые эффекты, глубина и захват ещё не приняты. MX4/Android и sync groups отложены.
 
 Это сохранённый объём оставшейся работы, а не исключение обязательных функций v1. [Полный план](PLAN.md), [ближайшее продолжение](NEXT.md), [решения владельца](DECISIONS.md).

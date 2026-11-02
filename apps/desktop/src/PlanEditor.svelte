@@ -32,6 +32,42 @@
 </script>
 
 <div class="plan-fields">
+  {#if value.type === 'lighting_preset'}
+    {@const lighting = value}
+    <label
+      >{t('lighting_preset')}<select
+        value={lighting.preset_id}
+        onchange={(e) => onchange({ ...lighting, preset_id: e.currentTarget.value })}
+      >
+        {#if !device.lighting_presets.some((p) => p.id === lighting.preset_id)}<option
+            value={lighting.preset_id}
+            disabled>{locale === 'ru' ? 'Пресет отсутствует' : 'Preset missing'}</option
+          >{/if}
+        {#each device.lighting_presets as preset}<option value={preset.id}>{preset.name}</option
+          >{/each}
+      </select></label
+    >
+    <label
+      >{locale === 'ru'
+        ? 'Вернуть ручной режим через (мс; пусто — постоянно)'
+        : 'Return to manual after (ms; blank = permanent)'}<input
+        type="number"
+        min="1"
+        max="86400000"
+        value={lighting.temporary_ms ?? undefined}
+        onchange={(e) =>
+          onchange({
+            ...lighting,
+            temporary_ms: e.currentTarget.value === '' ? null : e.currentTarget.valueAsNumber,
+          })}
+      /></label
+    >
+    <p>
+      {locale === 'ru'
+        ? 'Временный режим доступен только для проверенного временного вывода. Он не включает перезапись постоянных настроек клавиатуры.'
+        : 'Temporary mode requires verified volatile output. It does not rewrite persistent keyboard settings temporarily.'}
+    </p>
+  {/if}
   {#if value.type === 'dial_bindings'}
     {@const dial = value}
     {#each ['left', 'right', 'press', 'tap'] as branch}{@const key = branch as

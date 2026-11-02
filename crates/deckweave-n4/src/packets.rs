@@ -18,6 +18,31 @@ pub fn heartbeat() -> [u8; REPORT_SIZE] {
 pub fn clear_background() -> [u8; REPORT_SIZE] {
     command(b"BGCLE\x03")
 }
+/// Matches the established N4 driver: perceptual slider percentage to device percentage.
+fn brightness_percent(value: u8) -> u8 {
+    ((f64::from(value.min(100)) / 100.0).powf(0.75) * 100.0).round() as u8
+}
+pub fn screen_brightness(value: u8) -> [u8; REPORT_SIZE] {
+    command(&[b'L', b'I', b'G', 0, 0, brightness_percent(value)])
+}
+pub fn dial_brightness(value: u8) -> [u8; REPORT_SIZE] {
+    command(&[b'L', b'B', b'L', b'I', b'G', brightness_percent(value)])
+}
+pub fn vibration(enabled: bool) -> [u8; REPORT_SIZE] {
+    command(&[
+        b'Q',
+        b'U',
+        b'C',
+        b'M',
+        b'D',
+        0x11,
+        0x11,
+        0x11,
+        if enabled { 0x11 } else { 0xff },
+        0x11,
+        0x11,
+    ])
+}
 pub fn key_image(
     key: u8,
     jpeg: &[u8],
@@ -63,6 +88,19 @@ pub fn strip_image(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn hardware_settings_match_existing_n4_driver_without_changing_image_packets() {
+        assert_eq!(&screen_brightness(50)[6..12], b"LIG\0\0\x3b");
+        assert_eq!(&dial_brightness(50)[6..12], b"LBLIG\x3b");
+        for (value, wire) in [(0, 0), (1, 3), (25, 35), (75, 81), (100, 100), (255, 100)] {
+            assert_eq!(screen_brightness(value)[11], wire);
+            assert_eq!(dial_brightness(value)[11], wire);
+        }
+        assert_eq!(&vibration(false)[6..17], b"QUCMD\x11\x11\x11\xff\x11\x11");
+        assert_eq!(&vibration(true)[6..17], b"QUCMD\x11\x11\x11\x11\x11\x11");
+        assert!(vibration(false)[17..].iter().all(|b| *b == 0));
+        assert_eq!(&vibration(false)[1..6], b"CRT\0\0");
+    }
     #[test]
     fn strip_uses_bounded_volatile_region_and_aborts_on_incomplete_transaction() {
         let mut reports = vec![];

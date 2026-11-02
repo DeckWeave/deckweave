@@ -6,9 +6,23 @@ use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIcon, TrayIconBuilder, TrayIconEvent},
 };
 
+#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SettingsSection {
+    #[default]
+    General,
+    Devices,
+    Plugins,
+    About,
+}
+#[derive(Clone, Default, serde::Serialize)]
+pub struct SettingsContext {
+    pub device_id: Option<String>,
+    pub section: SettingsSection,
+}
 pub struct Shell {
     pub window_creation: std::sync::Mutex<()>,
-    pub settings_device: std::sync::Mutex<Option<String>>,
+    pub settings_context: std::sync::Mutex<SettingsContext>,
     pub quitting: AtomicBool,
     open: MenuItem<tauri::Wry>,
     settings: MenuItem<tauri::Wry>,
@@ -51,7 +65,7 @@ impl Shell {
         let tray = builder.build(app)?;
         Ok(Self {
             window_creation: std::sync::Mutex::new(()),
-            settings_device: std::sync::Mutex::new(None),
+            settings_context: std::sync::Mutex::new(SettingsContext::default()),
             quitting: AtomicBool::new(false),
             open,
             settings,

@@ -10,7 +10,7 @@
   const t = $derived((key: Parameters<typeof text>[1]) => text(config.locale, key));
   $effect(() => {
     if (client.settingsRequest) {
-      tab = client.settingsDevice ? 'devices' : 'general';
+      tab = client.settingsSection;
     }
   });
   function preference(update: Partial<Preferences>) {

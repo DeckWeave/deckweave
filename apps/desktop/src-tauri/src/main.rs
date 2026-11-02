@@ -1,8 +1,11 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use deckweave_core::{Command, Core, Error, Snapshot};
+mod device_providers;
 mod engine;
+mod extension_management;
 mod hardware;
+mod plugin_lifecycle;
 mod plugin_manager;
 mod plugins;
 mod shell;
@@ -21,8 +24,16 @@ enum Application {
         hardware: Hardware,
         plugins: plugins::Host,
         engine: engine::Engine,
+        device_providers: device_providers::Host,
     },
     Failed(Error),
+}
+
+#[derive(serde::Serialize)]
+struct AppSnapshot {
+    #[serde(flatten)]
+    hardware: LiveSnapshot,
+    provider_inventory: device_providers::ProviderSnapshot,
 }
 
 fn locked(state: &Application) -> Result<std::sync::MutexGuard<'_, Core>, Error> {
@@ -38,7 +49,7 @@ fn locked(state: &Application) -> Result<std::sync::MutexGuard<'_, Core>, Error>
 fn get_snapshot(
     window: WebviewWindow,
     state: State<'_, Application>,
-) -> Result<LiveSnapshot, Error> {
+) -> Result<AppSnapshot, Error> {
     if window.label() != "main" && !window.label().starts_with("device-") {
         return Err(Error::new(
             "window",
@@ -49,9 +60,16 @@ fn get_snapshot(
     live(&state, snapshot)
 }
 
-fn live(state: &Application, snapshot: Snapshot) -> Result<LiveSnapshot, Error> {
+fn live(state: &Application, snapshot: Snapshot) -> Result<AppSnapshot, Error> {
     match state {
-        Application::Ready { hardware, .. } => Ok(hardware.snapshot(snapshot)),
+        Application::Ready {
+            hardware,
+            device_providers,
+            ..
+        } => Ok(AppSnapshot {
+            hardware: hardware.snapshot(snapshot),
+            provider_inventory: device_providers.snapshot(),
+        }),
         Application::Failed(error) => Err(error.clone()),
     }
 }
@@ -62,7 +80,7 @@ fn dispatch(
     window: WebviewWindow,
     app: tauri::AppHandle,
     state: State<'_, Application>,
-) -> Result<LiveSnapshot, Error> {
+) -> Result<AppSnapshot, Error> {
     let label = window.label();
     if !permitted(label, &command) {
         return Err(Error::new(
@@ -70,7 +88,43 @@ fn dispatch(
             "This window cannot change the requested device",
         ));
     }
+    let closing = if let Command::RemoveDevice { device_id, .. } = &command {
+        let config = locked(&state)?.snapshot().configuration;
+        let mut contexts = std::collections::BTreeSet::new();
+        fn collect(
+            binding: &deckweave_core::Binding,
+            out: &mut std::collections::BTreeSet<String>,
+        ) {
+            out.insert(binding.id.clone());
+            for child in binding.children() {
+                collect(child, out);
+            }
+        }
+        if let Some(device) = config.devices.iter().find(|d| d.id == *device_id) {
+            for binding in device.pinned.values().chain(
+                std::iter::once(&device.profile)
+                    .chain(&device.profiles)
+                    .flat_map(|p| &p.pages)
+                    .flat_map(|p| p.bindings.values()),
+            ) {
+                collect(binding, &mut contexts);
+            }
+        }
+        Some((device_id.clone(), contexts))
+    } else {
+        None
+    };
     let snapshot = locked(&state)?.dispatch(command, label)?;
+    if let Some((id, contexts)) = closing {
+        if let Some(window) = app.get_webview_window(&format!("device-{id}")) {
+            let _ = window.close();
+        }
+        for context in contexts {
+            if let Some(window) = app.get_webview_window(&format!("pi-{context}")) {
+                let _ = window.close();
+            }
+        }
+    }
     if let Some(shell) = app.try_state::<shell::Shell>() {
         shell.locale(snapshot.configuration.locale);
     }
@@ -90,8 +144,29 @@ fn permitted(label: &str, command: &Command) -> bool {
                 | Command::SetPreferences { .. }
                 | Command::DevicePreferences { .. }
                 | Command::RenameDevice { .. }
+                | Command::RemoveDevice { .. }
+                | Command::RestoreDevice { .. }
+                | Command::ForgetDevice { .. }
+                | Command::AllowHardware { .. }
+                | Command::SetDeviceHardwareSettings { .. }
+                | Command::SetProviderSettings { .. }
+                | Command::SaveLightingPreset { .. }
+                | Command::DeleteLightingPreset { .. }
+                | Command::ProfileLightingPreset { .. }
+                | Command::SelectLightingPreset { .. }
+                | Command::ReleaseLightingEdit { .. }
+                | Command::ReturnToManualLighting { .. }
         )
     } else if let Some(id) = label.strip_prefix("device-") {
+        if matches!(
+            command,
+            Command::RemoveDevice { .. }
+                | Command::RestoreDevice { .. }
+                | Command::ForgetDevice { .. }
+                | Command::AllowHardware { .. }
+        ) {
+            return false;
+        }
         matches!(
             command,
             Command::SetLocale { .. } | Command::SetPreferences { .. }
@@ -101,6 +176,64 @@ fn permitted(label: &str, command: &Command) -> bool {
     }
 }
 
+#[tauri::command]
+fn device_provider_status(
+    window: WebviewWindow,
+    state: State<'_, Application>,
+) -> Result<device_providers::ProviderSnapshot, Error> {
+    if window.label() != "main" && !window.label().starts_with("device-") {
+        return Err(Error::new("window", "Not an editor window"));
+    }
+    match state.inner() {
+        Application::Ready {
+            device_providers, ..
+        } => Ok(device_providers.snapshot()),
+        Application::Failed(e) => Err(e.clone()),
+    }
+}
+#[tauri::command]
+fn add_provider_device(
+    provider_id: String,
+    instance_id: String,
+    device_id: Option<String>,
+    window: WebviewWindow,
+    state: State<'_, Application>,
+) -> Result<String, Error> {
+    if window.label() != "main" {
+        return Err(Error::new(
+            "window",
+            "Add devices from application settings",
+        ));
+    }
+    match state.inner() {
+        Application::Ready {
+            device_providers, ..
+        } => match device_id {
+            Some(id) => device_providers.rebind(&id, &provider_id, &instance_id),
+            None => device_providers.add(&provider_id, &instance_id),
+        }
+        .map_err(|e| Error::new("provider", e)),
+        Application::Failed(e) => Err(e.clone()),
+    }
+}
+#[tauri::command]
+fn refresh_provider_state(
+    device_id: String,
+    window: WebviewWindow,
+    state: State<'_, Application>,
+) -> Result<(), Error> {
+    if window.label() != "main" && window.label() != format!("device-{device_id}") {
+        return Err(Error::new("window", "Device belongs to another editor"));
+    }
+    match state.inner() {
+        Application::Ready {
+            device_providers, ..
+        } => device_providers
+            .refresh(&device_id)
+            .map_err(|e| Error::new("provider", e)),
+        Application::Failed(e) => Err(e.clone()),
+    }
+}
 #[tauri::command]
 fn list_plugins(
     window: WebviewWindow,
@@ -113,6 +246,55 @@ fn list_plugins(
         Application::Ready { plugins, .. } => Ok(plugins.packages()),
         Application::Failed(e) => Err(e.clone()),
     }
+}
+
+fn provider_window(window: &WebviewWindow, device_id: &str) -> Result<(), String> {
+    if window.label() == "main" || window.label() == format!("device-{device_id}") {
+        Ok(())
+    } else {
+        Err("Device belongs to another editor".into())
+    }
+}
+#[tauri::command]
+async fn provider_recovery_preview(
+    device_id: String,
+    snapshot_id: Option<String>,
+    window: WebviewWindow,
+    app: tauri::AppHandle,
+) -> Result<serde_json::Value, String> {
+    provider_window(&window, &device_id)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<Application>();
+        match state.inner() {
+            Application::Ready {
+                device_providers, ..
+            } => device_providers.recovery_preview(&device_id, snapshot_id.as_deref()),
+            Application::Failed(e) => Err(e.to_string()),
+        }
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+#[tauri::command]
+async fn recover_provider_settings(
+    device_id: String,
+    preview_token: String,
+    confirmed_instance_id: String,
+    window: WebviewWindow,
+    app: tauri::AppHandle,
+) -> Result<serde_json::Value, String> {
+    provider_window(&window, &device_id)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<Application>();
+        match state.inner() {
+            Application::Ready {
+                device_providers, ..
+            } => device_providers.recover(&device_id, &preview_token, &confirmed_instance_id),
+            Application::Failed(e) => Err(e.to_string()),
+        }
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
@@ -270,28 +452,40 @@ async fn open_settings(
     window: WebviewWindow,
     app: tauri::AppHandle,
     device_id: Option<String>,
+    section: Option<shell::SettingsSection>,
 ) -> Result<(), Error> {
     if window.label() != "main" && !window.label().starts_with("device-") {
         return Err(Error::new("window", "Not an editor window"));
     }
+    let context = shell::SettingsContext {
+        section: section.unwrap_or(if device_id.is_some() {
+            shell::SettingsSection::Devices
+        } else {
+            shell::SettingsSection::General
+        }),
+        device_id,
+    };
     if let Some(shell) = app.try_state::<shell::Shell>() {
         *shell
-            .settings_device
+            .settings_context
             .lock()
-            .map_err(|_| Error::new("window", "Settings are unavailable"))? = device_id.clone();
+            .map_err(|_| Error::new("window", "Settings are unavailable"))? = context.clone();
     }
     shell::show_registry(&app);
-    let _ = app.emit("deckweave:settings", device_id);
+    let _ = app.emit("deckweave:settings", context);
     Ok(())
 }
 
 #[tauri::command]
-fn settings_context(window: WebviewWindow, app: tauri::AppHandle) -> Result<Option<String>, Error> {
+fn settings_context(
+    window: WebviewWindow,
+    app: tauri::AppHandle,
+) -> Result<shell::SettingsContext, Error> {
     if window.label() != "main" {
         return Err(Error::new("window", "Not a settings window"));
     }
     app.state::<shell::Shell>()
-        .settings_device
+        .settings_context
         .lock()
         .map(|v| v.clone())
         .map_err(|_| Error::new("window", "Settings are unavailable"))
@@ -332,10 +526,18 @@ fn main() {
                     let plugins = plugins::Host::start(
                         Arc::clone(&core),
                         app.handle().clone(),
-                        directory,
+                        directory.clone(),
                         hardware.invalidation(),
+                        Arc::clone(&app.state::<plugin_manager::Manager>().lifecycle),
                     );
                     startup("plugins");
+                    let device_providers = device_providers::Host::start(
+                        Arc::clone(&core),
+                        app.handle().clone(),
+                        hardware.invalidation(),
+                        directory,
+                        Arc::clone(&app.state::<plugin_manager::Manager>().lifecycle),
+                    );
                     let engine = engine::Engine::start(
                         Arc::clone(&core),
                         app.handle().clone(),
@@ -346,6 +548,7 @@ fn main() {
                         hardware,
                         plugins,
                         engine,
+                        device_providers,
                     }
                 }
                 Err(error) => Application::Failed(error),
@@ -392,6 +595,16 @@ fn main() {
             plugin_manager::plugin_prepare_asset,
             plugin_manager::plugin_commit,
             plugin_manager::plugin_discard,
+            extension_management::plugin_inventory,
+            extension_management::plugin_lifecycle_history,
+            extension_management::plugin_removal_preview,
+            extension_management::plugin_remove,
+            extension_management::plugin_reconnect,
+            device_provider_status,
+            add_provider_device,
+            refresh_provider_state,
+            provider_recovery_preview,
+            recover_provider_settings,
             shell::quit_application
         ])
         .build(context);
@@ -411,9 +624,11 @@ fn main() {
                     hardware,
                     plugins,
                     engine,
+                    device_providers,
                     ..
                 } = state.inner()
             {
+                device_providers.stop();
                 plugins.stop();
                 engine.stop();
                 hardware.stop();

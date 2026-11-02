@@ -27,8 +27,12 @@ enum Request {
         reply: Sender<Result<(String, String), String>>,
     },
     Restart(String),
-    Pause(String, Sender<()>),
-    Resume(String, Sender<()>),
+    Pause(String, Sender<Result<(), String>>),
+    Resume(String, Sender<Result<(), String>>),
+}
+struct RuntimeStorage {
+    directory: PathBuf,
+    lifecycle: Arc<crate::plugin_lifecycle::Store>,
 }
 pub struct Host {
     catalog: Arc<Mutex<Vec<Package>>>,
@@ -36,6 +40,7 @@ pub struct Host {
     requests: Sender<Request>,
     stop: Arc<AtomicBool>,
     thread: Mutex<Option<JoinHandle<()>>>,
+    lifecycle: Arc<crate::plugin_lifecycle::Store>,
 }
 impl Host {
     pub fn start(
@@ -43,6 +48,7 @@ impl Host {
         app: tauri::AppHandle,
         directory: PathBuf,
         epoch: Arc<AtomicU64>,
+        lifecycle: Arc<crate::plugin_lifecycle::Store>,
     ) -> Self {
         let mut roots = vec![
             directory.join("plugins"),
@@ -55,14 +61,28 @@ impl Host {
         let stop = Arc::new(AtomicBool::new(false));
         let (tx, rx) = mpsc::channel();
         let (packages, stopping) = (catalog.clone(), stop.clone());
-        let thread =
-            thread::spawn(move || run(core, app, directory, epoch, packages, stopping, rx));
+        let gate = lifecycle.clone();
+        let thread = thread::spawn(move || {
+            run(
+                core,
+                app,
+                RuntimeStorage {
+                    directory,
+                    lifecycle: gate,
+                },
+                epoch,
+                packages,
+                stopping,
+                rx,
+            )
+        });
         Self {
             catalog,
             roots,
             requests: tx,
             stop,
             thread: Mutex::new(Some(thread)),
+            lifecycle,
         }
     }
     pub fn pause(&self, id: &str) -> Result<(), String> {
@@ -71,7 +91,7 @@ impl Host {
             .send(Request::Pause(id.into(), tx))
             .map_err(|_| "Plugin host stopped")?;
         rx.recv_timeout(Duration::from_secs(10))
-            .map_err(|_| "Plugin stop timed out".into())
+            .map_err(|_| "Plugin stop timed out".to_string())?
     }
     pub fn reload(&self, id: &str) -> Result<(), String> {
         let packages = catalog::scan(&self.roots);
@@ -84,10 +104,40 @@ impl Host {
             .send(Request::Resume(id.into(), tx))
             .map_err(|_| "Plugin host stopped")?;
         rx.recv_timeout(Duration::from_secs(10))
-            .map_err(|_| "Plugin reload timed out".into())
+            .map_err(|_| "Plugin reload timed out".to_string())?
     }
     pub fn packages(&self) -> Vec<Package> {
-        self.catalog.lock().map(|v| v.clone()).unwrap_or_default()
+        let mut packages = self.catalog.lock().map(|v| v.clone()).unwrap_or_default();
+        for package in &mut packages {
+            if !self.lifecycle.allows(&package.id) {
+                package.error = Some(
+                    "Plugin disconnected. Reconnect or reinstall it in application settings."
+                        .into(),
+                );
+            }
+        }
+        packages
+    }
+    pub fn candidates(&self) -> Vec<(String, Package)> {
+        self.roots
+            .iter()
+            .enumerate()
+            .flat_map(|(i, root)| {
+                catalog::scan(std::slice::from_ref(root))
+                    .into_iter()
+                    .map(move |p| {
+                        (
+                            match i {
+                                0 => "managed",
+                                1 => "repository",
+                                _ => "elgato",
+                            }
+                            .into(),
+                            p,
+                        )
+                    })
+            })
+            .collect()
     }
     pub fn inspector(&self, context: String) -> Result<(String, String), Error> {
         let (tx, rx) = mpsc::channel();
@@ -193,7 +243,7 @@ impl Session {
             self.error = Some(e.to_string());
         }
     }
-    fn close(mut self, app: &tauri::AppHandle, net: &Network) {
+    fn close(mut self, app: &tauri::AppHandle, net: &Network, wait: bool) -> Result<(), String> {
         net.remove(&self.token);
         let contexts: BTreeSet<_> = self
             .slots
@@ -205,25 +255,52 @@ impl Session {
         for id in &contexts {
             net.remove(id);
         }
-        let handle = app.clone();
-        let _ = app.run_on_main_thread(move || {
-            for id in contexts {
-                if let Some(window) = handle.get_webview_window(&format!("pi-{id}")) {
-                    let _ = window.close();
-                }
-            }
-        });
-        if let Some(mut child) = self.child.take() {
-            let _ = child.kill();
-            let _ = child.wait();
+        if let Some(mut child) = self.child.take()
+            && child
+                .try_wait()
+                .map_err(|error| error.to_string())?
+                .is_none()
+        {
+            child
+                .kill()
+                .map_err(|error| format!("Could not stop plugin: {error}"))?;
+            child.wait().map_err(|error| error.to_string())?;
         }
+        self.process_tree = None;
+        let mut labels: Vec<_> = contexts
+            .into_iter()
+            .map(|id| format!("pi-{id}"))
+            .filter(|label| app.get_webview_window(label).is_some())
+            .collect();
         if let Some(label) = self.window.take() {
-            let handle = app.clone();
-            let _ = app.run_on_main_thread(move || {
-                if let Some(w) = handle.get_webview_window(&label) {
-                    let _ = w.close();
+            labels.push(label);
+        }
+        if labels.is_empty() {
+            return Ok(());
+        }
+        let handle = app.clone();
+        let (reply, result) = mpsc::channel();
+        app.run_on_main_thread(move || {
+            let closed = labels.into_iter().try_for_each(|label| {
+                if let Some(window) = handle.get_webview_window(&label) {
+                    window
+                        .destroy()
+                        .map_err(|error| format!("Could not stop plugin window: {error}"))?;
                 }
+                Ok(())
             });
+            let _ = reply.send(closed);
+        })
+        .map_err(|error| error.to_string())?;
+        // During application Exit the event loop itself is waiting for Host::stop.
+        // Package operations run on a blocking worker and require this teardown barrier.
+        if wait {
+            result.recv_timeout(Duration::from_secs(5)).map_err(|_| {
+                "Plugin window stop is unconfirmed. Restart DeckWeave before retrying cleanup."
+                    .to_string()
+            })?
+        } else {
+            Ok(())
         }
     }
 }
@@ -594,12 +671,16 @@ fn start(
 fn run(
     core: Arc<Mutex<Core>>,
     app: tauri::AppHandle,
-    directory: PathBuf,
+    storage: RuntimeStorage,
     epoch: Arc<AtomicU64>,
     packages: Arc<Mutex<Vec<Package>>>,
     stop: Arc<AtomicBool>,
     requests: Receiver<Request>,
 ) {
+    let RuntimeStorage {
+        directory,
+        lifecycle,
+    } = storage;
     let mut net = None;
     let mut sessions: BTreeMap<String, Session> = BTreeMap::new();
     let mut last_revision = u64::MAX;
@@ -609,23 +690,35 @@ fn run(
     let mut active = BTreeMap::new();
     let mut assigned = BTreeSet::new();
     let mut paused = BTreeSet::new();
+    let mut close_failures: BTreeMap<String, String> = BTreeMap::new();
     let mut disabled_plugins = snapshot.configuration.preferences.disabled_plugins.clone();
+    let mut removed_packages = BTreeSet::new();
     while !stop.load(Ordering::Relaxed) {
         let mut pending_requests = vec![];
         while let Ok(request) = requests.try_recv() {
             match request {
                 Request::Pause(id, reply) => {
                     paused.insert(id.clone());
-                    if let Some(session) = sessions.remove(&id)
+                    let result = if let Some(session) = sessions.remove(&id)
                         && let Some(network) = &net
                     {
-                        session.close(&app, network);
+                        session.close(&app, network, true)
+                    } else {
+                        close_failures.get(&id).cloned().map_or(Ok(()), Err)
+                    };
+                    if let Err(error) = &result {
+                        close_failures.insert(id, error.clone());
                     }
-                    let _ = reply.send(());
+                    let _ = reply.send(result);
                 }
                 Request::Resume(id, reply) => {
-                    paused.remove(&id);
-                    let _ = reply.send(());
+                    let result = if let Some(error) = close_failures.get(&id) {
+                        Err(error.clone())
+                    } else {
+                        paused.remove(&id);
+                        Ok(())
+                    };
+                    let _ = reply.send(result);
                 }
                 other => pending_requests.push(other),
             }
@@ -673,13 +766,52 @@ fn run(
             .values()
             .filter_map(|s| s.binding.plugin.as_ref().map(|p| p.package.clone()))
             .collect();
+        let removed: BTreeSet<_> = needed
+            .iter()
+            .filter(|id| !lifecycle.allows(id))
+            .cloned()
+            .collect();
+        if removed != removed_packages {
+            for slot in active.values().filter(|slot| {
+                slot.binding
+                    .plugin
+                    .as_ref()
+                    .is_some_and(|p| removed.contains(&p.package))
+            }) {
+                feedback(
+                    &core,
+                    &app,
+                    &epoch,
+                    &slot.binding.id,
+                    "error",
+                    json!({"message": if snapshot.configuration.locale == deckweave_core::Locale::Ru { "Плагин удалён или отключён. Восстановите его в общих настройках." } else { "Plugin removed or disconnected. Restore it in application settings." }}),
+                );
+            }
+            removed_packages = removed;
+        }
         if !needed.is_empty() && net.is_none() {
             net = Network::start().ok();
         }
         if let Some(network) = &net {
+            let blocked: Vec<_> = sessions
+                .keys()
+                .filter(|id| !lifecycle.allows(id))
+                .cloned()
+                .collect();
+            for id in blocked {
+                if let Some(session) = sessions.remove(&id)
+                    && let Err(error) = session.close(&app, network, true)
+                {
+                    paused.insert(id.clone());
+                    close_failures.insert(id, error);
+                }
+            }
             for id in &changed_plugins {
-                if let Some(session) = sessions.remove(id) {
-                    session.close(&app, network);
+                if let Some(session) = sessions.remove(id)
+                    && let Err(error) = session.close(&app, network, true)
+                {
+                    paused.insert(id.clone());
+                    close_failures.insert(id.clone(), error);
                 }
             }
             let unused: Vec<_> = sessions
@@ -692,10 +824,16 @@ fn run(
                     for slot in s.slots.values().cloned().collect::<Vec<_>>() {
                         s.send(slot.event("willDisappear"));
                     }
-                    s.close(&app, network);
+                    if let Err(error) = s.close(&app, network, true) {
+                        paused.insert(id.clone());
+                        close_failures.insert(id, error);
+                    }
                 }
             }
-            for id in needed.iter().filter(|id| !paused.contains(*id)) {
+            for id in needed
+                .iter()
+                .filter(|id| !paused.contains(*id) && lifecycle.allows(id))
+            {
                 if !sessions.contains_key(id) {
                     let package = packages
                         .lock()
@@ -724,8 +862,11 @@ fn run(
                 match request {
                     Request::Pause(..) | Request::Resume(..) => {}
                     Request::Restart(id) => {
-                        if let Some(s) = sessions.remove(&id) {
-                            s.close(&app, network);
+                        if let Some(s) = sessions.remove(&id)
+                            && let Err(error) = s.close(&app, network, true)
+                        {
+                            paused.insert(id.clone());
+                            close_failures.insert(id.clone(), error);
                         }
                     }
                     Request::Inspector { context, reply } => {
@@ -836,6 +977,9 @@ fn run(
                     }
                 }
                 for (pi, message) in incoming {
+                    if !lifecycle.allows(id) {
+                        break;
+                    }
                     handle(
                         session,
                         pi.as_deref(),
@@ -853,6 +997,19 @@ fn run(
                 }
             }
             for input in inputs {
+                if let Some(plugin) = &input.binding.plugin
+                    && !lifecycle.allows(&plugin.package)
+                {
+                    if let Ok(mut core) = core.lock() {
+                        core.action_error(
+                            &input.device_id,
+                            &input.owner_id,
+                            "Plugin removed or disconnected",
+                        );
+                    }
+                    notify(&app, &epoch);
+                    continue;
+                }
                 if let Some(plugin) = input.binding.plugin.as_ref()
                     && let Some(session) = sessions.get_mut(&plugin.package)
                     && let Some(slot) = session.slots.get(&input.binding.id).cloned()
@@ -926,7 +1083,7 @@ fn run(
     }
     if let Some(net) = net {
         for (_, s) in sessions {
-            s.close(&app, &net);
+            let _ = s.close(&app, &net, false);
         }
     }
 }
