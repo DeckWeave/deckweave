@@ -64,6 +64,9 @@ pub struct DiscoveredDevice {
 }
 #[derive(Clone, Serialize)]
 pub struct SessionStatus {
+    pub generation: u64,
+    pub settings_edit: u64,
+    pub read_sequence: u64,
     pub state: String,
     pub observed: Value,
     pub requested: Value,
@@ -169,6 +172,9 @@ struct Shared {
     recovery_packages: Mutex<BTreeSet<String>>,
     controls: Mutex<VecDeque<RecoveryRequest>>,
     observations: Mutex<BTreeMap<String, Observation>>,
+    // A provider process may restart while an editor awaits a terminal ACK.
+    // Never reuse its session generation within this application lifetime.
+    next_generation: AtomicU64,
 }
 struct RecoveryRequest {
     device: String,
@@ -209,6 +215,7 @@ impl Host {
             recovery_packages: Mutex::new(BTreeSet::new()),
             controls: Mutex::new(VecDeque::new()),
             observations: Mutex::new(BTreeMap::new()),
+            next_generation: AtomicU64::new(0),
         });
         let repo = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .ancestors()
@@ -241,6 +248,16 @@ impl Host {
             .lock()
             .map(|value| value.clone())
             .unwrap_or_default()
+    }
+    /// Cached state for one editor. Does not clone catalog descriptors or wait for hardware.
+    pub fn session(&self, device: &str) -> Option<SessionStatus> {
+        self.shared
+            .inventory
+            .lock()
+            .ok()?
+            .sessions
+            .get(device)
+            .cloned()
     }
     /// Explicit pairing only. Discovery never creates a Core device or writes hardware.
     pub fn add(&self, provider_id: &str, instance_id: &str) -> Result<String, String> {
@@ -603,7 +620,7 @@ impl Shared {
             });
             if !live {
                 if let Ok(mut inventory) = self.inventory.lock() {
-                    inventory.sessions.insert(output.device_id,SessionStatus { state:"offline".into(),observed:json!({}),requested:json!(output.changes),evidence:json!({"transport":"unknown","readback":"unknown","physical":"unknown"}),recovery:Value::Null,error:Some("Device is not connected. This output was not queued; reconnect and request it again.".into()) });
+                    inventory.sessions.insert(output.device_id,SessionStatus { generation:0,settings_edit:0,read_sequence:0,state:"offline".into(),observed:json!({}),requested:json!(output.changes),evidence:json!({"transport":"unknown","readback":"unknown","physical":"unknown"}),recovery:Value::Null,error:Some("Device is not connected. This output was not queued; reconnect and request it again.".into()) });
                 }
                 self.notify(false);
                 continue;
@@ -1084,7 +1101,7 @@ enum Operation {
     Hello,
     Discover,
     Open(String),
-    Read(String),
+    Read(String, bool),
     Settings(String, BTreeMap<String, Value>, u64),
     Close(String),
     Observe(String, bool),
@@ -1110,6 +1127,7 @@ struct Session {
     observation_needs_stop: bool,
     last_observe: Instant,
     depth_sequence: u64,
+    read_sequence: u64,
     recovery_preview: Option<RecoveryAuthorization>,
 }
 struct RecoveryAuthorization {
@@ -1171,7 +1189,6 @@ struct ProcessState {
     sessions: BTreeMap<String, Session>,
     pending: BTreeMap<String, Pending>,
     next_request: u64,
-    next_generation: u64,
     hello: bool,
 }
 impl ProcessState {
@@ -1479,7 +1496,6 @@ fn process(
         sessions: BTreeMap::new(),
         pending: BTreeMap::new(),
         next_request: 0,
-        next_generation: 0,
         hello: false,
     };
     state.request(
@@ -1504,7 +1520,11 @@ fn process(
             {
                 return Err("Device provider exited".into());
             }
-            while let Ok(message) = transport.read.try_recv() {
+            // Continuous telemetry must not starve control reconciliation and deadlines.
+            for _ in 0..QUEUE {
+                let Ok(message) = transport.read.try_recv() else {
+                    break;
+                };
                 match message {
                     PipeEvent::Message(value) => {
                         handle(shared, package, transport, &mut state, value)?
@@ -1531,7 +1551,9 @@ fn process(
                         ));
                         continue;
                     }
-                    Operation::Open(id) | Operation::Read(id) | Operation::Settings(id, _, _) => id,
+                    Operation::Open(id)
+                    | Operation::Read(id, _)
+                    | Operation::Settings(id, _, _) => id,
                     Operation::Close(_) => {
                         return Err(
                             "Device provider close timed out; physical recovery is unconfirmed"
@@ -1830,13 +1852,12 @@ fn reconcile(
                 if let Ok(mut queued) = shared.edits.lock()
                     && let Some(queued) = queued.get_mut(&device.id) { queued.fields.retain(|_,(revision,_)| *revision > edit); }
             }
-            let refresh = shared
-                .refresh
-                .lock()
-                .is_ok_and(|mut refresh| refresh.remove(&device.id));
-            if opened && refresh && !state.pending.values().any(|request| matches!(&request.operation, Operation::Read(existing) if existing == &id)) {
+            // Do not start a read deadline while it is queued behind a slow hardware write.
+            let refresh = opened && !state.pending.values().any(|request| matches!(&request.operation, Operation::Settings(existing, _, _) | Operation::Read(existing, false) if existing == &id))
+                && shared.refresh.lock().is_ok_and(|mut refresh| refresh.remove(&device.id));
+            if opened && refresh && !state.pending.values().any(|request| matches!(&request.operation, Operation::Read(existing, _) if existing == &id)) {
                 let id = id.clone();
-                state.request(transport, "readState", Operation::Read(id.clone()), Some(&id), json!({}))?;
+                state.request(transport, "readState", Operation::Read(id.clone(), true), Some(&id), json!({}))?;
             }
             continue;
         }
@@ -1873,16 +1894,16 @@ fn reconcile(
         if !paired {
             continue;
         }
-        state.next_generation += 1;
+        let generation = shared.next_generation.fetch_add(1, Ordering::Relaxed) + 1;
         if let Ok(mut observations) = shared.observations.lock() {
             observations.remove(&device.id);
         }
-        let id = format!("device-{}-{}", device.id, state.next_generation);
+        let id = format!("device-{}-{}", device.id, generation);
         state.sessions.insert(
             id.clone(),
             Session {
                 device: device.id.clone(),
-                generation: state.next_generation,
+                generation,
                 lifecycle_epoch: epochs[&device.id],
                 sequence: 0,
                 definition: descriptor.definition.clone(),
@@ -1900,15 +1921,11 @@ fn reconcile(
                 observation_needs_stop: false,
                 last_observe: Instant::now(),
                 depth_sequence: 0,
+                read_sequence: 0,
                 recovery_preview: None,
             },
         );
-        shared.connection(
-            &device.id,
-            state.next_generation,
-            ConnectionState::Offline,
-            None,
-        );
+        shared.connection(&device.id, generation, ConnectionState::Offline, None);
         state.request(
             transport,
             "open",
@@ -1980,6 +1997,9 @@ fn status(
         inventory.sessions.insert(
             session.device.clone(),
             SessionStatus {
+                generation: session.generation,
+                settings_edit: session.edit,
+                read_sequence: session.read_sequence,
                 state:
                     if session.recovery.get("state").and_then(Value::as_str) == Some("pending") {
                         "recovery_pending"
@@ -2019,7 +2039,7 @@ fn handle(
             };
             let session_id = match &pending.operation {
                 Operation::Open(id)
-                | Operation::Read(id)
+                | Operation::Read(id, _)
                 | Operation::Settings(id, _, _)
                 | Operation::Close(id)
                 | Operation::Observe(id, _) => Some(id.clone()),
@@ -2066,7 +2086,7 @@ fn handle(
                         pending.operation,
                         Operation::Close(_)
                             | Operation::Recovery(..)
-                            | Operation::Read(_)
+                            | Operation::Read(..)
                             | Operation::Open(_)
                             | Operation::Observe(..)
                     )
@@ -2257,16 +2277,26 @@ fn handle(
                         None,
                         None,
                     );
-                    state.request(
-                        transport,
-                        "readState",
-                        Operation::Read(id.clone()),
-                        Some(&id),
-                        json!({}),
-                    )?;
+                    // Open already includes the provider's initial state. A second full
+                    // read here doubles USB traffic without adding a requested observation.
+                    if !response
+                        .pointer("/state/observed")
+                        .is_some_and(Value::is_object)
+                    {
+                        state.request(
+                            transport,
+                            "readState",
+                            Operation::Read(id.clone(), false),
+                            Some(&id),
+                            json!({}),
+                        )?;
+                    }
                 }
-                Operation::Read(id) => {
+                Operation::Read(id, explicit) => {
                     let session = state.sessions.get_mut(&id).unwrap();
+                    if explicit {
+                        session.read_sequence += 1;
+                    }
                     update_recovery(session, &response);
                     if !shared
                         .lifecycle
@@ -2744,6 +2774,7 @@ serveDevice({id:'dev.deckweave.fixture',discover:()=>['a','b'].map(descriptor),o
             recovery_packages: Mutex::new(BTreeSet::new()),
             controls: Mutex::new(VecDeque::new()),
             observations: Mutex::new(BTreeMap::new()),
+            next_generation: AtomicU64::new(0),
         });
         let context = Arc::clone(&shared);
         let state_root = state_root.to_path_buf();
@@ -3111,7 +3142,6 @@ for await(const line of createInterface({input:process.stdin,crlfDelay:Infinity}
             sessions: BTreeMap::new(),
             pending: BTreeMap::new(),
             next_request: 0,
-            next_generation: 0,
             hello: false,
         };
         state.sessions.insert(
@@ -3131,6 +3161,7 @@ for await(const line of createInterface({input:process.stdin,crlfDelay:Infinity}
                 observation_needs_stop: false,
                 last_observe: Instant::now(),
                 depth_sequence: 0,
+                read_sequence: 0,
                 recovery_preview: None,
             },
         );
@@ -3207,6 +3238,192 @@ for await(const line of createInterface({input:process.stdin,crlfDelay:Infinity}
             )
             .is_ok()
         );
+    }
+    #[test]
+    fn restarting_provider_and_rebinding_same_saved_device_never_reuses_ack_generation() {
+        let (directory, package) = fixture(
+            r#"
+import {createInterface} from 'node:readline';
+const instanceId='process-'+process.pid;
+const descriptor={instanceId,modelId:'dev.deckweave.fixture.model',name:'Fixture',identity:{confidence:'session',persistentId:null},geometry:{width:1,height:1},controls:[{id:'key-1',kind:'key',x:0,y:0,width:1,height:1,events:[]}],settings:[{id:'level',type:'number',min:0,max:5}],displays:[]};
+let level=0;
+const state=()=>({observed:{level},recovery:{state:'not_needed',pending:[]}});
+for await(const line of createInterface({input:process.stdin,crlfDelay:Infinity})){
+ const q=JSON.parse(line);let value={};
+ if(q.type==='hello')value={protocol:1,providerId:'dev.deckweave.fixture'};
+ if(q.type==='discover')value={devices:[descriptor]};
+ if(q.type==='open')value={descriptor,state:state()};
+ if(q.type==='readState')value=state();
+ if(q.type==='setSettings'){level=q.changes.level;value=state();}
+ if(q.type==='close')value={recovery:'not_needed'};
+ process.stdout.write(JSON.stringify({type:'result',requestId:q.requestId,...(q.session?{session:q.session,generation:q.generation}:{}),ok:true,value})+'\n');
+}
+"#,
+        );
+        let root = directory.path().join("packages");
+        let bundle = root.join("dev.deckweave.fixture.dwDevice");
+        std::fs::create_dir_all(&bundle).unwrap();
+        for file in ["provider.mjs", "deckweave.device.json"] {
+            std::fs::copy(package.directory.join(file), bundle.join(file)).unwrap();
+        }
+        let host = headless_host(directory.path(), &root, &directory.path().join("state"));
+        wait_until(|| !host.snapshot().discovered.is_empty());
+        let original_instance = host.snapshot().discovered[0].instance_id.clone();
+        let id = host
+            .add("dev.deckweave.fixture", &original_instance)
+            .unwrap();
+        wait_until(|| {
+            host.session(&id)
+                .is_some_and(|status| status.state == "connected")
+        });
+        let original = host.session(&id).unwrap();
+        host.pause_package("dev.deckweave.fixture").unwrap();
+        host.resume_package("dev.deckweave.fixture");
+        wait_until(|| {
+            host.snapshot()
+                .discovered
+                .iter()
+                .any(|device| device.instance_id != original_instance)
+        });
+        let fresh_instance = host
+            .snapshot()
+            .discovered
+            .iter()
+            .find(|device| device.instance_id != original_instance)
+            .unwrap()
+            .instance_id
+            .clone();
+        assert!(
+            host.snapshot()
+                .discovered
+                .iter()
+                .all(|device| device.device_id.is_none()),
+            "A restarted session identity requires explicit pairing"
+        );
+        assert_eq!(
+            host.rebind(&id, "dev.deckweave.fixture", &fresh_instance)
+                .unwrap(),
+            id
+        );
+        wait_until(|| {
+            host.session(&id)
+                .is_some_and(|status| status.state == "connected")
+        });
+        assert!(host.session(&id).unwrap().generation > original.generation);
+        {
+            let mut core = host.shared.core.lock().unwrap();
+            let revision = core.revision();
+            core.dispatch(
+                deckweave_core::Command::SetProviderSettings {
+                    device_id: id.clone(),
+                    changes: BTreeMap::from([("level".into(), json!(3))]),
+                    expected_revision: revision,
+                },
+                "main",
+            )
+            .unwrap();
+        }
+        wait_until(|| host.session(&id).unwrap().observed["level"] == 3);
+        let fresh_ack = host.session(&id).unwrap();
+        assert!(fresh_ack.settings_edit > original.settings_edit);
+        assert_ne!(
+            fresh_ack.generation, original.generation,
+            "A matching value/edit ACK from the new physical session cannot confirm an old editor's request"
+        );
+        host.stop();
+    }
+    #[test]
+    fn delayed_settings_keep_cached_reads_responsive_and_manual_read_waits_for_terminal_ack() {
+        let (directory, package) = fixture(
+            r#"
+import {createInterface} from 'node:readline';
+import fs from 'node:fs';
+const dir=process.env.DECKWEAVE_PROVIDER_STATE_DIR;
+const descriptor=id=>({instanceId:id,modelId:'dev.deckweave.fixture.model',name:id,identity:{confidence:'session',persistentId:null},geometry:{width:1,height:1},controls:[{id:'key-1',kind:'key',x:0,y:0,width:1,height:1,events:[]}],settings:[{id:'level',type:'number',min:0,max:5}],displays:[]});
+const sessions=new Map();
+const reply=(q,value)=>process.stdout.write(JSON.stringify({type:'result',requestId:q.requestId,...(q.session?{session:q.session,generation:q.generation}:{}),ok:true,value})+'\n');
+const state=s=>({observed:{level:s.level},evidence:{transport:'accepted',readback:'verified',physical:'unknown'}});
+for await(const line of createInterface({input:process.stdin,crlfDelay:Infinity})){
+ const q=JSON.parse(line);let value={};
+ if(q.type==='hello')value={protocol:1,providerId:'dev.deckweave.fixture'};
+ if(q.type==='discover')value={devices:['a','b'].map(descriptor)};
+ if(q.type==='open'){const s={id:q.instanceId,level:0,writing:false};sessions.set(q.session,s);value={descriptor:descriptor(q.instanceId),state:state(s)};}
+ if(q.type==='readState'){const s=sessions.get(q.session);fs.appendFileSync(dir+'/reads',s.id+'\n');if(s.writing)fs.writeFileSync(dir+'/read-during-write','bad');value=state(s);}
+ if(q.type==='setSettings'){const s=sessions.get(q.session);s.writing=true;fs.writeFileSync(dir+'/started','1');setTimeout(()=>{s.level=q.changes.level;s.writing=false;reply(q,state(s));},1000);continue;}
+ if(q.type==='close'){sessions.delete(q.session);value={recovery:'not_needed'};}
+ reply(q,value);
+}
+"#,
+        );
+        let root = directory.path().join("packages");
+        let bundle = root.join("dev.deckweave.fixture.dwDevice");
+        std::fs::create_dir_all(&bundle).unwrap();
+        for file in ["provider.mjs", "deckweave.device.json"] {
+            std::fs::copy(package.directory.join(file), bundle.join(file)).unwrap();
+        }
+        let state_root = directory.path().join("state");
+        let host = headless_host(directory.path(), &root, &state_root);
+        let provider_state = state_root.join("dev.deckweave.fixture");
+        wait_until(|| host.snapshot().discovered.len() == 2);
+        let a = host.add("dev.deckweave.fixture", "a").unwrap();
+        let b = host.add("dev.deckweave.fixture", "b").unwrap();
+        wait_until(|| {
+            host.session(&a).is_some_and(|s| s.state == "connected")
+                && host.session(&b).is_some_and(|s| s.state == "connected")
+        });
+        assert!(
+            !provider_state.join("reads").exists(),
+            "Open already returned verified state; do not perform a duplicate full read"
+        );
+        let baseline = host.session(&a).unwrap();
+        {
+            let mut core = host.shared.core.lock().unwrap();
+            let revision = core.revision();
+            core.dispatch(
+                deckweave_core::Command::SetProviderSettings {
+                    device_id: a.clone(),
+                    changes: BTreeMap::from([("level".into(), json!(3))]),
+                    expected_revision: revision,
+                },
+                "main",
+            )
+            .unwrap();
+        }
+        wait_until(|| provider_state.join("started").exists());
+        let started = Instant::now();
+        let pending = host.session(&a).unwrap();
+        let _ = host.shared.core.lock().unwrap().revision();
+        host.refresh(&a).unwrap();
+        host.refresh(&b).unwrap();
+        assert!(
+            started.elapsed() < Duration::from_millis(350),
+            "Hardware work must not hold Core or cached inventory locks"
+        );
+        assert_eq!(pending.generation, baseline.generation);
+        assert_eq!(
+            pending.settings_edit, baseline.settings_edit,
+            "An enqueued request is not a successful hardware ACK"
+        );
+        assert_eq!(pending.observed["level"], 0);
+        assert_eq!(pending.read_sequence, 0);
+        wait_until(|| host.session(&b).unwrap().read_sequence == 1);
+        assert!(
+            started.elapsed() < Duration::from_millis(800),
+            "One instance's slow write must not stall a sibling's reads"
+        );
+        wait_until(|| host.session(&a).unwrap().read_sequence == 1);
+        let completed = host.session(&a).unwrap();
+        assert!(completed.settings_edit > baseline.settings_edit);
+        assert_eq!(completed.observed["level"], 3);
+        assert_eq!(completed.requested["level"], 3);
+        assert!(
+            !provider_state.join("read-during-write").exists(),
+            "Manual reads must not accumulate timeout while queued behind SET"
+        );
+        let reads = std::fs::read_to_string(provider_state.join("reads")).unwrap();
+        assert_eq!(reads.lines().filter(|id| *id == "a").count(), 1);
+        assert_eq!(reads.lines().filter(|id| *id == "b").count(), 1);
+        host.stop();
     }
     #[test]
     fn process_keep_current_forwards_explicit_resolution_and_refuses_an_ignored_resolution_ack() {

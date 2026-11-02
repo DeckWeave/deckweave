@@ -46,18 +46,33 @@ fn locked(state: &Application) -> Result<std::sync::MutexGuard<'_, Core>, Error>
 }
 
 #[tauri::command]
-fn get_snapshot(
-    window: WebviewWindow,
-    state: State<'_, Application>,
-) -> Result<AppSnapshot, Error> {
+async fn get_snapshot(window: WebviewWindow, app: tauri::AppHandle) -> Result<AppSnapshot, Error> {
     if window.label() != "main" && !window.label().starts_with("device-") {
         return Err(Error::new(
             "window",
             "This window cannot read the workspace",
         ));
     }
-    let snapshot = locked(&state)?.snapshot();
-    live(&state, snapshot)
+    blocking_application(app, |state| {
+        let snapshot = locked(state)?.snapshot();
+        live(state, snapshot)
+    })
+    .await
+}
+
+// Synchronous commands run on Tauri's window/event thread. Even a cached read can
+// wait behind a durable Core transaction; keep that wait away from the WebView.
+async fn blocking_application<T, F>(app: tauri::AppHandle, operation: F) -> Result<T, Error>
+where
+    T: Send + 'static,
+    F: FnOnce(&Application) -> Result<T, Error> + Send + 'static,
+{
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<Application>();
+        operation(state.inner())
+    })
+    .await
+    .map_err(|error| Error::new("runtime", error.to_string()))?
 }
 
 fn live(state: &Application, snapshot: Snapshot) -> Result<AppSnapshot, Error> {
@@ -75,21 +90,33 @@ fn live(state: &Application, snapshot: Snapshot) -> Result<AppSnapshot, Error> {
 }
 
 #[tauri::command]
-fn dispatch(
+async fn dispatch(
     command: Command,
     window: WebviewWindow,
     app: tauri::AppHandle,
-    state: State<'_, Application>,
 ) -> Result<AppSnapshot, Error> {
-    let label = window.label();
-    if !permitted(label, &command) {
+    let label = window.label().to_owned();
+    if !permitted(&label, &command) {
         return Err(Error::new(
             "window",
             "This window cannot change the requested device",
         ));
     }
+    let worker_app = app.clone();
+    blocking_application(app, move |state| {
+        dispatch_blocking(command, &label, &worker_app, state)
+    })
+    .await
+}
+
+fn dispatch_blocking(
+    command: Command,
+    label: &str,
+    app: &tauri::AppHandle,
+    state: &Application,
+) -> Result<AppSnapshot, Error> {
     let closing = if let Command::RemoveDevice { device_id, .. } = &command {
-        let config = locked(&state)?.snapshot().configuration;
+        let config = locked(state)?.snapshot().configuration;
         let mut contexts = std::collections::BTreeSet::new();
         fn collect(
             binding: &deckweave_core::Binding,
@@ -114,7 +141,7 @@ fn dispatch(
     } else {
         None
     };
-    let snapshot = locked(&state)?.dispatch(command, label)?;
+    let snapshot = locked(state)?.dispatch(command, label)?;
     if let Some((id, contexts)) = closing {
         if let Some(window) = app.get_webview_window(&format!("device-{id}")) {
             let _ = window.close();
@@ -128,11 +155,11 @@ fn dispatch(
     if let Some(shell) = app.try_state::<shell::Shell>() {
         shell.locale(snapshot.configuration.locale);
     }
-    if let Application::Ready { hardware, .. } = state.inner() {
+    if let Application::Ready { hardware, .. } = state {
         hardware.changed();
     }
     let _ = app.emit("deckweave:changed", snapshot.event_sequence);
-    live(&state, snapshot)
+    live(state, snapshot)
 }
 
 fn permitted(label: &str, command: &Command) -> bool {
@@ -177,27 +204,43 @@ fn permitted(label: &str, command: &Command) -> bool {
 }
 
 #[tauri::command]
-fn device_provider_status(
+async fn device_provider_status(
     window: WebviewWindow,
-    state: State<'_, Application>,
+    app: tauri::AppHandle,
 ) -> Result<device_providers::ProviderSnapshot, Error> {
     if window.label() != "main" && !window.label().starts_with("device-") {
         return Err(Error::new("window", "Not an editor window"));
     }
-    match state.inner() {
+    blocking_application(app, |state| match state {
         Application::Ready {
             device_providers, ..
         } => Ok(device_providers.snapshot()),
         Application::Failed(e) => Err(e.clone()),
-    }
+    })
+    .await
 }
 #[tauri::command]
-fn add_provider_device(
+async fn device_provider_session(
+    device_id: String,
+    window: WebviewWindow,
+    app: tauri::AppHandle,
+) -> Result<Option<device_providers::SessionStatus>, Error> {
+    provider_window(&window, &device_id).map_err(|error| Error::new("window", error))?;
+    blocking_application(app, move |state| match state {
+        Application::Ready {
+            device_providers, ..
+        } => Ok(device_providers.session(&device_id)),
+        Application::Failed(error) => Err(error.clone()),
+    })
+    .await
+}
+#[tauri::command]
+async fn add_provider_device(
     provider_id: String,
     instance_id: String,
     device_id: Option<String>,
     window: WebviewWindow,
-    state: State<'_, Application>,
+    app: tauri::AppHandle,
 ) -> Result<String, Error> {
     if window.label() != "main" {
         return Err(Error::new(
@@ -205,7 +248,7 @@ fn add_provider_device(
             "Add devices from application settings",
         ));
     }
-    match state.inner() {
+    blocking_application(app, move |state| match state {
         Application::Ready {
             device_providers, ..
         } => match device_id {
@@ -214,40 +257,47 @@ fn add_provider_device(
         }
         .map_err(|e| Error::new("provider", e)),
         Application::Failed(e) => Err(e.clone()),
-    }
+    })
+    .await
 }
 #[tauri::command]
-fn refresh_provider_state(
+async fn refresh_provider_state(
     device_id: String,
     window: WebviewWindow,
-    state: State<'_, Application>,
+    app: tauri::AppHandle,
 ) -> Result<(), Error> {
     if window.label() != "main" && window.label() != format!("device-{device_id}") {
         return Err(Error::new("window", "Device belongs to another editor"));
     }
-    match state.inner() {
+    blocking_application(app, move |state| match state {
         Application::Ready {
             device_providers, ..
         } => device_providers
             .refresh(&device_id)
             .map_err(|e| Error::new("provider", e)),
         Application::Failed(e) => Err(e.clone()),
-    }
+    })
+    .await
 }
 #[tauri::command]
-fn set_provider_observation(
+async fn set_provider_observation(
     device_id: String,
     enabled: bool,
     window: WebviewWindow,
-    state: State<'_, Application>,
+    app: tauri::AppHandle,
 ) -> Result<device_providers::ObservationSnapshot, String> {
     provider_window(&window, &device_id)?;
-    match state.inner() {
+    let owner = window.label().to_owned();
+    blocking_application(app, move |state| match state {
         Application::Ready {
             device_providers, ..
-        } => device_providers.set_observation(&device_id, window.label(), enabled),
-        Application::Failed(error) => Err(error.to_string()),
-    }
+        } => device_providers
+            .set_observation(&device_id, &owner, enabled)
+            .map_err(|error| Error::new("provider", error)),
+        Application::Failed(error) => Err(error.clone()),
+    })
+    .await
+    .map_err(|error| error.to_string())
 }
 #[tauri::command]
 fn provider_observation(
@@ -647,6 +697,7 @@ fn main() {
             extension_management::plugin_remove,
             extension_management::plugin_reconnect,
             device_provider_status,
+            device_provider_session,
             add_provider_device,
             refresh_provider_state,
             set_provider_observation,

@@ -1,5 +1,8 @@
 import type { ProviderDefinition } from './types';
 export interface ProviderSessionState {
+  generation?: number;
+  settings_edit?: number;
+  read_sequence?: number;
   recovery?: { state?: string; pending?: unknown[] } | null;
   state: string;
   observed: Record<string, unknown>;

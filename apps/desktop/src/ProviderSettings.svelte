@@ -18,14 +18,22 @@
   import { recoveryErrorText } from './provider-recovery';
   import { observedStaticColors, unsupportedStaticColors } from './static-color-coverage';
   import type { Device, ProviderSetting } from './types';
-  import type { ProviderInventory, ProviderSessionState } from './provider-ui';
+  import type { ProviderSessionState } from './provider-ui';
+  import {
+    ProviderEditQueue,
+    type ProviderEditState,
+    type SettingsPatch,
+  } from './provider-edit-queue';
   let {
     client,
     device,
     lighting = false,
   }: { client: Client; device: Device; lighting?: boolean } = $props();
   let status = $state<ProviderSessionState | null>(null);
-  let loading = $state(false);
+  let reading = $state(false);
+  let disposed = false;
+  let statusFlight: Promise<ProviderSessionState | null> | null = null;
+  let idleTimer: ReturnType<typeof setTimeout> | undefined;
   let error = $state('');
   let presetName = $state('');
   let deletingPreset = $state<string | null>(null);
@@ -33,10 +41,10 @@
   let chosen = $state<string[]>([]);
   let color = $state('#ffffff');
   let keyPreview = $state<string | null>(null);
-  let editing = $state(false);
-  let submitted = $state<Record<string, unknown> | null>(null);
-  let writeNotice = $state('');
-  let submissionTimer: ReturnType<typeof setTimeout> | undefined;
+  let edits = $state<ProviderEditState>({ pending: false, desired: {}, error: null });
+  let writer = new ProviderEditQueue(commitPatch, (next) => {
+    edits = next;
+  });
   let colorPreview = $state<Record<string, string>>({});
   let colorTarget = $state<'effect' | 'keys'>('effect');
   let selectedKey = $state<string | null>(null);
@@ -78,7 +86,8 @@
   const visibleColors = $derived(colorControls.filter((c) => colorVisible(c, settings, observed)));
   const sampleColor = $derived(
     colorTarget === 'effect' && visibleColors.length
-      ? (colorPreview[visibleColors[0].id] ?? colorHex(visibleColors[0], observed))
+      ? (colorPreview[visibleColors[0].id] ??
+          colorHex(visibleColors[0], { ...observed, ...edits.desired }))
       : null,
   );
   const staticControlIds = $derived(
@@ -101,15 +110,12 @@
       chosen.length > 0 &&
       chosen.every((id) => Object.hasOwn(colorCoverage, id)),
   );
-  $effect(() => {
-    if (
-      submitted &&
-      (status?.error || status?.recovery?.state === 'pending' || patchMatches(submitted, observed))
-    ) {
-      submitted = null;
-      clearTimeout(submissionTimer);
-    }
-  });
+  const structuralPending = $derived(
+    edits.pending &&
+      Object.keys(edits.desired).some(
+        (id) => !channelIds.has(id) && id !== staticGroup?.staticColors?.settingId,
+      ),
+  );
   $effect(() => {
     const available = new Set(connected ? writableStaticIds : []);
     if (chosen.some((id) => !available.has(id))) chosen = chosen.filter((id) => available.has(id));
@@ -131,28 +137,137 @@
       foreground: rgb.r * 0.2126 + rgb.g * 0.7152 + rgb.b * 0.0722 > 140 ? '#111' : '#fff',
     };
   }
-  async function refresh(read = false) {
-    if (!client.available) return;
+  function readStatus(): Promise<ProviderSessionState | null> {
+    if (statusFlight) return statusFlight;
     const requestDevice = device.id;
-    loading = true;
+    statusFlight = invoke<ProviderSessionState | null>('device_provider_session', {
+      deviceId: requestDevice,
+    })
+      .then((next) => {
+        if (!disposed && device.id === requestDevice) status = next;
+        return next;
+      })
+      .finally(() => {
+        statusFlight = null;
+      });
+    return statusFlight;
+  }
+  const pause = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+  async function commitPatch(changes: SettingsPatch, cancelled: () => boolean) {
+    const requestDevice = device.id;
+    const baseline = await readStatus();
+    if (cancelled()) return;
+    if (
+      !baseline ||
+      baseline.state !== 'connected' ||
+      baseline.error ||
+      baseline.recovery?.state === 'pending'
+    )
+      throw new Error(
+        ru ? 'Устройство недоступно для изменения.' : 'The device is unavailable for editing.',
+      );
+    if (
+      !(await client.send(
+        (revision) => ({
+          type: 'set_provider_settings',
+          device_id: requestDevice,
+          changes,
+          expected_revision: revision,
+        }),
+        () => !cancelled() && device.id === requestDevice,
+      ))
+    )
+      throw new Error(
+        client.error || (ru ? 'Изменение не принято.' : 'The edit was not accepted.'),
+      );
+    const deadline = performance.now() + 5500;
+    while (!cancelled() && performance.now() < deadline) {
+      const next = await readStatus();
+      if (cancelled()) return;
+      if (!next || next.generation !== baseline.generation)
+        throw new Error(
+          ru
+            ? 'Подключение изменилось. Неотправленные изменения отменены.'
+            : 'The connection changed. Unsent edits were cancelled.',
+        );
+      if (next.error || next.state !== 'connected' || next.recovery?.state === 'pending')
+        throw new Error(
+          next.error ||
+            (ru
+              ? 'Запись не подтверждена. Проверьте подключение.'
+              : 'The write was not confirmed. Check the connection.'),
+        );
+      if (
+        next.settings_edit !== baseline.settings_edit &&
+        patchMatches(changes, next.requested ?? {}) &&
+        patchMatches(changes, next.observed ?? {})
+      )
+        return;
+      await pause(50);
+    }
+    if (!cancelled())
+      throw new Error(
+        ru
+          ? 'Запись ещё не подтверждена. Следующие изменения не отправлены; прочитайте состояние устройства.'
+          : 'The write is unconfirmed. Further edits were not sent; read device state.',
+      );
+  }
+  async function refresh(read = false) {
+    if (!client.available || disposed || (read && reading)) return;
+    const requestDevice = device.id;
+    if (!read) {
+      try {
+        await readStatus();
+      } catch (e) {
+        if (!disposed) error = String(e);
+      }
+      return;
+    }
+    reading = true;
+    error = '';
     try {
-      if (read) await invoke('refresh_provider_state', { deviceId: device.id });
-      const inventory = await invoke<ProviderInventory>('device_provider_status');
-      if (device.id !== requestDevice) return;
-      status = inventory.sessions[requestDevice] ?? null;
-      error = '';
+      const baseline = await readStatus();
+      if (disposed || device.id !== requestDevice) return;
+      await invoke('refresh_provider_state', { deviceId: requestDevice });
+      const deadline = performance.now() + 12000;
+      while (!disposed && performance.now() < deadline) {
+        const next = await readStatus();
+        if (disposed || device.id !== requestDevice) return;
+        if (!next || next.generation !== baseline?.generation)
+          throw new Error(ru ? 'Подключение изменилось.' : 'The connection changed.');
+        if (next.error) throw new Error(next.error);
+        if (next.read_sequence !== baseline?.read_sequence) {
+          if (next.state === 'connected' && next.recovery?.state !== 'pending') {
+            writer.dispose();
+            edits = { pending: false, desired: {}, error: null };
+            writer = new ProviderEditQueue(commitPatch, (state) => {
+              edits = state;
+            });
+          }
+          return;
+        }
+        await pause(75);
+      }
+      if (!disposed)
+        throw new Error(
+          ru ? 'Устройство не подтвердило чтение.' : 'Device read completion was not confirmed.',
+        );
     } catch (e) {
-      error = String(e);
+      if (!disposed) error = String(e);
     } finally {
-      loading = false;
+      if (!disposed) reading = false;
     }
   }
   onMount(() => {
-    void refresh();
-    const timer = setInterval(() => void refresh(), 1000);
+    const poll = async () => {
+      await refresh();
+      if (!disposed) idleTimer = setTimeout(() => void poll(), 1000);
+    };
+    void poll();
     return () => {
-      clearInterval(timer);
-      clearTimeout(submissionTimer);
+      disposed = true;
+      clearTimeout(idleTimer);
+      writer.dispose();
       if (lighting)
         void client.send(() => ({ type: 'release_lighting_edit', device_id: device.id }));
     };
@@ -161,33 +276,9 @@
     return status ? status.observed?.[s.id] : device.provider_settings[s.id];
   }
   async function setChanges(changes: Record<string, unknown>) {
-    if (editing || submitted || !connected) return;
-    editing = true;
-    writeNotice = '';
-    try {
-      if (
-        await client.send((revision) => ({
-          type: 'set_provider_settings',
-          device_id: device.id,
-          changes,
-          expected_revision: revision,
-        }))
-      ) {
-        submitted = changes;
-        clearTimeout(submissionTimer);
-        submissionTimer = setTimeout(() => {
-          if (submitted) {
-            submitted = null;
-            writeNotice = ru
-              ? 'Команда отправлена, но обратное чтение не подтвердило её результат. Прочитайте настройки с устройства перед следующим изменением.'
-              : 'The command was sent, but readback has not confirmed it. Read device settings before the next edit.';
-          }
-        }, 5000);
-        await refresh();
-      }
-    } finally {
-      editing = false;
-    }
+    if (!connected || reading || disposed) return;
+    error = '';
+    writer.enqueue(changes);
   }
   async function set(id: string, value: unknown) {
     await setChanges({ [id]: value });
@@ -205,7 +296,7 @@
     );
   }
   async function savePreset() {
-    if (editing || submitted || !connected) return;
+    if (edits.pending || edits.error || !connected) return;
     const settings = Object.fromEntries(
       Object.entries(status?.observed ?? {}).filter(([id]) => lightingSetting(id)),
     );
@@ -263,13 +354,24 @@
         </h2>
         <p>{device.name}</p>
       </div>
-      <button disabled={loading || client.busy} onclick={() => void refresh(true)}
-        >{ru ? 'Прочитать с устройства' : 'Read device state'}</button
+      <button disabled={reading || edits.pending || !status} onclick={() => void refresh(true)}
+        >{reading
+          ? ru
+            ? 'Чтение…'
+            : 'Reading…'
+          : ru
+            ? 'Прочитать с устройства'
+            : 'Read device state'}</button
       >
     </header>{/if}
-  <ProviderRecovery {client} {device} recovery={status?.recovery} oncomplete={() => refresh()} />
-  {#if error || status?.error}<p class="connection-error" role="alert">
-      {recoveryErrorText(error || status?.error, ru)}
+  <ProviderRecovery
+    {client}
+    {device}
+    recovery={status?.recovery}
+    oncomplete={() => refresh(true)}
+  />
+  {#if error || edits.error || status?.error}<p class="connection-error" role="alert">
+      {recoveryErrorText(error || edits.error || status?.error, ru)}
     </p>{/if}
   {#if !keyboardStatusOnly}
     {#if !status}<p>
@@ -297,11 +399,13 @@
               ? 'Редактирование защищено от автоматики'
               : 'Manual editing owns this output'}</span
           ><button
+            disabled={edits.pending || reading}
             onclick={() =>
               void client.send(() => ({ type: 'release_lighting_edit', device_id: device.id }))}
             >{ru ? 'Завершить редактирование' : 'Finish editing'}</button
           >{/if}
         <button
+          disabled={edits.pending || reading}
           onclick={() =>
             void client.send(() => ({ type: 'return_to_manual_lighting', device_id: device.id }))}
           >{ru ? 'Вернуться к ручному' : 'Return to manual'}</button
@@ -421,7 +525,7 @@
               label={ru ? 'Цвет выбранных клавиш' : 'Selected key color'}
               value={color}
               {ru}
-              disabled={!selectedColorsWritable || client.busy || editing || !!submitted}
+              disabled={!selectedColorsWritable || reading || structuralPending || !!edits.error}
               onpreview={(hex) => (keyPreview = hex)}
               onchange={(hex) => {
                 color = hex;
@@ -436,7 +540,7 @@
                 <ProviderSettingControl
                   {setting}
                   value={current(setting)}
-                  disabled={client.busy || editing || !!submitted || !connected}
+                  disabled={client.busy || edits.pending || reading || !!edits.error || !connected}
                   {ru}
                   onchange={(value) => void set(setting.id, value)}
                 />
@@ -457,8 +561,8 @@
                   label={channels.label?.[locale] ??
                     channels.label?.en ??
                     (ru ? 'Цвет эффекта' : 'Effect color')}
-                  value={colorHex(channels, observed)}
-                  disabled={client.busy || editing || !!submitted || !connected}
+                  value={colorHex(channels, { ...observed, ...edits.desired })}
+                  disabled={reading || structuralPending || !!edits.error || !connected}
                   {ru}
                   onpreview={(hex) => {
                     const next = { ...colorPreview };
@@ -478,13 +582,12 @@
       </section>
     </div>
     {#if lighting}
-      {#if writeNotice}<p class="lighting-readback" role="status">{writeNotice}</p>{/if}
       <p class="lighting-readback" role="status">
-        {submitted
+        {edits.pending
           ? ru
-            ? 'Проверяется запись на устройстве…'
-            : 'Verifying the device write…'
-          : status?.recovery?.state === 'pending' || status?.error
+            ? 'Сохраняется выбранное состояние… Можно продолжать выбирать цвет.'
+            : 'Saving the selected state… You can continue choosing colors.'
+          : status?.recovery?.state === 'pending' || status?.error || edits.error
             ? ru
               ? 'Показаны последние считанные настройки. Результат предыдущей записи не подтверждён; изменения заблокированы.'
               : 'Showing last read settings. The previous write is unverified; editing is blocked.'
@@ -502,7 +605,12 @@
             placeholder={ru ? 'Название нового пресета' : 'New preset name'}
             aria-label={ru ? 'Название пресета' : 'Preset name'}
           /><button
-            disabled={!presetName.trim() || client.busy || editing || !!submitted || !connected}
+            disabled={!presetName.trim() ||
+              client.busy ||
+              edits.pending ||
+              reading ||
+              !!edits.error ||
+              !connected}
             onclick={() => void savePreset()}
             >{ru ? 'Сохранить текущие настройки' : 'Save current settings'}</button
           >
@@ -526,8 +634,8 @@
               class:current={device.manual_lighting_preset === preset.id}
               disabled={!connected ||
                 client.busy ||
-                editing ||
-                !!submitted ||
+                edits.pending ||
+                !!edits.error ||
                 unsupportedPreset(preset.settings)}
               onclick={() =>
                 void client.send((revision) => ({

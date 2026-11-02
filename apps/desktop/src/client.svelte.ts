@@ -171,9 +171,9 @@ export class Client {
     })();
     return this.refreshing;
   }
-  send(make: (revision: number) => Command): Promise<boolean> {
+  send(make: (revision: number) => Command, current: () => boolean = () => true): Promise<boolean> {
     const next = this.queue.then(async () => {
-      if (!this.snapshot || this.stopped) return false;
+      if (!this.snapshot || this.stopped || !current()) return false;
       this.busy = true;
       try {
         this.adopt(

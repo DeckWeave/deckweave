@@ -1,0 +1,37 @@
+{
+  "date": "2026-11-02",
+  "device": "IO Type 84 Magnetic White 1.17",
+  "desktopSha256": "9425ff9024413e8fc66fb17d7e8eb9a9c7fbf378776503a46d627306332b229d",
+  "providerSha256": "8288803f9fb36269215ab0f39f01827fb78b1a62c8f0dc26c8dea052ae53d004",
+  "packageSha256": "2b6697c69b1a4d93ec066669fa35e31b4d6ea4aba81da0bd0565cda28ff5d6e3",
+  "measurement": {
+    "scope": "native provider RPC including durable snapshot and strict readback; excludes UI, SQLite and physical LED timing",
+    "method": "brightness one-step change followed by exact restoration on the same device; observation disabled",
+    "before": { "setMs": 642.228, "restoreMs": 638.213, "exchanges": 152 },
+    "after": { "setMs": 51.495, "restoreMs": 51.388, "exchanges": 4 },
+    "restoredOriginal": true
+  },
+  "nativeUi": {
+    "releaseLaunched": true,
+    "paletteBlueAndGreenConfirmed": true,
+    "hsvGestureConfirmed": true,
+    "pickerEnabledWhilePending": true,
+    "originalColorRestoredAndReadBack": true,
+    "manualReadCompleted": true,
+    "idleReadButtonStable": true,
+    "errorsObserved": false,
+    "physicalColorJudgment": "not inferred from protocol readback"
+  },
+  "checks": {
+    "providerTests": 31,
+    "providerBenchmarkHarnessTests": 3,
+    "editQueueTests": 4,
+    "hostTests": 15,
+    "realSdkClose": "passed",
+    "svelteCheck": "0 errors, 0 warnings",
+    "rustClippy": "passed with warnings denied",
+    "releaseBuild": "passed",
+    "isolatedNativeInstallerSmoke": "passed; mock provider only, no hardware access"
+  },
+  "excludedChanges": ["key mappings", "actuation", "calibration", "firmware", "Mirabox JPEG format"]
+}

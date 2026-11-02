@@ -3,7 +3,7 @@
   import { invoke } from '@tauri-apps/api/core';
   import type { Client } from './client.svelte';
   import type { Device } from './types';
-  import type { ProviderInventory, ProviderSessionState } from './provider-ui';
+  import type { ProviderSessionState } from './provider-ui';
   import DeviceDecorations from './DeviceDecorations.svelte';
   import DepthRing from './DepthRing.svelte';
   import { recoveryErrorText } from './provider-recovery';
@@ -13,6 +13,9 @@
   let layer = $state('main');
   let error = $state('');
   let reading = $state(false);
+  let disposed = false;
+  let statusFlight: Promise<ProviderSessionState | null> | null = null;
+  let pollTimer: ReturnType<typeof setTimeout> | undefined;
   const ru = $derived(client.snapshot?.configuration.locale === 'ru');
   const definition = $derived(device.provider_descriptor?.definition);
   const keyboard = $derived(definition?.keyboard);
@@ -118,27 +121,69 @@
   function toggle(id: string) {
     selected = selected.includes(id) ? selected.filter((k) => k !== id) : [...selected, id];
   }
-  async function refresh(read = false) {
-    if (!client.available) return;
-    reading = true;
+  function readStatus(): Promise<ProviderSessionState | null> {
+    if (disposed) return Promise.resolve(null);
+    if (statusFlight) return statusFlight;
     const id = device.id;
-    try {
-      if (read) await invoke('refresh_provider_state', { deviceId: id });
-      const inventory = await invoke<ProviderInventory>('device_provider_status');
-      if (device.id === id) {
-        status = inventory.sessions[id] ?? null;
-        error = '';
+    statusFlight = invoke<ProviderSessionState | null>('device_provider_session', { deviceId: id })
+      .then((next) => {
+        if (disposed || device.id !== id) return null;
+        status = next;
+        return next;
+      })
+      .finally(() => {
+        statusFlight = null;
+      });
+    return statusFlight;
+  }
+  const pause = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+  async function refresh(read = false) {
+    if (!client.available || disposed || (read && reading)) return;
+    if (!read) {
+      try {
+        await readStatus();
+      } catch (e) {
+        if (!disposed) error = String(e);
       }
+      return;
+    }
+    const id = device.id;
+    reading = true;
+    error = '';
+    try {
+      const baseline = await readStatus();
+      if (disposed || device.id !== id) return;
+      await invoke('refresh_provider_state', { deviceId: id });
+      const deadline = performance.now() + 12000;
+      while (!disposed && device.id === id && performance.now() < deadline) {
+        const next = await readStatus();
+        if (disposed || device.id !== id) return;
+        if (!next || next.generation !== baseline?.generation)
+          throw new Error(ru ? 'Подключение изменилось.' : 'The connection changed.');
+        if (next.error) throw new Error(next.error);
+        if (next.read_sequence !== baseline?.read_sequence) return;
+        await pause(75);
+      }
+      if (!disposed && device.id === id)
+        throw new Error(
+          ru ? 'Устройство не подтвердило чтение.' : 'Device read completion was not confirmed.',
+        );
     } catch (e) {
-      error = String(e);
+      if (!disposed && device.id === id) error = String(e);
     } finally {
-      reading = false;
+      if (!disposed && device.id === id) reading = false;
     }
   }
   onMount(() => {
-    void refresh();
-    const timer = setInterval(() => void refresh(), 1000);
-    return () => clearInterval(timer);
+    const poll = async () => {
+      await refresh();
+      if (!disposed) pollTimer = setTimeout(() => void poll(), 1000);
+    };
+    void poll();
+    return () => {
+      disposed = true;
+      clearTimeout(pollTimer);
+    };
   });
   async function send(setting: string, patch: unknown) {
     if (!selected.length) return;
@@ -191,7 +236,13 @@
       </p>
     </div>
     <button disabled={reading} onclick={() => void refresh(true)}
-      >{ru ? 'Прочитать с устройства' : 'Read device state'}</button
+      >{reading
+        ? ru
+          ? 'Чтение…'
+          : 'Reading…'
+        : ru
+          ? 'Прочитать с устройства'
+          : 'Read device state'}</button
     >
   </header>
   {#if error || status?.error}<p class="connection-error" role="alert">
