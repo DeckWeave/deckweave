@@ -919,6 +919,12 @@ pub enum Command {
         device_id: String,
         expected_revision: u64,
     },
+    RenamePage {
+        device_id: String,
+        page_id: String,
+        name: String,
+        expected_revision: u64,
+    },
     SelectPage {
         device_id: String,
         page_id: String,
@@ -970,6 +976,7 @@ impl Command {
             | Self::RenameDevice { device_id, .. }
             | Self::ConfigureControl { device_id, .. }
             | Self::AddPage { device_id, .. }
+            | Self::RenamePage { device_id, .. }
             | Self::SelectPage { device_id, .. }
             | Self::Input { device_id, .. } => Some(device_id),
             _ => None,
@@ -1066,6 +1073,9 @@ impl Command {
                 expected_revision, ..
             }
             | Self::AddPage {
+                expected_revision, ..
+            }
+            | Self::RenamePage {
                 expected_revision, ..
             }
             | Self::SelectPage {

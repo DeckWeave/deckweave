@@ -1,0 +1,8 @@
+{
+  "source": "Read-only Windows HKCU HTTPS UserChoice and merged HKCR command association",
+  "progId": "FirefoxURL-F0DC299D809B9700",
+  "command": "\"C:\\Program Files\\Zen Browser\\zen.exe\" -osint -url \"%1\"",
+  "resolvedExecutable": "C:\\Program Files\\Zen Browser\\zen.exe",
+  "helperAllowsExecutable": true,
+  "browserLaunchedOrNavigatedDuringVerification": false
+}

@@ -1,0 +1,24 @@
+/* Shared compact inspector surface. Copied into each standalone DeckWeave plugin. */
+:root { color-scheme: dark; font: 12px 'Segoe UI', sans-serif; --bg: #252525; --field: #181818; --text: #ededed; --muted: #b8b8b8; --line: #535353; --accent: #e8b466; }
+:root[data-theme='light'] { color-scheme: light; --bg: #ffffff; --field: #f7f6f4; --text: #242321; --muted: #5d5a54; --line: #95928b; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; padding: 12px; background: var(--bg); color: var(--text); font: inherit; }
+h1, h2 { font-size: 14px; font-weight: 600; margin: 0 0 12px; }
+label { display: grid; grid-template-columns: minmax(110px, 30%) minmax(0, 1fr); align-items: center; gap: 8px; margin: 7px 0; font-size: 12px; }
+input, select, button { min-height: 28px; padding: 4px 7px; min-width: 0; border: 1px solid var(--line); border-radius: 4px; background: var(--field); color: var(--text); font: inherit; }
+option, optgroup { background: var(--bg); color: var(--text); }
+input, select { width: 100%; }
+button { cursor: pointer; margin: 3px 5px 3px 0; }
+button:hover { background: color-mix(in srgb, var(--accent) 16%, var(--bg)); }
+button:disabled { cursor: default; opacity: .5; }
+input:focus-visible, select:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--text); outline-offset: 1px; }
+p { font-size: 12px; line-height: 1.4; color: var(--muted); margin: 8px 0; }
+details { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 7px; color: var(--muted); }
+summary { cursor: pointer; font-size: 12px; }
+html[lang^='ru'] .help-en, html:not([lang^='ru']) .help-ru { display: none; }
+.search { gap: 5px; }
+#places { gap: 4px; margin: 7px 0; }
+#status { font-size: 12px; margin: 8px 0; }
+::selection { background: var(--text); color: var(--bg); }
+@media (max-width: 380px) { label { grid-template-columns: minmax(85px, 30%) minmax(0, 1fr); } }

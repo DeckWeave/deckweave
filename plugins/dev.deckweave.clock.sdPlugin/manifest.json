@@ -1,0 +1,16 @@
+{
+  "UUID": "dev.deckweave.clock",
+  "Name": "Date & Time",
+  "Author": "DeckWeave contributors",
+  "Version": "0.1.0",
+  "SDKVersion": 2,
+  "CodePath": "plugin.mjs",
+  "PropertyInspectorPath": "settings.html",
+  "Actions": [
+    {
+      "UUID": "dev.deckweave.clock.digital",
+      "Name": "Date & Time",
+      "Controllers": ["Keypad", "Panel"]
+    }
+  ]
+}

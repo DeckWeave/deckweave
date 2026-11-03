@@ -1,0 +1,13 @@
+{
+  "name": "workspace-fixture",
+  "displayName": "DeckWeave isolated fixture host",
+  "publisher": "deckweave",
+  "version": "0.0.0",
+  "engines": {
+    "vscode": "^1.96.0"
+  },
+  "main": "./extension.cjs",
+  "activationEvents": [
+    "onStartupFinished"
+  ]
+}

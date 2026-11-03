@@ -1,0 +1,26 @@
+{
+  "name": "workspace",
+  "displayName": "DeckWeave Workspace",
+  "publisher": "deckweave",
+  "version": "0.1.0",
+  "description": "Local authenticated hardware commands for Typst and the VS Code Codex extension.",
+  "engines": {
+    "vscode": "^1.96.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./extension.cjs",
+  "extensionKind": [
+    "ui"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false
+    }
+  },
+  "license": "GPL-3.0-or-later"
+}

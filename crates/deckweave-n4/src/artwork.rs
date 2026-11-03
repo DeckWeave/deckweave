@@ -88,9 +88,15 @@ impl Renderer {
         }
     }
     pub fn image_data_jpeg(&self, uri: &str) -> Result<Vec<u8>, String> {
+        self.image_data_jpeg_with_alert(uri, false)
+    }
+    pub fn image_data_jpeg_with_alert(&self, uri: &str, alert: bool) -> Result<Vec<u8>, String> {
         let image = self.data_image(uri, 112, 112)?;
         let mut rgb = vec![18; 112 * 112 * 3];
         self.composite(&mut rgb, 112, [0, 0, 112, 112], &image, 1.0);
+        if alert {
+            super::render::alert_badge(&mut rgb, 112, [0, 0, 112, 112]);
+        }
         super::render::encode(&rgb, 112, 112, 10240)
     }
     pub fn image_data_png(&self, uri: &str, size: [u32; 2]) -> Result<Vec<u8>, String> {

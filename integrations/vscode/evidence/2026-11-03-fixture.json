@@ -1,0 +1,82 @@
+{
+  "realVsCodeHost": true,
+  "realTypewriter": true,
+  "commands": [
+    {
+      "operation": "report.preview",
+      "command": "typstTypewriter.openPreview",
+      "available": true
+    },
+    {
+      "operation": "report.pdf",
+      "command": "typstTypewriter.exportPdfQuick",
+      "available": true
+    },
+    {
+      "operation": "report.outline",
+      "command": "outline.focus",
+      "available": true
+    },
+    {
+      "operation": "report.bold",
+      "command": "typstPanel.bold",
+      "available": true
+    },
+    {
+      "operation": "report.italic",
+      "command": "typstPanel.italic",
+      "available": true
+    },
+    {
+      "operation": "report.formula",
+      "command": "typstPanel.insertFormula",
+      "available": true
+    },
+    {
+      "operation": "report.reference",
+      "command": "typstPanel.insertVref",
+      "available": true
+    },
+    {
+      "operation": "report.image",
+      "command": "typstTypewriter.insertImage",
+      "available": true
+    },
+    {
+      "operation": "report.table",
+      "command": "typstTypewriter.editTable",
+      "available": true
+    },
+    {
+      "operation": "report.format",
+      "command": "editor.action.formatDocument",
+      "available": true
+    }
+  ],
+  "undoRestored": [
+    {
+      "operation": "report.bold",
+      "undoSteps": 1
+    },
+    {
+      "operation": "report.italic",
+      "undoSteps": 1
+    },
+    {
+      "operation": "report.formula",
+      "undoSteps": 2
+    },
+    {
+      "operation": "report.reference",
+      "undoSteps": 2
+    }
+  ],
+  "pipeAuthentication": true,
+  "document": "G:\\APPS\\DW\\deckweave\\.local\\workspace-vscode-fixture-1793691667020\\document\\main.typ",
+  "typewriterVersion": "0.3.10",
+  "tinymistVersion": "0.15.10",
+  "nativeCodeFocusVerified": true,
+  "personalDocumentTouched": false,
+  "codexAgentStarted": false,
+  "passed": true
+}

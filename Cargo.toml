@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/deckweave-core", "crates/deckweave-n4", "crates/deckweave-platform", "crates/deckweave-services", "apps/desktop/src-tauri"]
+members = ["crates/deckweave-core", "crates/deckweave-n4", "crates/deckweave-platform", "crates/deckweave-services", "crates/deckweave-workspace", "apps/desktop/src-tauri"]
 default-members = ["crates/deckweave-core"]
 
 [workspace.package]

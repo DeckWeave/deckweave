@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ru">
+  <meta charset="utf-8" />
+  <title>Команда приложения</title>
+  <link rel="stylesheet" href="inspector.css" />
+  <h1 id="heading">Команда приложения</h1>
+  <label
+    ><span id="operationLabel">Команда</span
+    ><select id="operation"></select
+  ></label>
+  <label><span id="labelLabel">Подпись</span><input id="label" maxlength="24" /></label>
+  <label
+    ><span id="iconLabel">Значок</span
+    ><select id="icon">
+      <option value="">Автоматически</option>
+    </select></label
+  >
+  <p id="status" role="status" aria-live="polite"></p>
+  <details>
+    <summary><span class="help-ru">Справка</span><span class="help-en">Help</span></summary>
+    <p id="help">
+      Команда выполняется только после нажатия аппаратной кнопки. Для команд отчёта откройте Typst в
+      VS Code с локальным дополнением DeckWeave. Выделение добавляется в Codex только отдельным
+      нажатием «В контекст».
+    </p>
+  </details>
+  <script src="inspector-theme.js"></script>
+  <script type="module">
+    import { operations, icons } from './operations.mjs';
+    let socket,
+      context,
+      saved = {},
+      language = 'ru';
+    const $ = (id) => document.getElementById(id);
+    function paint() {
+      const ru = language.startsWith('ru');
+      document.documentElement.lang = ru ? 'ru' : 'en';
+      $('heading').textContent = ru ? 'Команда приложения' : 'Application command';
+      $('operationLabel').textContent = ru ? 'Команда' : 'Command';
+      $('labelLabel').textContent = ru ? 'Подпись' : 'Label';
+      $('iconLabel').textContent = ru ? 'Значок' : 'Icon';
+      $('operation').replaceChildren();
+      for (const [id, values] of Object.entries(operations)) {
+        const option = document.createElement('option');
+        option.value = id;
+        const group = id.startsWith('vscode.')
+          ? 'VS Code · Codex'
+          : id.startsWith('codex.')
+            ? 'Codex Desktop'
+            : id.split('.')[0];
+        option.textContent = `${group} · ${values[ru ? 0 : 1]}`;
+        $('operation').append(option);
+      }
+      $('operation').value = Object.hasOwn(operations, saved.operation)
+        ? saved.operation
+        : 'launch.code';
+      $('label').value = saved.label || '';
+      $('icon').replaceChildren();
+      for (const id of ['', ...Object.keys(icons)]) {
+        const option = document.createElement('option');
+        option.value = id;
+        option.textContent = id || (ru ? 'Автоматически' : 'Automatic');
+        $('icon').append(option);
+      }
+      $('icon').value = saved.icon || '';
+      $('help').textContent = ru
+        ? 'Команда выполняется только после нажатия аппаратной кнопки. Для команд отчёта откройте Typst в VS Code с локальным дополнением DeckWeave. Выделение добавляется в Codex только отдельным нажатием «В контекст».'
+        : 'Commands run only after a hardware press. Report commands require a Typst editor and the local DeckWeave VS Code companion. Add selection attaches editor context to Codex only when that specific command is pressed.';
+    }
+    window.connectElgatoStreamDeckSocket = (port, uuid, event, info, actionInfo) => {
+      const app = JSON.parse(info);
+      DeckWeaveAppearance.apply(app.deckweave);
+      language = app.application?.language || 'en';
+      context = uuid;
+      saved = JSON.parse(actionInfo).payload?.settings || {};
+      paint();
+      socket = new WebSocket('ws://127.0.0.1:' + port);
+      DeckWeaveAppearance.subscribe(socket, uuid);
+      socket.onopen = () => socket.send(JSON.stringify({ event, uuid }));
+      socket.onmessage = ({ data }) => {
+        const message = JSON.parse(data);
+        DeckWeaveAppearance.receive(message);
+        if (message.event === 'didReceiveSettings') {
+          saved = message.payload?.settings || {};
+          paint();
+        }
+        if (message.event === 'sendToPropertyInspector')
+          $('status').textContent = message.payload?.error || '';
+      };
+    };
+    function save() {
+      saved = {
+        ...saved,
+        operation: $('operation').value,
+        label: $('label').value,
+        icon: $('icon').value,
+        language: language.startsWith('ru') ? 'ru' : 'en',
+      };
+      $('status').textContent = '';
+      if (socket?.readyState === 1)
+        socket.send(JSON.stringify({ event: 'setSettings', context, payload: saved }));
+    }
+    for (const id of ['operation', 'label', 'icon']) $(id).addEventListener('change', save);
+  </script>
+</html>

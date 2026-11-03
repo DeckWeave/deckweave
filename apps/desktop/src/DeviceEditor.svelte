@@ -1097,7 +1097,9 @@
                         ? '●'
                         : '○'}</span
                 ><span class="control-label"
-                  >{feedback?.title ?? (assignment.label || t(assignment.kind))}</span
+                  >{feedback?.error
+                    ? feedback.title || assignment.label || t(assignment.kind)
+                    : (feedback?.title ?? (assignment.label || t(assignment.kind)))}</span
                 >{:else}<span class="empty-control">{control.number}</span>{/if}
             </button>
           {/each}

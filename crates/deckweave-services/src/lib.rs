@@ -6,6 +6,7 @@ use uuid::Uuid;
 
 pub const MAX_OPEN: usize = 8;
 pub const MAX_SAVED: usize = 128;
+pub mod focus;
 pub mod timers;
 pub type Result<T> = std::result::Result<T, ServiceError>;
 #[derive(Debug, Clone, Serialize, thiserror::Error)]
@@ -219,7 +220,7 @@ impl Store {
         }
         connection.pragma_update(None, "journal_mode", "WAL")?;
         connection.pragma_update(None, "synchronous", "FULL")?;
-        connection.execute_batch("BEGIN IMMEDIATE; CREATE TABLE IF NOT EXISTS panels(id TEXT PRIMARY KEY,owner TEXT NOT NULL,origin TEXT NOT NULL,local_key TEXT NOT NULL,revision INTEGER NOT NULL,json TEXT NOT NULL,UNIQUE(owner,origin,local_key)); CREATE TABLE IF NOT EXISTS timer_jobs(panel TEXT PRIMARY KEY,json TEXT NOT NULL); PRAGMA user_version=1; COMMIT;")?;
+        connection.execute_batch("BEGIN IMMEDIATE; CREATE TABLE IF NOT EXISTS panels(id TEXT PRIMARY KEY,owner TEXT NOT NULL,origin TEXT NOT NULL,local_key TEXT NOT NULL,revision INTEGER NOT NULL,json TEXT NOT NULL,UNIQUE(owner,origin,local_key)); CREATE TABLE IF NOT EXISTS timer_jobs(panel TEXT PRIMARY KEY,json TEXT NOT NULL); CREATE TABLE IF NOT EXISTS focus_jobs(owner TEXT NOT NULL,workspace TEXT NOT NULL,revision INTEGER NOT NULL,json TEXT NOT NULL,PRIMARY KEY(owner,workspace)); PRAGMA user_version=1; COMMIT;")?;
         Ok(Self { connection })
     }
     pub fn inventory(&self) -> Result<Inventory> {

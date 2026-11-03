@@ -18,6 +18,7 @@ pub struct RegionVisual {
     pub visual: KeyVisual,
     pub detail: String,
     pub image: Option<String>,
+    pub alert: bool,
 }
 
 pub struct Renderer {
@@ -70,6 +71,9 @@ impl Renderer {
     }
     /// The exact rotated JPEG is used by BAT and the preview (which rotates it back in CSS).
     pub fn jpeg(&self, visual: &KeyVisual) -> Result<Vec<u8>, String> {
+        self.jpeg_with_alert(visual, false)
+    }
+    pub fn jpeg_with_alert(&self, visual: &KeyVisual, alert: bool) -> Result<Vec<u8>, String> {
         let bg = if visual.pressed {
             [69, 101, 151]
         } else if visual.active {
@@ -83,6 +87,9 @@ impl Renderer {
         }
         self.text(&mut rgb, 112, [5, 12, 102, 58], &visual.value, 36.0);
         self.text(&mut rgb, 112, [5, 76, 102, 28], &visual.title, 13.0);
+        if alert {
+            alert_badge(&mut rgb, 112, [0, 0, 112, 112]);
+        }
         encode(&rgb, 112, 112, 10240)
     }
     pub fn strip(&self, regions: &[RegionVisual]) -> Result<Vec<u8>, String> {
@@ -116,6 +123,9 @@ impl Renderer {
                 && let Ok(image) = self.data_image(image, u32::from(width), u32::from(height))
             {
                 self.composite(&mut rgb, 800, [x, y, width, height], &image, 1.0);
+                if region.alert {
+                    alert_badge(&mut rgb, 800, region.rect);
+                }
                 continue;
             }
             self.text(
@@ -139,6 +149,9 @@ impl Renderer {
                 &region.detail,
                 16.0,
             );
+            if region.alert {
+                alert_badge(&mut rgb, 800, region.rect);
+            }
         }
         encode(&rgb, 800, 128, 128 * 1024)
     }
@@ -190,6 +203,30 @@ impl Renderer {
                     }
                 }
             }
+        }
+    }
+}
+
+pub(crate) fn alert_badge(rgb: &mut [u8], canvas_width: usize, rect: [u16; 4]) {
+    let [x, y, w, h] = rect.map(usize::from);
+    let size = 18.min(w.saturating_sub(2)).min(h.saturating_sub(2));
+    if size < 8 || x + w > canvas_width || (y + h) * canvas_width * 3 > rgb.len() {
+        return;
+    }
+    let left = x + w - size - 1;
+    let top = y + 1;
+    let middle = size / 2;
+    for row in 0..size {
+        let spread = row * middle / (size - 1);
+        for col in middle.saturating_sub(spread)..=(middle + spread).min(size - 1) {
+            let at = ((top + row) * canvas_width + left + col) * 3;
+            rgb[at..at + 3].copy_from_slice(&[255, 180, 92]);
+        }
+    }
+    for row in (size * 2 / 5..size * 2 / 3).chain(size * 4 / 5..(size * 4 / 5 + 2).min(size - 1)) {
+        for col in middle.saturating_sub(1)..=middle {
+            let at = ((top + row) * canvas_width + left + col) * 3;
+            rgb[at..at + 3].copy_from_slice(&[32, 32, 31]);
         }
     }
 }
@@ -246,6 +283,7 @@ mod tests {
     fn strip_is_bounded_and_invalid_regions_are_rejected() {
         let renderer = Renderer::new().unwrap();
         let region = RegionVisual {
+            alert: false,
             image: None,
             rect: [0, 0, 160, 128],
             visual: KeyVisual {

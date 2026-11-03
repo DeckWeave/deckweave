@@ -2,6 +2,7 @@
 use deckweave_platform::notification_sound::{self, Cue};
 use deckweave_services::{
     Content, Inventory, Panel, PanelSpec, Placement, ServiceError, Store,
+    focus::{FocusConfig, FocusJob, FocusStatus, FocusView},
     timers::{TimerRun, TimerStatus},
 };
 use serde::Serialize;
@@ -20,7 +21,7 @@ use std::{
 use tauri::{Emitter, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
 pub fn capabilities() -> Value {
-    json!({"sound":1,"panels":1,"timers":1,"images":0,"callbacks":0})
+    json!({"sound":1,"panels":1,"timers":1,"focus":1,"images":0,"callbacks":0})
 }
 #[derive(Clone, Serialize)]
 pub struct View {
@@ -39,6 +40,7 @@ pub struct Snapshot {
     pub unavailable: Vec<deckweave_services::InvalidRecord>,
     pub error: Option<String>,
     pub outcomes: Vec<Value>,
+    pub focus: Vec<FocusView>,
 }
 pub struct Request {
     pub owner: String,
@@ -66,6 +68,7 @@ type Connections = Arc<Mutex<BTreeMap<String, String>>>;
 pub struct PluginDemand {
     pub panels: Vec<View>,
     pub owners: BTreeSet<String>,
+    pub focus: Vec<FocusView>,
 }
 pub struct Runtime {
     rendered: Mutex<BTreeMap<String, Placement>>,
@@ -239,7 +242,13 @@ impl Runtime {
                     })
                     .cloned()
                     .collect(),
-                owners: s.panels.iter().map(|v| v.panel.owner.clone()).collect(),
+                owners: s
+                    .panels
+                    .iter()
+                    .map(|v| v.panel.owner.clone())
+                    .chain(s.focus.iter().map(|v| v.job.owner.clone()))
+                    .collect(),
+                focus: s.focus.clone(),
             })
             .unwrap_or_default()
     }
@@ -325,6 +334,9 @@ fn refresh(
         })
         .collect();
     snapshot.unavailable = unavailable;
+    let focus = store.focus_inventory()?;
+    snapshot.unavailable.extend(focus.unavailable);
+    snapshot.focus = focus.jobs.iter().map(|job| job.view(now)).collect();
     Ok(())
 }
 #[expect(
@@ -374,6 +386,7 @@ fn run(
     let now = || base.saturating_add(started.elapsed().as_millis() as u64);
     if let Err(e) = store
         .finish_due(base, false)
+        .and_then(|_| store.finish_focus_due(base, false))
         .and_then(|_| refresh(&store, &state, &connections, base))
         && let Ok(mut s) = state.lock()
     {
@@ -385,11 +398,12 @@ fn run(
     render(&app, &state);
     while !stop.load(Ordering::Acquire) {
         let active = state.lock().is_ok_and(|s| {
-            s.panels.iter().any(|v| {
-                v.timer
-                    .as_ref()
-                    .is_some_and(|t| t.status == TimerStatus::Running)
-            })
+            s.focus.iter().any(|v| v.job.status == FocusStatus::Running)
+                || s.panels.iter().any(|v| {
+                    v.timer
+                        .as_ref()
+                        .is_some_and(|t| t.status == TimerStatus::Running)
+                })
         });
         let message = if active {
             receiver.recv_timeout(Duration::from_millis(1000)).ok()
@@ -433,8 +447,23 @@ fn run(
         let blocked_now = blocked.lock().map(|b| b.clone()).unwrap_or_default();
         for owner in blocked_now.difference(&cancelled) {
             let _ = store.cancel_owner_timers(owner, now());
+            let _ = store.pause_owner_focus(owner, now());
         }
         cancelled = blocked_now;
+        match store.finish_focus_due(now(), true) {
+            Ok(jobs) => {
+                for job in jobs {
+                    if !cancelled.contains(&job.owner) {
+                        announce_focus(&job, &sounds, &state);
+                    }
+                }
+            }
+            Err(e) => {
+                if let Ok(mut s) = state.lock() {
+                    s.error = Some(e.message);
+                }
+            }
+        }
         match store.finish_due(now(), true) {
             Ok(due) => {
                 for run in due {
@@ -479,6 +508,34 @@ fn run(
         let _ = app.emit_to("main", "deckweave:services", ());
     }
 }
+/// The durable phase transition precedes this single playback attempt. Never retry
+/// uncertain audio on restart; outcomes distinguish queueing failure from playback.
+fn announce_focus(job: &FocusJob, sounds: &SyncSender<Sound>, state: &Arc<Mutex<Snapshot>>) {
+    let Some(cue) = job
+        .config
+        .sound
+        .as_ref()
+        .and_then(|s| serde_json::from_value::<Cue>(json!(s)).ok())
+    else {
+        return;
+    };
+    let event_id = job.event_id();
+    let queued = sounds
+        .try_send(Sound {
+            owner: job.owner.clone(),
+            cue,
+            volume: job.config.volume,
+            event_id: event_id.clone(),
+            reply: None,
+        })
+        .is_ok();
+    if let Ok(mut s) = state.lock() {
+        s.outcomes.push(json!({"event":"deckweaveSoundFinished","eventId":event_id,"workspace":job.workspace,"status":if queued{"queued"}else{"failed"},"error":if queued{Value::Null}else{json!("Sound queue is full")}}));
+        if s.outcomes.len() > 64 {
+            s.outcomes.remove(0);
+        }
+    }
+}
 fn execute(
     app: &tauri::AppHandle,
     store: &Store,
@@ -507,6 +564,44 @@ fn execute(
         Ok(panel)
     };
     match r.operation.as_str() {
+        "focus_get" => {
+            let workspace = r.payload["workspace"].as_str().unwrap_or("personal");
+            let config = r
+                .payload
+                .get("config")
+                .map(|v| serde_json::from_value::<FocusConfig>(v.clone()))
+                .transpose()?
+                .unwrap_or_default();
+            Ok(json!(
+                store.ensure_focus(&r.owner, workspace, config)?.view(now)
+            ))
+        }
+        "focus_control" => {
+            let workspace = r.payload["workspace"].as_str().unwrap_or("personal");
+            let revision = r.payload["revision"]
+                .as_i64()
+                .ok_or_else(|| ServiceError::new("revision", "Expected Pomodoro revision"))?;
+            let command_id = r.payload["commandId"]
+                .as_str()
+                .ok_or_else(|| ServiceError::new("identity", "Expected stable commandId"))?;
+            let command = r.payload["command"].as_str().unwrap_or("");
+            let config = r
+                .payload
+                .get("config")
+                .map(|v| serde_json::from_value::<FocusConfig>(v.clone()))
+                .transpose()?;
+            let before = store.focus_job(&r.owner, workspace)?;
+            let job = store.focus_control(
+                &r.owner, workspace, revision, command_id, command, config, now,
+            )?;
+            if before
+                .as_ref()
+                .is_some_and(|b| b.run_id == job.run_id && b.transition < job.transition)
+            {
+                announce_focus(&job, sounds, state);
+            }
+            Ok(json!(job.view(now)))
+        }
         "get" => Ok(json!(
             store
                 .find_panel(

@@ -1,0 +1,24 @@
+{
+  "date": "2026-11-03",
+  "build": "release",
+  "sha256": "00c8906e3f565abb82988c27d59a823b6735b3ed57f82c3d32e3c1767350c673",
+  "workspaceHelperSha256": "a004410bd74e8127ca1cb5f5f7f0bb557a5dd65bd45f6fc49e69b4ace9dfc60b",
+  "profile": "Рабочий стол",
+  "page": "Главная",
+  "pages": [
+    "Главная",
+    "Отчёты",
+    "Codex",
+    "Браузер",
+    "Нагрузка"
+  ],
+  "oldProfilesAndOtherDevicesPreserved": true,
+  "elgatoWeatherDisabled": true,
+  "companionInstalled": true,
+  "realVsCodeFixturePassed": true,
+  "nativeSdkHiddenTimerPassed": true,
+  "nativeGpuObserved": true,
+  "nativeWorkspaceErrorRecoveryPassed": true,
+  "liveReleaseCodeAndZoteroPassed": true,
+  "physicalLegibilityAndSoundComfort": "owner acceptance pending"
+}

@@ -71,15 +71,21 @@ catalogue; no release URLs are invented or unpublished packages downloaded.
 | Bundle | Controls | Useful extension example |
 | --- | --- | --- |
 | System Audio | Key, dial, Panel | Windows CoreAudio helper, observed state, ordered/coalesced input |
-| System Monitor | Key, dial, Panel | Shared local CPU/RAM/uptime sampling, no network |
+| System Monitor | Key, dial, Panel | Shared CPU/RAM/GPU/VRAM/uptime sampling, native PDH/DXGI, no network |
 | Timers | Key, dial, Panel | Independent persisted countdown/stopwatch, hold and lifecycle |
 | Weather | Key, Panel | Explicit city, bounded Open-Meteo requests/cache, original hand-written transport |
+| Date & Time | Key, Panel | Offline digital clock, native-sized date and weekday |
+| Pomodoro | Key, dial, Panel | Shared host job, persistent work/break phases and host sounds without overlays |
+| Personal Workspace | Key, dial, Panel | Targeted Windows apps and authenticated local VS Code commands |
 
 For Audio, run `./scripts/build-audio.ps1` from the application root before
 distribution. `npm run pack` inside the audio bundle refuses a missing native
 helper. The helper executable is generated and excluded from Git; its source is
 in `crates/deckweave-platform/src/audio` and `src/bin/deckweave-system.rs`.
-Monitor and Timers package with `npm run pack` inside their directories directly.
+For Audio, Monitor and Personal Workspace together, run `npm run prepare:workspace`
+from the application root. Monitor and Workspace archives refuse missing native
+helpers. Timers, Clock and Pomodoro need no native helper in their bundle.
+Each bundle packages with `npm run pack` inside its directory.
 Archives have SHA-256 sidecars and contain a complete named `.sdPlugin` directory.
 The registry documents the distinction between local workspace source and a
 future immutable HTTPS release archive; no public release URLs are invented.

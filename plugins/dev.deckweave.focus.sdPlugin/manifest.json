@@ -1,0 +1,23 @@
+{
+  "Name": "Pomodoro",
+  "Version": "0.1.0",
+  "SDKVersion": 2,
+  "UUID": "dev.deckweave.focus",
+  "Author": "DeckWeave contributors",
+  "CodePath": "plugin.mjs",
+  "PropertyInspectorPath": "settings.html",
+  "Actions": [
+    {
+      "UUID": "dev.deckweave.focus.pomodoro",
+      "Name": "Pomodoro",
+      "Controllers": ["Keypad", "Encoder", "Panel"],
+      "Encoder": { "layout": "$A0" }
+    },
+    {
+      "UUID": "dev.deckweave.focus.control",
+      "Name": "Pomodoro control",
+      "Controllers": ["Keypad", "Encoder", "Panel"],
+      "Encoder": { "layout": "$A0" }
+    }
+  ]
+}

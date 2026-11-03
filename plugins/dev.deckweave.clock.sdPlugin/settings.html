@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" /><title>Date & Time</title>
+  <link rel="stylesheet" href="inspector.css" />
+  <label
+    ><span id="languageLabel">Language</span
+    ><select id="language">
+      <option value="ru">Русский</option>
+      <option value="en">English</option>
+    </select></label
+  >
+  <label
+    ><span id="zoneLabel">Time zone</span><input id="timezone" placeholder="System" maxlength="80"
+  /></label>
+  <label><span id="secondsLabel">Seconds</span><input id="seconds" type="checkbox" /></label>
+  <p id="status" role="status"></p>
+  <script src="inspector-theme.js"></script>
+  <script>
+    let socket,
+      context,
+      settings = {},
+      ready = false;
+    const el = (id) => document.getElementById(id);
+    function show() {
+      const ru = settings.language !== 'en';
+      document.documentElement.lang = ru ? 'ru' : 'en';
+      for (const [id, text] of Object.entries({
+        languageLabel: ru ? 'Язык' : 'Language',
+        zoneLabel: ru ? 'Часовой пояс' : 'Time zone',
+        secondsLabel: ru ? 'Секунды' : 'Seconds',
+      }))
+        el(id).textContent = text;
+      el('timezone').placeholder = ru ? 'Системный' : 'System';
+      for (const id of ['language', 'timezone', 'seconds'])
+        if (document.activeElement !== el(id)) {
+          if (id === 'seconds') el(id).checked = !!settings[id];
+          else el(id).value = settings[id] ?? (id === 'language' ? 'ru' : '');
+        }
+    }
+    function connectElgatoStreamDeckSocket(port, uuid, event, info, action) {
+      context = uuid;
+      settings = JSON.parse(action).payload?.settings ?? {};
+      show();
+      socket = new WebSocket('ws://127.0.0.1:' + port);
+      socket.onopen = () => socket.send(JSON.stringify({ event, uuid }));
+      socket.onmessage = (e) => {
+        const m = JSON.parse(e.data);
+        if (m.event === 'didReceiveSettings') {
+          settings = m.payload?.settings ?? {};
+          show();
+        }
+      };
+      ready = true;
+    }
+    for (const id of ['language', 'timezone', 'seconds'])
+      el(id).addEventListener('change', () => {
+        if (!ready || socket?.readyState !== 1) return;
+        const next = { ...settings, [id]: id === 'seconds' ? el(id).checked : el(id).value.trim() };
+        try {
+          if (next.timezone) new Intl.DateTimeFormat('en', { timeZone: next.timezone });
+          el('status').textContent = '';
+        } catch {
+          el('status').textContent =
+            next.language === 'ru' ? 'Неизвестный часовой пояс' : 'Unknown time zone';
+          return;
+        }
+        settings = next;
+        socket.send(JSON.stringify({ event: 'setSettings', context, payload: settings }));
+        show();
+      });
+  </script>
+</html>

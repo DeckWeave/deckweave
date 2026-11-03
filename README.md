@@ -8,6 +8,9 @@
 
 ## Запуск
 
+Личный профиль Mirabox для VS Code/Typst, Codex, браузера и мониторинга:
+[раскладка, установка и короткая приёмка](docs/PERSONAL-WORKSPACE.md).
+
 Нужны Node.js 22.12+ и Rust 1.98.1, а на Windows — MSVC Build Tools и WebView2. Windows HTML plugins используют установленный Edge; Node plugins — установленный Node. Runtime distribution в installer ещё не завершена. Из корня репозитория:
 
 ```powershell

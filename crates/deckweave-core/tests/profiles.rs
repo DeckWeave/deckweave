@@ -1,5 +1,35 @@
 use deckweave_core::*;
 
+#[test]
+fn page_names_use_revision_and_selected_profile_boundaries() {
+    let mut core = Core::memory().unwrap();
+    let d = core.snapshot().configuration.devices[0].clone();
+    let page = d.profile.active_page_id.clone();
+    let rename = |revision, name: &str| Command::RenamePage {
+        device_id: d.id.clone(),
+        page_id: page.clone(),
+        name: name.into(),
+        expected_revision: revision,
+    };
+    core.dispatch(rename(0, " Отчёты "), "test").unwrap();
+    assert_eq!(
+        core.snapshot().configuration.devices[0].profile.pages[0].name,
+        "Отчёты"
+    );
+    assert!(core.dispatch(rename(0, "stale"), "test").is_err());
+    assert!(core.dispatch(rename(1, "  "), "test").is_err());
+    core.dispatch(
+        Command::AddProfile {
+            device_id: d.id.clone(),
+            name: "Other".into(),
+            expected_revision: 1,
+        },
+        "test",
+    )
+    .unwrap();
+    assert!(core.dispatch(rename(2, "Wrong profile"), "test").is_err());
+}
+
 fn send(core: &mut Core, command: impl FnOnce(u64, &Device) -> Command) -> Snapshot {
     let d = core.snapshot().configuration.devices[0].clone();
     core.dispatch(command(core.revision(), &d), "profiles-test")

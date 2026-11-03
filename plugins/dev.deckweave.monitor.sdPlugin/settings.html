@@ -15,6 +15,9 @@
       gap: 6px;
       margin: 16px 0;
     }
+    [hidden] {
+      display: none !important;
+    }
     input,
     select {
       font: inherit;
@@ -36,6 +39,13 @@
       >Press to open a desktop panel</span
     ></label
   >
+  <label id="adapterField" hidden
+    ><span id="adapterText">GPU adapter</span
+    ><select id="adapterId">
+      <option value="">Busiest adapter</option>
+    </select></label
+  >
+  <p id="diagnostics" role="status"></p>
   <label><span id="labelText">Label</span><input id="label" maxlength="24" /></label
   ><label
     ><span id="languageText">Language</span
@@ -47,8 +57,9 @@
   <details class="inspector-help">
     <summary><span class="help-ru">Справка</span><span class="help-en">Help</span></summary>
     <p id="hint">
-      Read-only whole-system CPU, used physical memory and OS uptime. Shared sample every 2 seconds;
-      no network requests. Changes save automatically.
+      Whole-system CPU, used RAM, busiest GPU engine, dedicated VRAM and OS uptime. One shared
+      sample every 2 seconds while visible. GPU requires the bundled Windows helper and WDDM 2+. No
+      network requests. Changes save automatically.
     </p>
   </details>
   <p id="status" role="status"></p>
@@ -58,12 +69,13 @@
       context,
       settings = {},
       ready = false,
-      ru = false;
+      ru = false,
+      diagnosticTimer;
     const dirty = new Set(),
       el = (id) => document.getElementById(id);
     function show() {
       el('desktopPanel').checked = !!settings.desktopPanel;
-      for (const id of ['label', 'language'])
+      for (const id of ['label', 'language', 'adapterId'])
         if (!dirty.has(id) && document.activeElement !== el(id))
           el(id).value = settings[id] ?? (id === 'language' ? (ru ? 'ru' : 'en') : '');
     }
@@ -76,10 +88,13 @@
         el('desktopText').textContent = 'По нажатию открывать панель на рабочем столе';
         el('labelText').textContent = 'Подпись';
         el('languageText').textContent = 'Язык';
+        el('adapterText').textContent = 'Видеоадаптер';
         el('hint').textContent =
-          'CPU всей системы, занятая физическая память и время работы ОС. Общий замер каждые 2 секунды; без сети. Сохраняется автоматически.';
+          'CPU всей системы, занятая RAM, самый занятый движок GPU, выделенная VRAM и время работы ОС. Общий замер раз в 2 секунды при наличии виджетов. GPU: встроенный Windows-помощник и WDDM 2+. Без сети. Сохраняется автоматически.';
       }
-      settings = JSON.parse(actionInfo).payload?.settings ?? {};
+      const action = JSON.parse(actionInfo);
+      settings = action.payload?.settings ?? {};
+      el('adapterField').hidden = !['gpu', 'gpu-memory'].includes(action.action?.split('.').at(-1));
       show();
       socket = new WebSocket(`ws://127.0.0.1:${port}`);
       DeckWeaveAppearance.subscribe(socket, uuid);
@@ -87,6 +102,17 @@
         socket.send(JSON.stringify({ event, uuid }));
         ready = true;
         el('status').textContent = ru ? 'Готово' : 'Ready';
+        const inspect = () =>
+          socket.send(
+            JSON.stringify({
+              event: 'sendToPlugin',
+              action: action.action,
+              context,
+              payload: { monitorDiagnostics: true },
+            }),
+          );
+        inspect();
+        diagnosticTimer = setInterval(inspect, 2000);
       };
       socket.onmessage = ({ data }) => {
         try {
@@ -96,14 +122,51 @@
             settings = m.payload.settings ?? {};
             show();
           }
+          if (m.event === 'sendToPropertyInspector' && m.payload?.monitor) {
+            const info = m.payload.monitor,
+              selected = settings.adapterId || '';
+            const options = [
+              { id: '', name: ru ? 'Самый загруженный' : 'Busiest adapter' },
+              ...(info.adapters ?? []),
+            ];
+            if (selected && !options.some((option) => option.id === selected))
+              options.push({
+                id: selected,
+                name: ru ? 'Адаптер отключён' : 'Adapter disconnected',
+              });
+            el('adapterId').replaceChildren(
+              ...options.map((option) => {
+                const item = document.createElement('option');
+                item.value = option.id;
+                item.textContent =
+                  option.index === undefined ? option.name : `GPU ${option.index} · ${option.name}`;
+                return item;
+              }),
+            );
+            el('adapterId').value = selected;
+            const age = info.sampledAt
+              ? `${Math.max(0, Math.round((Date.now() - info.sampledAt) / 1000))} s`
+              : '';
+            const state =
+              {
+                ready: ru ? 'Есть данные' : 'Ready',
+                warming_up: ru ? 'Первый замер' : 'Warming up',
+                unavailable: ru ? 'Нет данных' : 'Unavailable',
+                stale: ru ? 'Устарело' : 'Stale',
+              }[info.status] || '';
+            el('diagnostics').textContent = [state, info.adapter?.name, age, info.reason]
+              .filter(Boolean)
+              .join(' · ');
+          }
         } catch {}
       };
       socket.onclose = () => {
         ready = false;
+        clearInterval(diagnosticTimer);
         el('status').textContent = ru ? 'Нет связи' : 'Disconnected';
       };
     };
-    for (const id of ['label', 'language']) {
+    for (const id of ['label', 'language', 'adapterId']) {
       el(id).oninput = () => dirty.add(id);
       el(id).onchange = () => {
         if (!ready) return;

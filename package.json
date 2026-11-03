@@ -18,10 +18,12 @@
     "check:format": "prettier --check \"apps/desktop/src/**/*.{svelte,ts,css}\" apps/desktop/vite.config.ts apps/desktop/svelte.config.js apps/desktop/tsconfig.json package.json scripts/*.mjs",
     "check:docs": "node scripts/check-docs.mjs",
     "check:rust": "cargo fmt --all --check && cargo clippy --workspace --all-targets --locked -- -D warnings && cargo test --workspace --locked",
-    "check": "npm run check:ui && npm run check:format && npm run build:web && npm run check:rust && npm run test:weather && npm run test:plugins && npm run test:services && npm run check:docs",
+    "check": "npm run check:ui && npm run check:format && npm run build:web && npm run check:rust && npm run test:weather && npm run test:plugins && npm run test:services && npm run test:workspace && npm run check:docs",
     "test:weather": "node --test scripts/tests/weather.test.mjs",
     "test:services": "node --test scripts/tests/host-services.test.mjs",
-    "test:plugins": "node --test scripts/tests/starter-plugins.test.mjs scripts/tests/static-color-coverage.test.mjs scripts/tests/depth-observation.test.mjs scripts/tests/lighting-ui.test.mjs scripts/tests/provider-edit-queue.test.mjs scripts/tests/keyboard-assignments.test.mjs scripts/tests/library-interactions.test.mjs scripts/tests/appearance-composition.test.mjs plugins/dev.deckweave.audio.sdPlugin/audio.test.mjs"
+    "test:plugins": "node --test scripts/tests/starter-plugins.test.mjs scripts/tests/static-color-coverage.test.mjs scripts/tests/depth-observation.test.mjs scripts/tests/lighting-ui.test.mjs scripts/tests/provider-edit-queue.test.mjs scripts/tests/keyboard-assignments.test.mjs scripts/tests/library-interactions.test.mjs scripts/tests/appearance-composition.test.mjs plugins/dev.deckweave.audio.sdPlugin/audio.test.mjs",
+    "test:workspace": "node --test scripts/tests/personal-workspace.test.mjs plugins/dev.deckweave.workspace.sdPlugin/workspace.test.mjs plugins/dev.deckweave.clock.sdPlugin/clock.test.mjs plugins/dev.deckweave.monitor.sdPlugin/monitor.test.mjs plugins/dev.deckweave.focus.sdPlugin/focus.test.mjs integrations/vscode/companion.test.cjs",
+    "prepare:workspace": "node scripts/prepare-workspace.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "2.12.3"

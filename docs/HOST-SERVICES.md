@@ -1,5 +1,12 @@
 # Общие звуки и постоянные панели
 
+Помодоро добавлен отдельным сохраняемым заданием, без открытия панели.
+Несколько аппаратных действий используют один цикл по владельцу и workspace.
+API `focus_get`/`focus_control`, capability `focus:1` и события описаны в
+[SDK](../../plugin-sdk/HOST-SERVICES.md); [личная раскладка](PERSONAL-WORKSPACE.md)
+и [нативный прогон](evidence/2026-11-03/personal-workspace-native-smoke.json).
+Старые countdown и overlay записи не меняли тип или смысл.
+
 Срез 2026-11-03: отдельный сервис ядра, Windows-адаптер звука, окна панелей,
 управление в **Настройки → Панели**, согласуемый API плагинов и примеры.
 [Контракт](designs/host-feedback/design_draft.md),

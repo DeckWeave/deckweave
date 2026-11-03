@@ -219,6 +219,7 @@ struct Session {
     services_enabled: bool,
     service_generation: String,
     service_contexts: BTreeMap<String, i64>,
+    focus_snapshot: Vec<(String, i64, u64)>,
     service_replies: Receiver<Value>,
     service_sender: mpsc::SyncSender<Value>,
     package: Package,
@@ -553,6 +554,7 @@ fn start(
         services_enabled: false,
         service_generation: deckweave_core::new_id(),
         service_contexts: BTreeMap::new(),
+        focus_snapshot: vec![],
         service_sender,
         service_replies,
         package,
@@ -823,6 +825,13 @@ fn run(
                     )
             })
             .map(|v| v.panel.owner.clone())
+            .chain(
+                services
+                    .focus
+                    .iter()
+                    .filter(|v| v.job.status == deckweave_services::focus::FocusStatus::Running)
+                    .map(|v| v.job.owner.clone()),
+            )
             .filter(|p| p != "deckweave.host")
             .collect();
         if let Some(runtime) = app.try_state::<crate::host_services::Runtime>() {
@@ -1068,6 +1077,33 @@ fn run(
                     session.send(reply);
                 }
                 if session.services_enabled && session.socket.is_some() {
+                    // Hidden jobs are entirely host scheduled. A retained plugin has no
+                    // display ticks until a physical control is visible again.
+                    if !session.slots.is_empty() {
+                        let focus: Vec<_> = services
+                            .focus
+                            .iter()
+                            .filter(|v| v.job.owner == *id)
+                            .collect();
+                        let signature: Vec<_> = focus
+                            .iter()
+                            .map(|v| {
+                                (
+                                    v.job.workspace.clone(),
+                                    v.job.revision,
+                                    v.live_remaining_ms / 1000,
+                                )
+                            })
+                            .collect();
+                        if signature != session.focus_snapshot {
+                            session.send(
+                                json!({"event":"deckweaveFocusDidChange","payload":{"jobs":focus}}),
+                            );
+                            session.focus_snapshot = signature;
+                        }
+                    } else {
+                        session.focus_snapshot.clear();
+                    }
                     let wanted: BTreeMap<_, _> = services
                         .panels
                         .iter()
@@ -1482,18 +1518,22 @@ fn handle(
             }
         }
         "showAlert" if pi.is_none() && slot.is_some() => {
+            let message = payload["message"]
+                .as_str()
+                .filter(|s| !s.trim().is_empty())
+                .unwrap_or("Plugin reported an action error");
             feedback(
                 core,
                 app,
                 epoch,
                 context,
                 "error",
-                json!({"message":"Plugin reported an action error"}),
+                json!({"message":message}),
             );
             if let Some(slot) = slot
                 && let Ok(mut core) = core.lock()
             {
-                core.action_error(&slot.device, &slot.owner, "Plugin reported an action error");
+                core.action_error(&slot.device, &slot.owner, message);
             }
             notify(app, epoch);
         }

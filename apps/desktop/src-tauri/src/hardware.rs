@@ -490,12 +490,16 @@ struct Desired {
     visual: KeyVisual,
     regions: Vec<RegionVisual>,
     image: Option<String>,
+    alert: bool,
 }
 
 impl Desired {
     // Page/binding identity describes the preview, not the physical pixels. In particular,
     // empty keys and pinned actions need not be transferred again on every page change.
     fn same_pixels(&self, other: &Self) -> bool {
+        if self.alert != other.alert {
+            return false;
+        }
         if self.key == 11 || other.key == 11 {
             return self.key == other.key && self.regions == other.regions;
         }
@@ -574,12 +578,12 @@ impl FrameCache {
         }
         let jpeg = if let Some(image) = &frame.image {
             renderer
-                .image_data_jpeg(image)
-                .or_else(|_| renderer.jpeg(&frame.visual))?
+                .image_data_jpeg_with_alert(image, frame.alert)
+                .or_else(|_| renderer.jpeg_with_alert(&frame.visual, frame.alert))?
         } else if frame.key == 11 {
             renderer.strip(&frame.regions)?
         } else {
-            renderer.jpeg(&frame.visual)?
+            renderer.jpeg_with_alert(&frame.visual, frame.alert)?
         };
         let data_url = format!("data:image/jpeg;base64,{}", STANDARD.encode(&jpeg));
         Ok((
@@ -660,6 +664,65 @@ fn input_timeout_ms(pending_output: bool) -> u8 {
     if pending_output { 0 } else { 25 }
 }
 
+fn navigation_image(
+    binding: &deckweave_core::Binding,
+    profile: &deckweave_core::Profile,
+) -> Option<String> {
+    use deckweave_core::Plan;
+    let icon = match binding.plan.as_ref()? {
+        Plan::Page { page_id } if profile.pages.first().is_some_and(|p| &p.id == page_id) => {
+            r#"<path d="m3 11 9-8 9 8M5 9v12h5v-7h4v7h5V9"/>"#
+        }
+        Plan::Page { page_id }
+            if profile
+                .pages
+                .iter()
+                .any(|p| &p.id == page_id && p.parent.is_some()) =>
+        {
+            r#"<path d="M3 6h7l2 3h9v12H3zM3 6V3h7l2 3"/>"#
+        }
+        Plan::Page { .. } => {
+            r#"<rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 9v12m4-7 3 3-3 3"/>"#
+        }
+        Plan::Profile { .. } => r#"<path d="m3 7 9-4 9 4-9 4zM3 12l9 4 9-4M3 17l9 4 9-4"/>"#,
+        Plan::Back => r#"<path d="m11 4-8 8 8 8M3 12h18"/>"#,
+        Plan::PageCycle { .. } => r#"<path d="m8 3-5 5 5 5M3 8h14m-1 3 5 5-5 5M7 16h14"/>"#,
+        _ => return None,
+    };
+    let escape = |s: &str| {
+        s.replace('&', "&amp;")
+            .replace('<', "&lt;")
+            .replace('>', "&gt;")
+            .replace('"', "&quot;")
+            .replace('\'', "&apos;")
+    };
+    let mut lines = vec![String::new()];
+    for word in binding.label.split_whitespace() {
+        if !lines.last()?.is_empty()
+            && lines.last()?.chars().count() + word.chars().count() + 1 > 12
+            && lines.len() < 2
+        {
+            lines.push(String::new());
+        }
+        let line = lines.last_mut()?;
+        if !line.is_empty() {
+            line.push(' ');
+        }
+        line.push_str(word);
+    }
+    let captions: String=lines.iter().enumerate().map(|(i,line)|{
+        let label=if line.chars().count()>13 {format!("{}…",line.chars().take(12).collect::<String>())}else{line.clone()};
+        format!(r##"<text x="56" y="{}" fill="#f0f0f0" text-anchor="middle" font-family="IBM Plex Sans" font-size="15" font-weight="600">{}</text>"##,if lines.len()==1{91}else{83+i*18},escape(&label))
+    }).collect();
+    let svg = format!(
+        r##"<svg xmlns="http://www.w3.org/2000/svg" width="112" height="112"><rect width="112" height="112" fill="#20201f"/><svg x="37" y="17" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#e8b466" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">{icon}</svg>{captions}</svg>"##
+    );
+    Some(format!(
+        "data:image/svg+xml;base64,{}",
+        STANDARD.encode(svg)
+    ))
+}
+
 fn desired(snapshot: &Snapshot, id: &str) -> Vec<Desired> {
     let Some(device) = snapshot.configuration.devices.iter().find(|d| d.id == id) else {
         return vec![];
@@ -683,9 +746,10 @@ fn desired(snapshot: &Snapshot, id: &str) -> Vec<Desired> {
                     .find(|f| f.device_id == id && f.binding_id == b.id)
             });
             Desired {
+                alert: feedback.is_some_and(|f| f.error.is_some()),
                 image: feedback
-                    .filter(|f| f.error.is_none())
-                    .and_then(|f| f.image.clone()),
+                    .and_then(|f| f.image.clone())
+                    .or_else(|| binding.and_then(|b| navigation_image(b, &device.profile))),
                 regions: vec![],
                 key,
                 page_id: page.id.clone(),
@@ -693,6 +757,7 @@ fn desired(snapshot: &Snapshot, id: &str) -> Vec<Desired> {
                 visual: KeyVisual {
                     title: feedback
                         .and_then(|f| f.title.clone())
+                        .filter(|s| !s.is_empty() || !feedback.is_some_and(|f| f.error.is_some()))
                         .or_else(|| binding.map(|b| b.label.clone()))
                         .unwrap_or_default(),
                     value: binding
@@ -730,13 +795,20 @@ fn desired(snapshot: &Snapshot, id: &str) -> Vec<Desired> {
             let dial = format!("dial-{}", c.number);
             let (dial_visual, has_dial) = control_visual(snapshot, id, page, &dial);
             RegionVisual {
+                alert: page.bindings.get(&c.id).is_some_and(|b| {
+                    snapshot
+                        .feedback
+                        .iter()
+                        .any(|f| f.device_id == id && f.binding_id == b.id && f.error.is_some())
+                }),
                 image: page
                     .bindings
                     .get(&c.id)
                     .and_then(|b| {
-                        snapshot.feedback.iter().find(|f| {
-                            f.device_id == id && f.binding_id == b.id && f.error.is_none()
-                        })
+                        snapshot
+                            .feedback
+                            .iter()
+                            .find(|f| f.device_id == id && f.binding_id == b.id)
                     })
                     .and_then(|f| f.image.clone()),
                 rect: crate::touch::rect(geometry, c),
@@ -750,6 +822,7 @@ fn desired(snapshot: &Snapshot, id: &str) -> Vec<Desired> {
         })
         .collect();
     frames.push(Desired {
+        alert: false,
         image: None,
         key: 11,
         page_id: page.id.clone(),
@@ -1115,6 +1188,138 @@ fn translate(input: &Input) -> (Option<String>, Option<InputEvent>) {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn plugin_errors_keep_key_and_panel_artwork_and_success_restores_unmarked_pixels() {
+        use super::*;
+        let mut core = Core::memory().unwrap();
+        let device = core.snapshot().configuration.devices[0].clone();
+        for (control, controller) in [
+            ("key-1", deckweave_core::Controller::Keypad),
+            ("touch-1", deckweave_core::Controller::Panel),
+        ] {
+            core.dispatch(
+                deckweave_core::Command::ConfigurePlugin {
+                    device_id: device.id.clone(),
+                    page_id: device.profile.active_page_id.clone(),
+                    control_id: control.into(),
+                    plugin: deckweave_core::PluginAction {
+                        package: "dev.test.error".into(),
+                        action: "dev.test.error.action".into(),
+                        settings: serde_json::json!({}),
+                        controller: Some(controller),
+                    },
+                    label: "Application".into(),
+                    expected_revision: core.revision(),
+                },
+                "test",
+            )
+            .unwrap();
+        }
+        let page = core.snapshot().configuration.devices[0].profile.pages[0].clone();
+        let image=format!("data:image/svg+xml;base64,{}",STANDARD.encode(r##"<svg xmlns="http://www.w3.org/2000/svg" width="112" height="112"><rect width="112" height="112" fill="#237345"/><text x="12" y="65" font-size="20" fill="white">Visible</text></svg>"##));
+        for binding in page
+            .bindings
+            .values()
+            .filter(|b| b.kind == ActionKind::Plugin)
+        {
+            core.plugin_feedback(&binding.id, "setImage", serde_json::json!({"image":image}));
+            core.plugin_feedback(&binding.id, "setTitle", serde_json::json!({"title":""}));
+        }
+        let renderer = Renderer::new().unwrap();
+        let mut cache = FrameCache::default();
+        let initial = desired(&core.snapshot(), &device.id);
+        let key = initial.iter().find(|f| f.key == 1).unwrap();
+        let strip = initial.iter().find(|f| f.key == 11).unwrap();
+        let original_key = cache.prepare(key, &renderer).unwrap().0;
+        let original_strip = cache.prepare(strip, &renderer).unwrap().0;
+        for binding in page
+            .bindings
+            .values()
+            .filter(|b| b.kind == ActionKind::Plugin)
+        {
+            core.action_error(&device.id, &binding.id, "Target window unavailable");
+        }
+        let failed = desired(&core.snapshot(), &device.id);
+        let key = failed.iter().find(|f| f.key == 1).unwrap();
+        let strip = failed.iter().find(|f| f.key == 11).unwrap();
+        assert_eq!(key.image.as_ref(), Some(&image));
+        assert!(key.alert);
+        assert_eq!(strip.regions[0].image.as_ref(), Some(&image));
+        assert!(strip.regions[0].alert);
+        assert_eq!(key.visual.title, "Application");
+        let failed_key = cache.prepare(key, &renderer).unwrap().0;
+        let failed_strip = cache.prepare(strip, &renderer).unwrap().0;
+        assert_ne!(failed_key.jpeg, original_key.jpeg);
+        assert_ne!(failed_strip.jpeg, original_strip.jpeg);
+        for binding in page
+            .bindings
+            .values()
+            .filter(|b| b.kind == ActionKind::Plugin)
+        {
+            core.plugin_feedback(&binding.id, "ready", serde_json::json!({}));
+        }
+        let restored = desired(&core.snapshot(), &device.id);
+        assert_eq!(
+            cache
+                .prepare(restored.iter().find(|f| f.key == 1).unwrap(), &renderer)
+                .unwrap()
+                .0
+                .jpeg,
+            original_key.jpeg
+        );
+        assert_eq!(
+            cache
+                .prepare(restored.iter().find(|f| f.key == 11).unwrap(), &renderer)
+                .unwrap()
+                .0
+                .jpeg,
+            original_strip.jpeg
+        );
+    }
+
+    #[test]
+    fn native_navigation_has_icons_readable_labels_and_preserves_feedback_priority() {
+        use super::*;
+        let mut core = Core::memory().unwrap();
+        let device = core.snapshot().configuration.devices[0].clone();
+        core.dispatch(
+            deckweave_core::Command::ConfigureProgram {
+                device_id: device.id.clone(),
+                page_id: device.profile.active_page_id.clone(),
+                control_id: "key-1".into(),
+                label: "Codex <команды>".into(),
+                plan: deckweave_core::Plan::Page {
+                    page_id: device.profile.active_page_id.clone(),
+                },
+                expected_revision: 0,
+            },
+            "test",
+        )
+        .unwrap();
+        let frame = desired(&core.snapshot(), &device.id).remove(0);
+        let uri = frame.image.as_ref().unwrap();
+        let svg =
+            String::from_utf8(STANDARD.decode(uri.split_once(',').unwrap().1).unwrap()).unwrap();
+        assert!(svg.contains("font-size=\"15\""));
+        assert!(svg.contains("&lt;команды&gt;"));
+        assert!(svg.contains("<path"));
+        let renderer = Renderer::new().unwrap();
+        let mut cache = FrameCache::default();
+        let (prepared, _) = cache.prepare(&frame, &renderer).unwrap();
+        assert!(!prepared.jpeg.is_empty());
+        core.action_error(
+            &device.id,
+            frame.binding_id.as_deref().unwrap(),
+            "Unavailable target",
+        );
+        let failed = desired(&core.snapshot(), &device.id).remove(0);
+        assert_eq!(failed.image, frame.image);
+        assert!(failed.alert);
+        let (alert_frame, hit) = cache.prepare(&failed, &renderer).unwrap();
+        assert!(!hit);
+        assert_ne!(alert_frame.jpeg, prepared.jpeg);
+    }
+
     #[test]
     fn unconfigured_hardware_never_writes_and_changed_fields_do_not_repeat() {
         use super::*;

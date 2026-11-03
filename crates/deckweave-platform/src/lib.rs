@@ -1,5 +1,6 @@
 //! Narrow safe OS boundary. Windows FFI is confined to the audited `windows` modules.
 pub mod audio;
+pub mod gpu;
 pub mod notification_sound;
 #[cfg(windows)]
 #[allow(unsafe_code)]

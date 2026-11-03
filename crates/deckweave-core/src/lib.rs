@@ -853,6 +853,21 @@ impl Core {
                 device.profile.active_page_id.clone_from(&page.id);
                 device.profile.pages.push(page);
             }
+            Command::RenamePage {
+                device_id,
+                page_id,
+                name,
+                ..
+            } => {
+                let device = device_mut(&mut next, &device_id)?;
+                let page = device
+                    .profile
+                    .pages
+                    .iter_mut()
+                    .find(|p| p.id == page_id)
+                    .ok_or_else(|| Error::new("not_found", "Page not found in selected profile"))?;
+                page.name = name.trim().into();
+            }
             Command::SelectPage {
                 device_id, page_id, ..
             } => {

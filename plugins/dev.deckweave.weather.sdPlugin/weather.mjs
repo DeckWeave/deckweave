@@ -201,6 +201,13 @@ export function render(
         '#ffffff',
         'end',
       );
+  } else if (panel) {
+    body = text(10, 25, Math.min(19, w / 13), place, '#e4ded4');
+    body += icon(selected?.code ?? null, selected?.day, w - 82, 36, 68);
+    body += text(9, 85, 57, temp(selected?.temperature));
+    body += text(10, 115, 20,
+      action === 'forecast' ? `+${Number(settings.hours) || 3} ${ru ? 'ч' : 'h'}` : `${ru ? 'Ощущ.' : 'Feels'} ${temp(selected?.feels)}`,
+      '#ded8cf');
   } else {
     body = text(7, h * 0.16, Math.min(14, w / 12), place, '#d8e4f7');
     body += icon(
@@ -230,7 +237,7 @@ export function render(
     body += text(7, h * 0.95, Math.min(12, w / 10), bottom, '#b8d1ec');
   }
   if (stale) body += `<rect x="${w - 11}" y="4" width="7" height="7" rx="2" fill="#ffba78"/>`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${outputWidth}" height="${outputHeight}" viewBox="0 0 ${w} ${h}"><rect width="${w}" height="${h}" fill="#152b40"/>${body}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${outputWidth}" height="${outputHeight}" viewBox="0 0 ${w} ${h}"><rect width="${w}" height="${h}" fill="#20201f"/>${body}</svg>`;
 }
 export async function getJson(url, fetcher = fetch) {
   const response = await fetcher(url, {

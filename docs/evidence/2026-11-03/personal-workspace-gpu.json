@@ -1,0 +1,78 @@
+{
+  "helperPid": 60880,
+  "gpuResponses": [
+    {
+      "id": 1,
+      "ok": true,
+      "state": {
+        "adapters": [
+          {
+            "busiest_engine_percent": null,
+            "dedicated_total_bytes": 25489833984,
+            "dedicated_used_bytes": 4189401088,
+            "gpu_reason": "Waiting for a second counter sample",
+            "gpu_status": "warming_up",
+            "id": "00000000:0000cbd0",
+            "index": 0,
+            "memory_reason": null,
+            "memory_status": "ready",
+            "name": "NVIDIA GeForce RTX 3090 Ti"
+          },
+          {
+            "busiest_engine_percent": null,
+            "dedicated_total_bytes": 134217728,
+            "dedicated_used_bytes": 0,
+            "gpu_reason": "Waiting for a second counter sample",
+            "gpu_status": "warming_up",
+            "id": "00000000:00012622",
+            "index": 1,
+            "memory_reason": null,
+            "memory_status": "ready",
+            "name": "Intel(R) UHD Graphics 770"
+          }
+        ],
+        "reason": null,
+        "sampled_at_ms": 1793658571779,
+        "selected_adapter_id": "00000000:0000cbd0",
+        "status": "warming_up"
+      }
+    },
+    {
+      "id": 2,
+      "ok": true,
+      "state": {
+        "adapters": [
+          {
+            "busiest_engine_percent": 22.825546162695055,
+            "dedicated_total_bytes": 25489833984,
+            "dedicated_used_bytes": 4187070464,
+            "gpu_reason": null,
+            "gpu_status": "ready",
+            "id": "00000000:0000cbd0",
+            "index": 0,
+            "memory_reason": null,
+            "memory_status": "ready",
+            "name": "NVIDIA GeForce RTX 3090 Ti"
+          },
+          {
+            "busiest_engine_percent": 0,
+            "dedicated_total_bytes": 134217728,
+            "dedicated_used_bytes": 0,
+            "gpu_reason": null,
+            "gpu_status": "ready",
+            "id": "00000000:00012622",
+            "index": 1,
+            "memory_reason": null,
+            "memory_status": "ready",
+            "name": "Intel(R) UHD Graphics 770"
+          }
+        ],
+        "reason": null,
+        "sampled_at_ms": 1793658573808,
+        "selected_adapter_id": "00000000:0000cbd0",
+        "status": "ready"
+      }
+    }
+  ],
+  "audioStatusCompatible": true
+}

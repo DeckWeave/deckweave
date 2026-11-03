@@ -4,6 +4,9 @@
   "SDKVersion": 2,
   "CodePath": "plugin.mjs",
   "PropertyInspectorPath": "settings.html",
+  "DeckWeave": {
+    "RequiredFiles": ["bin/deckweave-system.exe"]
+  },
   "Actions": [
     {
       "UUID": "dev.deckweave.monitor.cpu",
@@ -20,6 +23,18 @@
       "Encoder": {
         "layout": "$A0"
       }
+    },
+    {
+      "UUID": "dev.deckweave.monitor.gpu",
+      "Name": "GPU busiest engine",
+      "Controllers": ["Keypad", "Encoder", "Panel"],
+      "Encoder": { "layout": "$A0" }
+    },
+    {
+      "UUID": "dev.deckweave.monitor.gpu-memory",
+      "Name": "Dedicated GPU memory",
+      "Controllers": ["Keypad", "Encoder", "Panel"],
+      "Encoder": { "layout": "$A0" }
     },
     {
       "UUID": "dev.deckweave.monitor.uptime",

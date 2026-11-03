@@ -1,0 +1,18 @@
+{
+  "UUID": "dev.deckweave.workspace",
+  "Name": "Personal Workspace · Рабочее место",
+  "Version": "0.1.0",
+  "SDKVersion": 2,
+  "CodePath": "plugin.mjs",
+  "PropertyInspectorPath": "settings.html",
+  "Actions": [
+    {
+      "UUID": "dev.deckweave.workspace.command",
+      "Name": "Workspace Command · Команда приложения",
+      "Controllers": ["Keypad", "Encoder", "Panel"],
+      "Encoder": { "layout": "$A0" }
+    }
+  ],
+  "Author": "DeckWeave contributors",
+  "DeckWeave": { "RequiredFiles": ["bin/deckweave-workspace.exe"] }
+}
